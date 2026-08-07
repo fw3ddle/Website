@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    /* dark banner background */
+    body {
+      background-color: #000000;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: sans-serif;
+      overflow: hidden;
+      padding: 0 8px;
+    }
+
+    /* main carousel wrapper */
+    .carousel-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: transparent;
+      user-select: none;
+      touch-action: pan-y;
+    }
+
+    /* stage: holds track + arrow buttons */
+    .stage {
+      position: relative;
+      width: 100%;
+      overflow: visible;
+      background: transparent;
+      padding: 20px 80px; /* Padding creates space between arrows and images */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+
+    /* track: flex row with centering and 50px gap */
+    .track {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 50px;
+      width: auto;
+      padding: 0;
+      margin: 0 auto;
+    }
+
+    /* slide: square image containers */
+    .slide {
+      flex: 0 0 auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: transparent;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      /* Ease-in-out transition applied to layout changes */
+      transition: all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+      will-change: transform, width, height;
+    }
+
+    .slide a {
+      display: block;
+      width: 100%;
+      height: 100%;
+      text-decoration: none;
+      transition: transform 0.3s ease;
+    }
+
+    .slide a:hover {
+      transform: scale(1.05);
+    }
+
+    .slide img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: transparent;
+      border-radius: 14px;
+      pointer-events: none;
+    }
+
+    /* active slide: brighter border */
+    .slide.active-slide {
+      border-color: rgba(255, 255, 255, 0.5);
+      box-shadow: 0 12px 36px rgba(255, 255, 255, 0.08);
+    }
+
+    /* ----- ARROW BUTTONS (empty circles) ----- */
+    .arrow-btn {
+      position: absolute;
+      top: 42%;
+      transform: translateY(-50%);
+      background: rgba(20, 20, 28, 0.65);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: transparent;
+      font-size: 0;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      padding: 0;
+    }
+
+    .arrow-btn:hover {
+      background: rgba(60, 60, 80, 0.8);
+      transform: translateY(-50%) scale(1.06);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .arrow-btn:active {
+      transform: translateY(-50%) scale(0.92);
+    }
+
+    .arrow-left { left: 10px; }
+    .arrow-right { right: 10px; }
+
+    /* ----- DOTS ----- */
+    .footer-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 1.8rem;
+      background: transparent;
+      padding: 0.4rem 1.2rem;
+      border-radius: 40px;
+    }
+
+    .dots {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      transition: 0.25s;
+      cursor: pointer;
+      padding: 0;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .dot:hover {
+      transform: scale(1.2);
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    .dot.active {
+      background: rgba(255, 255, 255, 0.85);
+      width: 28px;
+    }
+
+    .dot.active:hover {
+      transform: scale(1.1);
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    /* ----- responsive adjustments ----- */
+    @media (max-width: 700px) {
+      .stage { padding: 20px 60px; }
+      .arrow-btn { width: 44px; height: 44px; background: rgba(10, 10, 16, 0.75); }
+      .arrow-left { left: 6px; }
+      .arrow-right { right: 6px; }
+      .track { gap: 30px; }
+    }
+
+    @media (max-width: 480px) {
+      .stage { padding: 20px 50px; }
+      .arrow-btn { width: 38px; height: 38px; background: rgba(0, 0, 0, 0.6); }
+      .arrow-left { left: 4px; }
+      .arrow-right { right: 4px; }
+      .track { gap: 20px; }
+      .slide { border-width: 1.5px; }
+      .slide a:hover { transform: scale(1.03); }
+    }
+
+    @media (min-width: 1400px) {
+      .stage { padding: 20px 100px; }
+      .arrow-left { left: 16px; }
+      .arrow-right { right: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="carousel-wrapper">
+  <div class="stage" id="stage">
+    <button class="arrow-btn arrow-right" id="prevBtn" aria-label="Previous"></button>
+    <div class="track" id="track"></div>
+    <button class="arrow-btn arrow-left" id="nextBtn" aria-label="Next"></button>
+  </div>
+
+  <div class="footer-controls">
+    <div class="dots" id="dotsContainer"></div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const imageSet = [
+      { src: 'https://i.scdn.co/image/ab67616d0000e1a3c7ac7c038cf021f985a206d8', link: 'https://open.spotify.com/artist/2Z0eG2Rh7E6AZFPOlk9b4T?si=pQpdsvc7T2e7nB8N_PIiNA', title: 'Spotify Fweddle' },
+      { src: 'https://img.itch.zone/aW1nLzYzMTI0NjEucG5n/347x500/n9Rphj.png', link: 'https://fweddle.itch.io/chip', title: 'Chip OG' },
+      { src: 'https://yt3.googleusercontent.com/NYN5p-nwyuoimqtop2Y3xN99oe-IXiyiewclnjmFK3e9kXOiMcmqLcmZ7PigMBEkSvg3IM7P6A=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj', link: 'https://www.youtube.com/@Fweddle', title: 'Youtube' },
+      { src: 'https://scontent-sea1-1.cdninstagram.com/v/t51.75761-15/463611728_18464012431062947_1563034331160642926_n.jpg?stp=dst-jpg_e35_s640x640_tt6&_nc_cat=100&ccb=7-5&_nc_sid=18de74&efg=eyJlZmdfdGFnIjoiQ0FST1VTRUxfSVRFTS5iZXN0X2ltYWdlX3VybGdlbi5DMyJ9&_nc_ohc=3goof_Jh8_IQ7kNvwGIxt5j&_nc_oc=AdrO8DkH_9XEjoW8GYslV_9DIOPu-j8mM4VlaGywl_zgNm_dB9J5BlZ69pdGPnscJo8&_nc_zt=23&_nc_ht=scontent-sea1-1.cdninstagram.com&_nc_gid=X_PXz3XX5iVQe_mH0oRi-Q&_nc_ss=7b689&oh=00_AQHfVr0qhaeX_d5evp8O-nrW8BwU7w2NgAVUIt3yRrP6nA&oe=6A7B06AF', link: 'https://www.instagram.com/felixweddle/', title: 'Instagram' },
+      { src: 'https://storage.proboards.com/3441141/images/EyBa0lesGJdYNwbNvRNz.png', link: 'https://pokemonsprite2.proboards.com/', title: 'Sprite 2' }
+    ];
+
+    const items = imageSet;
+    const total = items.length;
+    let currentIndex = 0;
+
+    const track = document.getElementById('track');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const dotsContainer = document.getElementById('dotsContainer');
+
+    // Persistent array for the 4 slide DOM elements
+    let slideElements = [];
+
+    const BASE_SIZE = 50;
+
+    function getSizeMultiplier(position) {
+      const map = { 0: 1, 1: 2, 2: 3, 3: 4 };
+      return map[position] || 1;
+    }
+
+    // Create a single slide DOM element (runs only once)
+    function createSlideElement() {
+      const slide = document.createElement('div');
+      slide.className = 'slide';
+      slide.style.flexShrink = '0';
+
+      const anchor = document.createElement('a');
+      anchor.target = '_blank';
+
+      const img = document.createElement('img');
+      img.loading = 'lazy';
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '14px';
+      img.style.background = 'transparent';
+
+      anchor.appendChild(img);
+      slide.appendChild(anchor);
+      return slide;
+    }
+
+    // Build the initial state
+    function init() {
+      // Create exactly 4 DOM elements
+      for (let i = 0; i < 4; i++) {
+        const el = createSlideElement();
+        slideElements.push(el);
+        track.appendChild(el);
+      }
+      updateSlides();
+    }
+
+    // Update the persistent DOM elements and trigger smooth transitions
+    function updateSlides() {
+      // 1. Calculate current queue of images to display
+      const indices = [];
+      for (let i = 0; i < 4; i++) {
+        let idx = (currentIndex + i + total) % total;
+        indices.push(idx);
+      }
+
+      // 2. Update data, sizes, and classes on existing slide elements
+      slideElements.forEach((el, pos) => {
+        const item = items[indices[pos]];
+        const multiplier = getSizeMultiplier(pos);
+        const size = Math.round(BASE_SIZE * multiplier);
+        const isActive = (indices[pos] === currentIndex);
+
+        const a = el.querySelector('a');
+        const img = el.querySelector('img');
+
+        a.href = item.link;
+        a.title = item.title;
+        img.src = item.src;
+        img.alt = item.title;
+
+        // Update width/height (these trigger the smooth grow/shrink)
+        el.style.width = size + 'px';
+        el.style.height = size + 'px';
+
+        // Update active class
+        el.className = `slide ${isActive ? 'active-slide' : ''}`;
+      });
+
+      // 3. Reorder the DOM elements to trigger the flexbox "slide" animation
+      // Because the track has `justify-content: center`, flexbox will
+      // automatically shift the elements into their new positions with the CSS transition.
+      slideElements.forEach(el => track.appendChild(el));
+
+      // 4. Update dots (keep previous code)
+      dotsContainer.innerHTML = '';
+      for (let i = 0; i < total; i++) {
+        const dot = document.createElement('button');
+        dot.className = `dot ${i === currentIndex ? 'active' : ''}`;
+        dot.setAttribute('aria-label', `Slide ${i+1}`);
+        dot.dataset.index = i;
+        dot.addEventListener('click', () => goTo(i));
+        dotsContainer.appendChild(dot);
+      }
+    }
+
+    /* ----- navigation ----- */
+    function goTo(index) {
+      if (index < 0) index = total - 1;
+      if (index >= total) index = 0;
+      if (currentIndex === index) return;
+      currentIndex = index;
+      updateSlides(); // Triggers the smooth transition
+    }
+
+    function next() { goTo(currentIndex + 1); }
+    function prev() { goTo(currentIndex - 1); }
+
+    /* ----- event listeners ----- */
+    prevBtn.addEventListener('click', prev);
+    nextBtn.addEventListener('click', next);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); prev(); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); next(); }
+    });
+
+    // ----- swipe support -----
+    let startX = 0, startY = 0;
+    let isSwiping = false;
+    const stageEl = document.getElementById('stage');
+
+    stageEl.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      isSwiping = true;
+    }, { passive: true });
+
+    stageEl.addEventListener('touchmove', (e) => {
+      if (!isSwiping) return;
+      e.preventDefault();
+    }, { passive: false });
+
+    stageEl.addEventListener('touchend', (e) => {
+      if (!isSwiping) return;
+      isSwiping = false;
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const deltaX = endX - startX;
+      const deltaY = endY - startY;
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 40) {
+        if (deltaX < 0) next();
+        else prev();
+      }
+    }, { passive: true });
+
+    // Start the carousel!
+    init();
+  })();
+</script>
+
+</body>
+</html>
