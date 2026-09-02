@@ -1,0 +1,2017 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fweddle</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <style>
+    /* dark banner background */
+    body {
+      background-color: #000000;
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: sans-serif;
+      overflow: hidden;
+      padding: 0 8px;
+    }
+
+    /* pixelated starry space background */
+    #stars {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      pointer-events: none;
+    }
+
+    /* visually hidden (screen-reader only) */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* main carousel wrapper */
+    .carousel-wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* stage: holds track + arrow buttons */
+    .stage {
+      position: relative;
+      width: 100%;
+      overflow: visible;
+      background: transparent;
+      padding: 20px 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      touch-action: none;
+      cursor: grab;
+    }
+
+    .stage.rolling {
+      cursor: grabbing;
+    }
+
+    /* track: sized by JS; slides are absolutely positioned and driven
+       per-frame by JS along a continuous, gridless reel */
+    .track {
+      position: relative;
+      margin: 0 auto;
+    }
+
+    /* slide: square image containers */
+    .slide {
+      position: absolute;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: transparent;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      /* position/size/opacity are animated by JS every frame -
+         only the highlight is left to CSS */
+      transition: border-color 0.4s, box-shadow 0.4s;
+      will-change: left, top, width, height, opacity;
+    }
+
+    .slide a {
+      display: block;
+      width: 100%;
+      height: 100%;
+      text-decoration: none;
+      transition: transform 0.3s ease;
+      border-radius: 14px;
+    }
+
+    .slide a:hover {
+      transform: scale(1.05);
+    }
+
+    .slide a:focus-visible {
+      outline: 3px solid #ffffff;
+      outline-offset: 3px;
+    }
+
+    .slide img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: transparent;
+      border-radius: 14px;
+      pointer-events: none;
+    }
+
+    /* active slide: brighter border */
+    .slide.active-slide {
+      border-color: rgba(255, 255, 255, 0.5);
+      box-shadow: 0 12px 36px rgba(255, 255, 255, 0.08);
+    }
+
+    /* ----- ARROW BUTTONS ----- */
+    .arrow-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(20, 20, 28, 0.65);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.75);
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      padding: 0;
+    }
+
+    .arrow-btn svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+    }
+
+    .arrow-btn:hover {
+      background: rgba(60, 60, 80, 0.8);
+      transform: translateY(-50%) scale(1.06);
+      border-color: rgba(255, 255, 255, 0.5);
+      color: #ffffff;
+    }
+
+    .arrow-btn:active {
+      transform: translateY(-50%) scale(0.92);
+    }
+
+    .arrow-btn:focus-visible {
+      outline: 3px solid #ffffff;
+      outline-offset: 2px;
+    }
+
+    .arrow-left {
+      left: 10px;
+    }
+
+    .arrow-right {
+      right: 10px;
+    }
+
+    /* responsive adjustments (landscape / wide: keep as-is) */
+    @media (max-width: 700px) {
+      .stage {
+        padding: 20px 60px;
+      }
+
+      .arrow-btn {
+        width: 44px;
+        height: 44px;
+        background: rgba(10, 10, 16, 0.75);
+      }
+
+      .arrow-left {
+        left: 6px;
+      }
+
+      .arrow-right {
+        right: 6px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .stage {
+        padding: 20px 50px;
+      }
+
+      .arrow-btn {
+        width: 44px;
+        height: 44px;
+        background: rgba(0, 0, 0, 0.6);
+      }
+
+      .arrow-left {
+        left: 4px;
+      }
+
+      .arrow-right {
+        right: 4px;
+      }
+
+      .slide {
+        border-width: 1.5px;
+      }
+
+      .slide a:hover {
+        transform: scale(1.03);
+      }
+    }
+
+    @media (min-width: 1400px) {
+      .stage {
+        padding: 20px 100px;
+      }
+
+      .arrow-left {
+        left: 16px;
+      }
+
+      .arrow-right {
+        right: 16px;
+      }
+    }
+
+    /* ----- PORTRAIT: the horizontal layout rotated vertical ----- */
+    @media (orientation: portrait) {
+      .stage {
+        padding: 64px 16px;
+      }
+
+      .arrow-btn {
+        top: auto;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+      }
+
+      .arrow-btn:hover {
+        transform: translateX(-50%) scale(1.06);
+      }
+
+      .arrow-btn:active {
+        transform: translateX(-50%) scale(0.92);
+      }
+
+      /* prev = toward the big end = top */
+      .arrow-right {
+        top: 4px;
+      }
+
+      /* next = toward the small end = bottom */
+      .arrow-left {
+        bottom: 4px;
+      }
+
+      .arrow-btn svg {
+        transform: rotate(-90deg);
+      }
+    }
+
+    /* respect reduced-motion preferences */
+    @media (prefers-reduced-motion: reduce) {
+
+      .slide,
+      .slide a,
+      .arrow-btn {
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <canvas id="stars" aria-hidden="true"></canvas>
+
+  <div class="carousel-wrapper" role="region" aria-roledescription="carousel" aria-label="Fweddle links">
+    <div class="stage" id="stage">
+      <button class="arrow-btn arrow-right" id="prevBtn" aria-label="Previous" aria-controls="track">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="9 5 16 12 9 19"></polyline>
+        </svg>
+      </button>
+      <div class="track" id="track"></div>
+      <button class="arrow-btn arrow-left" id="nextBtn" aria-label="Next" aria-controls="track">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="15 5 8 12 15 19"></polyline>
+        </svg>
+      </button>
+    </div>
+
+    <p class="sr-only" id="liveStatus" aria-live="polite"></p>
+  </div>
+
+  <script>
+    (function() {
+      /* ================================================================
+         YOUR APPS - add socials and websites here.
+         Each entry: square-ish image, the link it opens, and a title
+         (used for tooltips, alt text and screen readers).
+         ================================================================ */
+      const imageSet = [{
+          src: 'https://i.scdn.co/image/ab67616d0000e1a3c7ac7c038cf021f985a206d8',
+          link: 'https://open.spotify.com/artist/2Z0eG2Rh7E6AZFPOlk9b4T?si=pQpdsvc7T2e7nB8N_PIiNA',
+          title: 'Spotify Fweddle'
+        },
+        {
+          src: 'https://img.itch.zone/aW1nLzYzMTI0NjEucG5n/347x500/n9Rphj.png',
+          link: 'https://fweddle.itch.io/chip',
+          title: 'Chip OG'
+        },
+        {
+          src: 'https://img.itch.zone/aW1nLzI5MjE5OTM3LmpwZw==/315x250%23c/aXKE4V.jpg',
+          link: 'https://fweddle.itch.io/chip2',
+          title: 'Chip 626.08'
+        },
+        {
+          src: 'Images/grithub.png',
+          link: 'https://github.com/fw3ddle/Website',
+          title: 'Github'
+        },
+        {
+          src: 'Images/unnamed.png',
+          link: 'https://www.youtube.com/@Fweddle',
+          title: 'Youtube'
+        },
+        {
+          src: 'Images/discplanet.png',
+          link: 'https://www.instagram.com/felixweddle/',
+          title: 'Instagram'
+        },
+        {
+          src: 'https://storage.proboards.com/3441141/images/EyBa0lesGJdYNwbNvRNz.png',
+          link: 'https://pokemonsprite2.proboards.com/',
+          title: 'PKMN Sprite 2 - Ancient Forum'
+        },
+        {
+          src: 'Images/fxsplicer.png',
+          link: 'Apps/fweddle-splicer-v4.html',
+          title: 'FX Splicer Editor'
+        },
+        {
+          src: 'https://github.com/fw3ddle/Website/blob/main/Images/biocodextrue.png?raw=true',
+          link: 'Apps/Biocodex/biocodex_v6_pocket.html',
+          title: 'The Incomplete Biocodex'
+        },
+        {
+          src: 'Images/xforgetrue.png',
+          link: 'Apps/xForge/xforge_v0.5-2.html',
+          title: 'xForge — Check under the hood!'
+        },
+        {
+          src: 'Images/goatpad.png',
+          link: 'Apps/Goatpad%2B%2B/goatpad70.html',
+          title: 'Goatpad++ v70 inspired from classic Notepad!'
+        },
+        {
+          src: 'Images/cloverpaint.png',
+          link: 'Apps/CloverPaint/clover-paint-v6.html',
+          title: 'Clover Paint v6'
+        },
+        {
+          src: 'Images/shapeatlasfw.png',
+          link: 'Apps/Shape Atlas Universal/shape-atlas-uni-v3.html',
+          title: 'Shape Atlas Universal v3'
+        },
+        {
+          src: 'Images/FXplore.png',
+          link: 'Apps/FXplore/FXplore.html',
+          title: 'ꟻXplore'
+        }
+      ];
+      /* ================================================================ */
+
+      const items = imageSet;
+      const total = items.length;
+
+      const track = document.getElementById('track');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const liveStatus = document.getElementById('liveStatus');
+      const stageEl = document.getElementById('stage');
+
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      /* ----------------------------------------------------------------
+         THE REEL - fully continuous, never drawn to a grid.
+         R is a float: R = 2.4 simply means the reel rests 40% of the
+         way between two frames, and it stays there. Every slide's
+         position, size and opacity are functions of its continuous
+         slot coordinate p = (item - R):
+           p 0..3   the four squares, 1x -> 4x
+           p 3..4.2 keeps EXPANDING off the big edge while fading out
+           p -1.2..0 keeps SHRINKING off the small edge while fading out
+         ---------------------------------------------------------------- */
+      let R = 0; // reel position (float, unbounded, wraps mod total)
+      let velocity = 0; // slots per ms
+      let BASE_SIZE = 50;
+      let GAP = 50;
+
+      /* ----- icon hitboxes -----
+         Fully opaque icons carry a hitbox that sweeps (plows) the
+         stars beneath them as the wheel moves. The moment an icon
+         starts going translucent in the fade zones, its hitbox is
+         gone and stars pass under it freely. */
+      const sweepRects = []; // {x, y, w, h, vx, vy} in canvas px
+      const sweepPrev = new Map(); // slide index -> {cx, cy, t}
+      const SWEEP_SPEED = 0.08; // outward plow speed, px/ms
+      const trackOff = {
+        x: 0,
+        y: 0
+      };
+
+      /* ----- gravity bodies -----
+         Every solid thing on screen has mass: the icons (mass scales
+         with their area, so the big square pulls hardest) and the two
+         arrow buttons. Stars fall toward them, and the bodies knock
+         vortices around as they sweep past. */
+      const bodies = []; // {x, y, r, m, vx, vy}
+
+      function measureBtn(btn) {
+        if (!btn.getBoundingClientRect) return null;
+        const b = btn.getBoundingClientRect();
+        if (!b.width) return null;
+        return {
+          x: (b.left + b.width / 2) / STAR_PIX,
+          y: (b.top + b.height / 2) / STAR_PIX,
+          r: (b.width / 2) / STAR_PIX,
+          m: (b.width / 2) / STAR_PIX,
+          vx: 0,
+          vy: 0
+        };
+      }
+
+      function measureTrack() {
+        if (track.getBoundingClientRect) {
+          const b = track.getBoundingClientRect();
+          trackOff.x = b.left;
+          trackOff.y = b.top;
+        }
+      }
+
+      const QMIN = -3;
+      const QMAX = 6;
+      const FADE = 1.0; // width of the fade zones beyond each edge
+      let slotRects = []; // integer-slot rects, index q - QMIN
+
+      function isPortrait() {
+        return window.matchMedia('(orientation: portrait)').matches;
+      }
+
+      function computeMetrics() {
+        if (isPortrait()) {
+          GAP = Math.round(Math.min(30, Math.max(12, window.innerHeight * 0.025)));
+          const availH = window.innerHeight - 190 - GAP * 3;
+          const availW = window.innerWidth - 32;
+          BASE_SIZE = Math.max(22, Math.min(56, Math.floor(Math.min(availH / 10, availW / 4))));
+        } else {
+          GAP = window.innerWidth < 480 ? 20 : (window.innerWidth < 700 ? 30 : 50);
+          const availW = window.innerWidth - 170 - GAP * 3;
+          BASE_SIZE = Math.max(20, Math.min(50, Math.floor(availW / 10)));
+        }
+      }
+
+      function slotSize(q) {
+        return Math.max(0, BASE_SIZE * (q + 1)); // ...0, 1x, 2x, 3x, 4x, 5x...
+      }
+
+      // Precompute rects for integer slots QMIN..QMAX, extended past both
+      // edges so slides keep growing/shrinking as they leave.
+      function buildSlotRects() {
+        const big = slotSize(3);
+        slotRects = [];
+
+        if (isPortrait()) {
+          const span = slotSize(0) + slotSize(1) + slotSize(2) + slotSize(3) + GAP * 3;
+          track.style.width = big + 'px';
+          track.style.height = span + 'px';
+          // integer slot 3 sits at the top, slot 0 at the bottom;
+          // build tops downward from slot 3, then extend both ways
+          const tops = {};
+          tops[3] = 0;
+          for (let q = 2; q >= QMIN; q--) {
+            tops[q] = tops[q + 1] + slotSize(q + 1) + GAP;
+          }
+          for (let q = 4; q <= QMAX; q++) {
+            tops[q] = tops[q - 1] - GAP - slotSize(q);
+          }
+          for (let q = QMIN; q <= QMAX; q++) {
+            const s = slotSize(q);
+            slotRects[q - QMIN] = {
+              x: (big - s) / 2,
+              y: tops[q],
+              s: s
+            };
+          }
+        } else {
+          const span = slotSize(0) + slotSize(1) + slotSize(2) + slotSize(3) + GAP * 3;
+          track.style.width = span + 'px';
+          track.style.height = big + 'px';
+          const lefts = {};
+          lefts[0] = 0;
+          for (let q = 1; q <= QMAX; q++) {
+            lefts[q] = lefts[q - 1] + slotSize(q - 1) + GAP;
+          }
+          for (let q = -1; q >= QMIN; q--) {
+            lefts[q] = lefts[q + 1] - GAP - slotSize(q);
+          }
+          for (let q = QMIN; q <= QMAX; q++) {
+            const s = slotSize(q);
+            slotRects[q - QMIN] = {
+              x: lefts[q],
+              y: (big - s) / 2,
+              s: s
+            };
+          }
+        }
+      }
+
+      // Continuous rect at any fractional slot coordinate
+      function rectAt(p) {
+        const q0 = Math.max(QMIN, Math.min(QMAX - 1, Math.floor(p)));
+        const t = Math.max(0, Math.min(1, p - q0));
+        const a = slotRects[q0 - QMIN];
+        const b = slotRects[q0 + 1 - QMIN];
+        return {
+          x: a.x + (b.x - a.x) * t,
+          y: a.y + (b.y - a.y) * t,
+          s: a.s + (b.s - a.s) * t
+        };
+      }
+
+      // Fully opaque across the four squares, tweening to 0 in the
+      // sections where a slide heads toward either edge
+      function opacityAt(p) {
+        if (p < 0) return Math.max(0, 1 + p / FADE);
+        if (p > 3) return Math.max(0, 1 - (p - 3) / FADE);
+        return 1;
+      }
+
+      /* ----- build one element per app ----- */
+      const slideEls = [];
+
+      function createSlideElement(item) {
+        const slide = document.createElement('div');
+        slide.className = 'slide';
+        slide.setAttribute('role', 'group');
+        slide.setAttribute('aria-roledescription', 'slide');
+        slide.setAttribute('aria-label', item.title);
+
+        const anchor = document.createElement('a');
+        anchor.target = '_blank';
+        anchor.rel = 'noopener';
+        anchor.href = item.link;
+        anchor.title = item.title;
+        anchor.setAttribute('aria-label', item.title + ' (opens in a new tab)');
+
+        const img = document.createElement('img');
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.draggable = false;
+        img.src = item.src;
+        img.alt = item.title;
+
+        anchor.appendChild(img);
+        slide.appendChild(anchor);
+        return slide;
+      }
+
+      let lastAnnounced = -1;
+
+      function render() {
+        sweepRects.length = 0;
+        bodies.length = 0;
+        let sweepMoving = false;
+        for (let i = 0; i < total; i++) {
+          const el = slideEls[i];
+          // wrap the item onto the reel: p in roughly [-total/2 .. )
+          let p = ((i - R) % total + total) % total;
+          if (p > QMAX - 1.5) p -= total;
+
+          if (p < -FADE || p > 3 + FADE) {
+            el.style.visibility = 'hidden';
+            sweepPrev.delete(i);
+            continue;
+          }
+
+          const r = rectAt(p);
+          const o = opacityAt(p);
+
+          // a fading icon has no hitbox: it is dissolving, so stars
+          // pass straight through. Only solid, fully opaque icons plow.
+          if (o >= 1) {
+            const now = performance.now();
+            const sx = trackOff.x + r.x;
+            const sy = trackOff.y + r.y;
+            const cx = sx + r.s / 2;
+            const cy = sy + r.s / 2;
+            let rvx = 0,
+              rvy = 0;
+            const prev = sweepPrev.get(i);
+            if (prev) {
+              const dtm = Math.max(1, now - prev.t);
+              rvx = (cx - prev.cx) / dtm;
+              rvy = (cy - prev.cy) / dtm;
+            }
+            sweepPrev.set(i, {
+              cx: cx,
+              cy: cy,
+              t: now
+            });
+            sweepRects.push({
+              x: sx,
+              y: sy,
+              w: r.s,
+              h: r.s,
+              vx: rvx,
+              vy: rvy
+            });
+            // the same icon, as a gravity well: mass with its size.
+            // Icons collapsing to nothing at the small edge have no
+            // meaningful pull, so they are skipped.
+            if (r.s > 4) {
+              bodies.push({
+                x: cx / STAR_PIX,
+                y: cy / STAR_PIX,
+                r: (r.s / 2) / STAR_PIX,
+                m: (r.s / 2) / STAR_PIX,
+                vx: rvx / STAR_PIX,
+                vy: rvy / STAR_PIX
+              });
+            }
+            if (Math.abs(rvx) > 0.002 || Math.abs(rvy) > 0.002) sweepMoving = true;
+          } else {
+            sweepPrev.delete(i);
+            // still a gravity well while it fades, just not solid
+            if (r.s > 4) {
+              bodies.push({
+                x: (trackOff.x + r.x + r.s / 2) / STAR_PIX,
+                y: (trackOff.y + r.y + r.s / 2) / STAR_PIX,
+                r: (r.s / 2) / STAR_PIX,
+                m: (r.s / 2) / STAR_PIX,
+                vx: 0,
+                vy: 0
+              });
+            }
+          }
+          el.style.visibility = o <= 0.02 ? 'hidden' : 'visible';
+          el.style.left = r.x.toFixed(1) + 'px';
+          el.style.top = r.y.toFixed(1) + 'px';
+          el.style.width = r.s.toFixed(1) + 'px';
+          el.style.height = r.s.toFixed(1) + 'px';
+          el.style.opacity = o.toFixed(3);
+          el.style.pointerEvents = o < 0.25 ? 'none' : '';
+          el.style.zIndex = Math.round(Math.max(1, 10 - Math.abs(p) * 2));
+          el.classList.toggle('active-slide', Math.abs(p) < 0.5);
+        }
+
+        // the arrow buttons are bodies too - fixed, but heavy
+        const bp = measureBtn(prevBtn);
+        if (bp) bodies.push(bp);
+        const bn = measureBtn(nextBtn);
+        if (bn) bodies.push(bn);
+
+        // a moving hitbox needs the starfield awake to be swept
+        if (sweepMoving && !reducedMotion.matches) wakeStarPhysics();
+
+        // announce the nearest frame for screen readers (title only)
+        const nearest = ((Math.round(R) % total) + total) % total;
+        if (nearest !== lastAnnounced) {
+          lastAnnounced = nearest;
+          liveStatus.textContent = items[nearest].title;
+        }
+      }
+
+      /* ----- animation loop: runs only while the reel is moving ----- */
+      let rafId = null;
+      let lastTs = 0;
+
+      function tick(ts) {
+        const dt = Math.min(50, ts - lastTs || 16);
+        lastTs = ts;
+
+        // holding an arrow (button or key) feeds the spin continuously -
+        // there is no maximum, it just keeps winding up
+        if (holdDir !== 0 && !reducedMotion.matches) {
+          velocity += holdDir * HOLD_ACCEL * dt;
+        }
+
+        if (!dragging && Math.abs(velocity) > 0.00002) {
+          R += velocity * dt;
+          velocity *= Math.pow(ICE_DECAY, dt);
+        } else if (!dragging && holdDir === 0) {
+          velocity = 0;
+        }
+
+        // keep R wrapped so float precision survives long spins
+        R = ((R % total) + total) % total;
+
+        render();
+
+        if (dragging || holdDir !== 0 || Math.abs(velocity) > 0.00002) {
+          rafId = requestAnimationFrame(tick);
+        } else {
+          rafId = null;
+        }
+      }
+
+      function wake() {
+        if (rafId === null) {
+          lastTs = 0;
+          rafId = requestAnimationFrame(tick);
+        }
+      }
+
+      /* ----- navigation: flicks and holds, never snaps -----
+         Deep ice: about a 10 second decay time constant, no top speed.
+         A tap gives a gentle push; HOLDING a button (or arrow key)
+         keeps feeding the spin, winding the wheel up without limit. */
+      const ICE_DECAY = 0.9999; // per-ms velocity retention
+      const IMPULSE = 0.0012; // one tap
+      const HOLD_ACCEL = 0.00003; // velocity gained per ms held
+      let holdDir = 0;
+
+      function flick(dir) {
+        if (reducedMotion.matches) {
+          R += dir;
+          render();
+          return;
+        }
+        markInteracted();
+        velocity += dir * IMPULSE;
+        wake();
+      }
+
+      function startHold(dir) {
+        flick(dir);
+        if (!reducedMotion.matches) {
+          holdDir = dir;
+          wake();
+        }
+      }
+
+      function stopHold() {
+        holdDir = 0;
+      }
+
+      [
+        [prevBtn, -1],
+        [nextBtn, 1]
+      ].forEach(([btn, dir]) => {
+        btn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          startHold(dir);
+        });
+        btn.addEventListener('pointerup', stopHold);
+        btn.addEventListener('pointercancel', stopHold);
+        btn.addEventListener('pointerleave', stopHold);
+        // keyboard activation of the focused button (Enter/Space)
+        btn.addEventListener('keydown', (e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
+            e.preventDefault();
+            startHold(dir);
+          }
+        });
+        btn.addEventListener('keyup', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') stopHold();
+        });
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (!e.repeat) startHold(-1);
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (!e.repeat) startHold(1);
+        }
+      });
+
+      document.addEventListener('keyup', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowUp' ||
+          e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+          stopHold();
+        }
+      });
+
+      /* ----- film-roll drag: continuous, gridless ----- */
+      const DRAG_SCALE = 100; // px of drag per frame of reel travel
+      let dragging = false;
+      let dragged = false;
+      let dragTotal = 0;
+      let lastPos = 0;
+      let lastTime = 0;
+
+      function axisPos(e) {
+        return isPortrait() ? e.clientY : e.clientX;
+      }
+
+      function axisDelta(raw) {
+        return isPortrait() ? -raw : raw;
+      }
+
+      stageEl.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('.arrow-btn')) return;
+        dragging = true;
+        dragged = false;
+        dragTotal = 0;
+        // keep existing spin: a quick flick on top of a moving wheel
+        // accelerates it; a real grab-and-hold is stopped in endRoll
+        lastPos = axisPos(e);
+        lastTime = e.timeStamp;
+        stageEl.setPointerCapture(e.pointerId);
+        wake();
+      });
+
+      stageEl.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const pos = axisPos(e);
+        const raw = pos - lastPos;
+        if (raw === 0) return;
+        const delta = axisDelta(raw);
+        const dt = Math.max(1, e.timeStamp - lastTime);
+
+        if (!dragged) {
+          dragTotal += Math.abs(delta);
+          if (dragTotal > 8) {
+            dragged = true;
+            stageEl.classList.add('rolling');
+          }
+        }
+
+        R -= delta / DRAG_SCALE;
+        velocity = velocity * 0.7 + (-delta / DRAG_SCALE / dt) * 0.3;
+        lastPos = pos;
+        lastTime = e.timeStamp;
+      });
+
+      function endRoll(e) {
+        if (!dragging) return;
+        dragging = false;
+        stageEl.classList.remove('rolling');
+        // holding the wheel still before letting go = a grab: full stop
+        if (e && e.timeStamp && (e.timeStamp - lastTime) > 120) {
+          velocity = 0;
+        }
+        if (reducedMotion.matches) velocity = 0;
+        wake();
+      }
+
+      stageEl.addEventListener('pointerup', endRoll);
+      stageEl.addEventListener('pointercancel', endRoll);
+
+      // a drag should never trigger the link underneath it
+      stageEl.addEventListener('click', (e) => {
+        if (dragged) {
+          e.preventDefault();
+          e.stopPropagation();
+          dragged = false;
+        }
+      }, true);
+
+      // mouse wheel / trackpad accelerates the spin - keep scrolling
+      // to wind the wheel up, stop and it glides on the ice
+      stageEl.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (reducedMotion.matches) {
+          R += (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX) / (DRAG_SCALE * 1.6);
+          render();
+          return;
+        }
+        markInteracted();
+        const d = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+        velocity += d * 0.000012;
+        wake();
+      }, {
+        passive: false
+      });
+
+      /* ----------------------------------------------------------------
+         PIXELATED STARFIELD - deep space, with suns
+         1 css px per star, a dense faint field on deep ice.
+
+         - Press and hold anywhere: stars are DRAGGED toward the
+           pointer, trailing and orbiting it on the ice.
+         - Herd enough together and they clump into a SUN: a ball of
+           churning pixel stars. Small suns churn lazily; the bigger
+           the sun, the faster it churns.
+         - When enough large suns exist, fresh gravity clusters drift
+           in from the edges of space for the player to suck up.
+         - Stars bump into each other and bounce off the screen edges,
+           never leaving the screen.
+         ---------------------------------------------------------------- */
+      const starCanvas = document.getElementById('stars');
+      const sctx = starCanvas.getContext('2d');
+      const STAR_PIX = 1; // one star = 1 css px
+      const STAR_COLORS = ['#ffffff', '#ffffff', '#ffffff', '#9fb8ff', '#caa8ff', '#8f9fb8'];
+      const TWINKLE_MS = 900;
+      const TWINKLE_CHANCE = 0.045;
+
+      const FREE_DAMP = 0.9999; // deep ice for free-flying stars
+      const WALL_REST = 0.9; // bounciness against screen edges
+      const STAR_REST = 0.9; // bounciness star-to-star
+      const COLLIDE_D = 1.6; // bump distance in px
+
+      const ATTRACT_R = 140; // pointer pull radius
+      const ATTRACT_A = 0.0009; // pointer pull strength (accel, px/ms^2)
+      const CAPTURE = 0.99; // per-ms grip inside the pull radius
+
+      const VORTEX_A = 0.0005; // swirl accel per vortex level
+      const VORTEX_MAX = 14; // spin levels a click-mash can reach
+      const VORTEX_WINDOW = 900; // ms between clicks that still stack
+      const VORTEX_NEAR = 80; // px: clicks this close count as one spot
+
+      const ARM_PHASE = 0.0035; // base spiral angular rate, rad/ms
+      const ARM_AMP = 0.4; // how strongly stars pile into the arms
+
+      const GRAV_G = 0.00055; // gravity strength per unit mass
+      const GRAV_REACH = 2.6; // field radius as a multiple of body size
+      const GRAV_SOFT = 12; // softening px, keeps the pull finite
+      const KNOCK = 0.55; // how hard a body knocks a vortex
+
+      const SPAWN_HOLD_BASE = 0.2; // stars per ms at the start of a hold
+      const SPAWN_HOLD_RAMP = 0.36; // extra rate per second held (ramps up)
+      const SPAWN_HOLD_CAP = 7000; // ms after which the rate stops climbing
+
+      const AMB_FIRST = 15000; // ms after first interaction before nature stirs
+      const AMB_START_IVL = 20000; // starting gap between spontaneous vortices
+      const AMB_RAMP = 1800; // ms shaved off that gap per minute
+      const AMB_MIN_IVL = 6000; // fastest spontaneous rate
+      const AMB_MAX = 4; // concurrent spontaneous vortices
+
+      const LINK_D = 3.4; // stars closer than this are one clump
+      const CLUMP_MIN = 10; // members needed to become a sun
+      const BIG_SUN = 30; // members that count as a "large" sun
+      const DETECT_MS = 300; // how often clumps are re-detected
+
+      const SPAWN_MASS = 60; // clustered stars needed before drift-ins
+      const SPAWN_CHANCE = 0.25; // per detect tick while conditions hold
+      let MAX_EXTRA = 2400; // headroom, recomputed from the field size
+
+      /* ----- rainbow cargo convoys -----
+         Freight moves through this sky. A cargo hub - a little
+         plus-shaped station with a churning rainbow core - tows a
+         train of coloured containers across the field, each convoy
+         picking its own edge, its own heading, its own pace. They are
+         solid things: every hub and pod is a gravity body, so stars
+         lean toward a passing train and vortices get shouldered
+         aside. Traffic in all directions, never the same route twice. */
+      const CONVOY_MAX = 3; // concurrent trains in the sky
+      const CONVOY_FIRST = 5000; // ms after load before the first one
+      const CONVOY_IVL_MIN = 12000; // shortest gap between departures
+      const CONVOY_IVL_MAX = 32000; // longest gap between departures
+      const CONVOY_SEG = 16; // px between the centres of segments
+      const CPX = 2; // one art pixel of a convoy = 2 canvas px
+
+      const convoys = []; // {x, y, vx, vy, pods, hue0, seed, born}
+      let convoyNext = 0; // when the next train departs (0 = not set)
+
+      let stars = [];
+      let twinkles = [];
+      let starTimer = null;
+      let hadTwinkles = false;
+      let movingStars = new Set();
+      let gridHead = null;
+      let gridNext = null;
+      let clusters = []; // {members:[], size, cx, cy, mvx, mvy}
+      let baseCount = 0;
+      let detectAcc = 0;
+      const attract = {
+        on: false,
+        x: 0,
+        y: 0,
+        spawn: false, // true when the hold began outside tiles/buttons
+        since: 0, // when the hold began
+        acc: 0 // fractional stars owed
+      };
+      const vortex = {
+        level: 0,
+        lastT: 0,
+        lastX: -9999,
+        lastY: -9999
+      };
+
+      /* ----- swirl personalities: every spin is its own creature -----
+         A cheap seeded hash hands each sun and each vortex its own
+         direction, arm count, arm curl (twist), and a secondary
+         squiggle harmonic - interfering waves branch the arms into
+         squiggly, fractal-ish paths. No two spins alike. */
+      function hash32(n) {
+        n = (n ^ 61) ^ (n >>> 16);
+        n = (n + (n << 3)) | 0;
+        n ^= n >>> 4;
+        n = (n * 0x27d4eb2d) | 0;
+        n ^= n >>> 15;
+        return n >>> 0;
+      }
+
+      function srand(seed, k) {
+        return (hash32((seed | 0) * 31 + k) % 10000) / 10000;
+      }
+
+      function makePersona(seed, big) {
+        return {
+          dir: srand(seed, 1) < 0.5 ? -1 : 1,
+          arms: 2 + Math.floor(srand(seed, 2) * (big ? 4 : 3)),
+          twist: 0.12 + srand(seed, 3) * 0.35,
+          wobN: 3 + Math.floor(srand(seed, 4) * 5),
+          wobA: 0.15 + srand(seed, 5) * 0.18,
+          spd: 0.7 + srand(seed, 6) * 0.7
+        };
+      }
+
+      // angular density multiplier: arms curled by radius, crossed
+      // with a squiggle harmonic
+      function swirlMul(pa, th, d, now) {
+        const ph = now * ARM_PHASE * pa.spd * pa.dir;
+        return Math.max(0.1,
+          1 + ARM_AMP * Math.cos(pa.arms * th - ph * pa.arms - pa.dir * pa.twist * d) +
+          pa.wobA * Math.cos(pa.wobN * th + ph * 1.7 + pa.twist * 2 * d));
+      }
+
+      /* ----- spontaneous vortices: once the player has touched the
+         sky, spins start occurring on their own in random spots, at a
+         slow and steadily increasing rate ----- */
+      let interacted = false;
+      let firstTouch = 0;
+      let ambientNext = 0;
+      let ambientSeed = 7000;
+      const ambientList = []; // {x, y, born, life, peak, pa}
+
+      function markInteracted() {
+        if (!interacted) {
+          interacted = true;
+          firstTouch = performance.now();
+          ambientNext = firstTouch + AMB_FIRST;
+        }
+      }
+
+      function trySpawnAmbient(now) {
+        if (!interacted || reducedMotion.matches) return;
+        if (now < ambientNext || ambientList.length >= AMB_MAX) return;
+        const w = starCanvas.width;
+        const h = starCanvas.height;
+        ambientSeed++;
+        ambientList.push({
+          x: 80 + Math.random() * Math.max(1, w - 160),
+          y: 80 + Math.random() * Math.max(1, h - 160),
+          vx: (Math.random() - 0.5) * 0.01,
+          vy: (Math.random() - 0.5) * 0.01,
+          born: now,
+          life: 26000 + Math.random() * 26000,
+          peak: 2 + Math.random() * 5,
+          acc: 0,
+          pa: makePersona(ambientSeed, true)
+        });
+        const elapsedMin = (now - firstTouch) / 60000;
+        ambientNext = now + Math.max(AMB_MIN_IVL, AMB_START_IVL - elapsedMin * AMB_RAMP);
+        wakeStarPhysics();
+      }
+
+      // colours packed once as 0x00BBGGRR, so drawing is a single
+      // integer write per star instead of a canvas state change
+      const STAR_RGB = STAR_COLORS.map((h) => {
+        const v = parseInt(h.slice(1), 16);
+        const r = (v >> 16) & 255,
+          g = (v >> 8) & 255,
+          b = v & 255;
+        return (b << 16) | (g << 8) | r;
+      });
+
+      function makeStar(x, y) {
+        const ci = Math.floor(Math.random() * STAR_COLORS.length);
+        return {
+          x: x,
+          y: y,
+          vx: 0,
+          vy: 0,
+          c: STAR_COLORS[ci],
+          rgb: STAR_RGB[ci],
+          base: 0.1 + Math.random() * 0.35,
+          cluster: -1,
+          held: false
+        };
+      }
+
+      function buildStars() {
+        const w = Math.ceil(window.innerWidth / STAR_PIX);
+        const h = Math.ceil(window.innerHeight / STAR_PIX);
+        starCanvas.width = w;
+        starCanvas.height = h;
+        stars = [];
+        twinkles = [];
+        clusters = [];
+        convoys.length = 0; // routes are replotted for the new sky
+        movingStars.clear();
+        baseCount = Math.round((w * h) / 420);
+        MAX_EXTRA = baseCount * 3; // room to more than triple the sky
+        for (let i = 0; i < baseCount; i++) {
+          stars.push(makeStar(Math.random() * (w - 1), Math.random() * (h - 1)));
+        }
+      }
+
+      // one raw pixel write per star: with tens of thousands of
+      // 1px stars this is far cheaper than per-star canvas state
+      let imgData = null;
+      let buf32 = null;
+
+      function drawStars(now) {
+        const w = starCanvas.width;
+        const h = starCanvas.height;
+        if (!buf32 || buf32.length !== w * h) {
+          imgData = sctx.createImageData(w, h);
+          buf32 = new Uint32Array(imgData.data.buffer);
+        }
+        buf32.fill(0);
+        const nt = twinkles.length;
+        for (let i = 0; i < stars.length; i++) {
+          const st = stars[i];
+          let a = st.base;
+          for (let j = 0; j < nt; j++) {
+            if (twinkles[j].idx === i) {
+              const t = (now - twinkles[j].start) / TWINKLE_MS;
+              a = st.base + (1 - st.base) * Math.sin(Math.PI * Math.max(0, Math.min(1, t)));
+            }
+          }
+          // sun members glow: the denser the mass, the brighter it burns
+          if (st.cluster >= 0 && clusters[st.cluster]) {
+            a += clusters[st.cluster].size >= BIG_SUN ? 0.5 : 0.3;
+          }
+          if (a < 0.03) a = 0.03;
+          else if (a > 1) a = 1;
+          const x = st.x | 0;
+          const y = st.y | 0;
+          if (x < 0 || y < 0 || x >= w || y >= h) continue;
+          buf32[y * w + x] = ((a * 255) | 0) << 24 | st.rgb;
+        }
+        sctx.putImageData(imgData, 0, 0);
+        drawConvoys(now);
+      }
+
+      /* ----- clump detection: union-find over the neighbor grid ----- */
+      function detectClusters() {
+        const n = stars.length;
+        const parent = new Int32Array(n);
+        for (let i = 0; i < n; i++) parent[i] = i;
+
+        function find(i) {
+          while (parent[i] !== i) {
+            parent[i] = parent[parent[i]];
+            i = parent[i];
+          }
+          return i;
+        }
+
+        // typed-array bucket grid, same as the collision pass
+        const CELL = 4;
+        const cols = Math.max(1, Math.ceil(starCanvas.width / CELL));
+        const rows = Math.max(1, Math.ceil(starCanvas.height / CELL));
+        const head = new Int32Array(cols * rows).fill(-1);
+        const next = new Int32Array(n);
+        for (let i = 0; i < n; i++) {
+          let gx = (stars[i].x / CELL) | 0;
+          let gy = (stars[i].y / CELL) | 0;
+          if (gx < 0) gx = 0;
+          else if (gx >= cols) gx = cols - 1;
+          if (gy < 0) gy = 0;
+          else if (gy >= rows) gy = rows - 1;
+          const k = gx + gy * cols;
+          next[i] = head[k];
+          head[k] = i;
+        }
+
+        const L2 = LINK_D * LINK_D;
+        // each star against its own cell and the three forward
+        // neighbours, so every pair is considered exactly once
+        const OFF = [
+          [0, 0],
+          [1, 0],
+          [-1, 1],
+          [0, 1],
+          [1, 1]
+        ];
+        for (let i = 0; i < n; i++) {
+          const gx = Math.min(cols - 1, Math.max(0, (stars[i].x / CELL) | 0));
+          const gy = Math.min(rows - 1, Math.max(0, (stars[i].y / CELL) | 0));
+          for (let o = 0; o < OFF.length; o++) {
+            const nx2 = gx + OFF[o][0];
+            const ny2 = gy + OFF[o][1];
+            if (nx2 < 0 || ny2 < 0 || nx2 >= cols || ny2 >= rows) continue;
+            for (let j = head[nx2 + ny2 * cols]; j !== -1; j = next[j]) {
+              if (o === 0 && j <= i) continue;
+              const dx = stars[i].x - stars[j].x;
+              const dy = stars[i].y - stars[j].y;
+              if (dx * dx + dy * dy < L2) {
+                const ri = find(i),
+                  rj = find(j);
+                if (ri !== rj) parent[ri] = rj;
+              }
+            }
+          }
+        }
+
+        const byRoot = new Map();
+        for (let i = 0; i < n; i++) {
+          const r = find(i);
+          const b = byRoot.get(r);
+          if (b) b.push(i);
+          else byRoot.set(r, [i]);
+        }
+
+        clusters = [];
+        for (let i = 0; i < n; i++) stars[i].cluster = -1;
+        byRoot.forEach((members) => {
+          if (members.length < CLUMP_MIN) return;
+          const id = clusters.length;
+          // persona seeded by the lowest member index: stable while
+          // the clump lives, reshuffled naturally when clumps merge
+          let seed = members[0];
+          for (let m = 1; m < members.length; m++) {
+            if (members[m] < seed) seed = members[m];
+          }
+          clusters.push({
+            members: members,
+            size: members.length,
+            cx: 0,
+            cy: 0,
+            mvx: 0,
+            mvy: 0,
+            pa: makePersona(seed, members.length >= BIG_SUN)
+          });
+          members.forEach((i) => {
+            stars[i].cluster = id;
+            movingStars.add(i); // suns churn forever
+          });
+        });
+      }
+
+      /* ----- incoming matter: gravity clusters drifting into view ----- */
+      function spawnDrifter() {
+        const w = starCanvas.width;
+        const h = starCanvas.height;
+        const side = Math.floor(Math.random() * 4);
+        let cx, cy, vx, vy;
+        const sp = 0.012 + Math.random() * 0.014;
+        if (side === 0) {
+          cx = Math.random() * w;
+          cy = 2;
+          vx = (Math.random() - 0.5) * sp;
+          vy = sp;
+        } else if (side === 1) {
+          cx = Math.random() * w;
+          cy = h - 3;
+          vx = (Math.random() - 0.5) * sp;
+          vy = -sp;
+        } else if (side === 2) {
+          cx = 2;
+          cy = Math.random() * h;
+          vx = sp;
+          vy = (Math.random() - 0.5) * sp;
+        } else {
+          cx = w - 3;
+          cy = Math.random() * h;
+          vx = -sp;
+          vy = (Math.random() - 0.5) * sp;
+        }
+        const count = 10 + Math.floor(Math.random() * 8);
+        for (let i = 0; i < count; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const r = Math.random() * 4;
+          const st = makeStar(
+            Math.max(0, Math.min(w - 1, cx + Math.cos(ang) * r)),
+            Math.max(0, Math.min(h - 1, cy + Math.sin(ang) * r)));
+          st.vx = vx;
+          st.vy = vy;
+          stars.push(st);
+          movingStars.add(stars.length - 1);
+        }
+      }
+
+      /* ----- cargo traffic: hubs departing on their own schedule ----- */
+      function trySpawnConvoy(now) {
+        if (reducedMotion.matches) return;
+        if (!convoyNext) {
+          convoyNext = now + CONVOY_FIRST;
+          return;
+        }
+        if (now < convoyNext || convoys.length >= CONVOY_MAX) return;
+        spawnConvoy();
+        convoyNext = now + CONVOY_IVL_MIN +
+          Math.random() * (CONVOY_IVL_MAX - CONVOY_IVL_MIN);
+        wakeStarPhysics();
+      }
+
+      function spawnConvoy() {
+        const w = starCanvas.width;
+        const h = starCanvas.height;
+        const side = Math.floor(Math.random() * 4);
+        const sp = 0.02 + Math.random() * 0.03; // stately, freight-paced
+        const jit = (Math.random() - 0.5) * (Math.PI / 2.6); // up to ~35 deg off square
+        let x, y, ang;
+        if (side === 0) { // in from the top
+          x = 20 + Math.random() * Math.max(1, w - 40);
+          y = -6;
+          ang = Math.PI / 2 + jit;
+        } else if (side === 1) { // up from below
+          x = 20 + Math.random() * Math.max(1, w - 40);
+          y = h + 6;
+          ang = -Math.PI / 2 + jit;
+        } else if (side === 2) { // eastbound
+          x = -6;
+          y = 20 + Math.random() * Math.max(1, h - 40);
+          ang = jit;
+        } else { // westbound
+          x = w + 6;
+          y = 20 + Math.random() * Math.max(1, h - 40);
+          ang = Math.PI + jit;
+        }
+        convoys.push({
+          x: x,
+          y: y,
+          vx: Math.cos(ang) * sp,
+          vy: Math.sin(ang) * sp,
+          pods: 4 + Math.floor(Math.random() * 5), // 4-8 containers
+          hue0: Math.random() * 360, // where its rainbow starts
+          seed: Math.random() * Math.PI * 2, // its own sway phase
+          born: performance.now()
+        });
+      }
+
+      // advance every train, register hub + pods as gravity bodies
+      // for this frame, and report how many were pushed so the caller
+      // can take them back off after the physics passes
+      function stepConvoys(dt) {
+        let pushed = 0;
+        const w = starCanvas.width;
+        const h = starCanvas.height;
+        for (let ci = convoys.length - 1; ci >= 0; ci--) {
+          const c = convoys[ci];
+          c.x += c.vx * dt;
+          c.y += c.vy * dt;
+          const L = CONVOY_SEG * (c.pods + 1) + 40;
+          if (c.x < -L || c.x > w + L || c.y < -L || c.y > h + L) {
+            convoys.splice(ci, 1); // delivered; gone over the horizon
+            continue;
+          }
+          const sv = Math.sqrt(c.vx * c.vx + c.vy * c.vy) || 1;
+          const dx = c.vx / sv;
+          const dy = c.vy / sv;
+          bodies.push({
+            x: c.x,
+            y: c.y,
+            r: 9,
+            m: 6,
+            vx: c.vx,
+            vy: c.vy
+          });
+          pushed++;
+          for (let i = 0; i < c.pods; i++) {
+            const d = CONVOY_SEG * (i + 1);
+            bodies.push({
+              x: c.x - dx * d,
+              y: c.y - dy * d,
+              r: 5,
+              m: 1.5,
+              vx: c.vx,
+              vy: c.vy
+            });
+            pushed++;
+          }
+        }
+        return pushed;
+      }
+
+      function drawConvoys(now) {
+        for (let ci = 0; ci < convoys.length; ci++) {
+          const c = convoys[ci];
+          const sv = Math.sqrt(c.vx * c.vx + c.vy * c.vy) || 1;
+          const dx = c.vx / sv;
+          const dy = c.vy / sv;
+          const px2 = -dy; // perpendicular, for the gentle pod sway
+          const py2 = dx;
+
+          // tow line: faint dots strung from the hub to the last pod
+          sctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+          const trainLen = CONVOY_SEG * c.pods;
+          for (let t = 7; t < trainLen; t += 5) {
+            sctx.fillRect(Math.round(c.x - dx * t) - 1,
+              Math.round(c.y - dy * t) - 1, 2, 2);
+          }
+
+          // containers, rear first, each one a step around the wheel
+          for (let i = c.pods - 1; i >= 0; i--) {
+            const d = CONVOY_SEG * (i + 1);
+            const sway = Math.sin(now * 0.0015 + i * 0.85 + c.seed) * 1.5;
+            const cx2 = c.x - dx * d + px2 * sway;
+            const cy2 = c.y - dy * d + py2 * sway;
+            const hue = (c.hue0 + i * 38 + now * 0.012) % 360;
+            const bx = Math.round(cx2 - 2.5 * CPX);
+            const by = Math.round(cy2 - 2 * CPX);
+            sctx.fillStyle = 'hsl(' + hue + ', 85%, 32%)'; // shell
+            sctx.fillRect(bx, by, 5 * CPX, 4 * CPX);
+            sctx.fillStyle = 'hsl(' + hue + ', 88%, 60%)'; // the cargo itself
+            sctx.fillRect(bx + CPX, by + CPX, 3 * CPX, 2 * CPX);
+            sctx.fillStyle = 'hsl(' + hue + ', 95%, 82%)'; // catchlight
+            sctx.fillRect(bx + CPX, by + CPX, CPX, CPX);
+          }
+
+          // the hub itself: a plus-shaped station, symmetric so it
+          // reads the same on any heading, with a slow rainbow core
+          const hx = Math.round(c.x - 4.5 * CPX);
+          const hy = Math.round(c.y - 4.5 * CPX);
+          const A = function(col, row, aw, ah, fill) {
+            sctx.fillStyle = fill;
+            sctx.fillRect(hx + col * CPX, hy + row * CPX, aw * CPX, ah * CPX);
+          };
+          A(3, 0, 3, 9, '#8f9db0'); // hull, vertical arm
+          A(0, 3, 9, 3, '#8f9db0'); // hull, horizontal arm
+          A(3, 0, 3, 1, '#4c5666'); // docking caps, darker
+          A(3, 8, 3, 1, '#4c5666');
+          A(0, 3, 1, 3, '#4c5666');
+          A(8, 3, 1, 3, '#4c5666');
+          const coreH = (now * 0.03 + c.seed * 57) % 360;
+          A(3, 3, 3, 3, 'hsl(' + coreH + ', 90%, 62%)'); // rainbow heart
+          A(4, 4, 1, 1, '#ffffff'); // hot centre
+          // nav lights blink in alternating pairs at the four ports
+          if (Math.floor(now / 420) % 2 === 0) {
+            A(4, 0, 1, 1, '#ffffff');
+            A(4, 8, 1, 1, '#ffffff');
+          } else {
+            A(0, 4, 1, 1, '#ffffff');
+            A(8, 4, 1, 1, '#ffffff');
+          }
+        }
+      }
+
+      /* ----- star physics: only runs while something is moving ----- */
+      function stepStars(dt) {
+        const w = starCanvas.width;
+        const h = starCanvas.height;
+        const freeDamp = Math.pow(FREE_DAMP, dt);
+
+        // freight first: convoys advance and lend their mass to the
+        // bodies list for this frame only (taken back at the end)
+        const convoyBodies = stepConvoys(dt);
+
+        // clump bookkeeping + drift-in spawning, a few times a second
+        detectAcc += dt;
+        if (detectAcc >= DETECT_MS) {
+          detectAcc = 0;
+          detectClusters();
+          let sunMass = 0;
+          let bigSuns = 0;
+          clusters.forEach((cl) => {
+            sunMass += cl.size;
+            if (cl.size >= BIG_SUN) bigSuns++;
+          });
+          if (bigSuns >= 1 && sunMass >= SPAWN_MASS &&
+            stars.length < baseCount + MAX_EXTRA &&
+            Math.random() < SPAWN_CHANCE) {
+            spawnDrifter();
+          }
+        }
+
+        // per-cluster centroid and mean (drift) velocity
+        clusters.forEach((cl) => {
+          let sx = 0,
+            sy = 0,
+            svx = 0,
+            svy = 0;
+          cl.members.forEach((i) => {
+            sx += stars[i].x;
+            sy += stars[i].y;
+            svx += stars[i].vx;
+            svy += stars[i].vy;
+          });
+          cl.cx = sx / cl.size;
+          cl.cy = sy / cl.size;
+          cl.mvx = svx / cl.size;
+          cl.mvy = svy / cl.size;
+        });
+
+        // vortex spin winds down slowly (icy, like everything here)
+        vortex.level *= Math.pow(0.99965, dt);
+        if (vortex.level < 0.05) vortex.level = 0;
+
+        // pointer suction: an unconditional grip. Held stars are pinned
+        // to the spot no matter what size of sun or spiral they belong
+        // to - the pointer overrides the churn entirely.
+        if (attract.on) {
+          const R2 = ATTRACT_R * ATTRACT_R;
+          const swirl = VORTEX_A * vortex.level;
+          for (let i = 0; i < stars.length; i++) {
+            const st = stars[i];
+            const dx = attract.x - st.x;
+            const dy = attract.y - st.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 > R2 || d2 < 1) continue;
+            const d = Math.sqrt(d2);
+            const fall = 1 - d / ATTRACT_R;
+            const f = ATTRACT_A * fall;
+            // hard viscous capture: stars stick to the held spot
+            const cap = Math.pow(CAPTURE, dt);
+            st.vx = st.vx * cap + (dx / d) * f * dt;
+            st.vy = st.vy * cap + (dy / d) * f * dt;
+            // click-mash vortex: tangential spin around the pointer,
+            // with three spiral arms fractaling the whirlpool once
+            // it gets going
+            if (swirl > 0) {
+              let armMul = 1;
+              if (vortex.level > 2) {
+                armMul = swirlMul(pointerPa, Math.atan2(-dy, -dx), d, performance.now());
+              }
+              const a = swirl * fall * armMul * dt;
+              st.vx += (-dy / d) * a;
+              st.vy += (dx / d) * a;
+            }
+            st.held = true;
+            movingStars.add(i);
+          }
+
+          // held on empty space: new stars are born at the pointer and
+          // fold straight into the spiral. The longer the hold, the
+          // faster they come.
+          if (attract.spawn && stars.length < baseCount + MAX_EXTRA) {
+            const heldMs = performance.now() - attract.since;
+            const rate = SPAWN_HOLD_BASE +
+              (Math.min(heldMs, SPAWN_HOLD_CAP) / 1000) * SPAWN_HOLD_RAMP;
+            attract.acc += rate * dt;
+            const w2 = starCanvas.width;
+            const h2 = starCanvas.height;
+            while (attract.acc >= 1 && stars.length < baseCount + MAX_EXTRA) {
+              attract.acc -= 1;
+              const ang = Math.random() * Math.PI * 2;
+              const rr = 4 + Math.random() * 14;
+              const nst = makeStar(
+                Math.max(0, Math.min(w2 - 1, attract.x + Math.cos(ang) * rr)),
+                Math.max(0, Math.min(h2 - 1, attract.y + Math.sin(ang) * rr)));
+              // born already swirling with the vortex
+              const spin = (pointerPa ? pointerPa.dir : 1) * 0.02;
+              nst.vx = -Math.sin(ang) * spin;
+              nst.vy = Math.cos(ang) * spin;
+              stars.push(nst);
+              movingStars.add(stars.length - 1);
+            }
+          }
+        }
+
+        // spontaneous vortices: gentle local whirlpools that stir the
+        // field on their own, each with its own persona
+        const nowT = performance.now();
+        for (let v = ambientList.length - 1; v >= 0; v--) {
+          const av = ambientList[v];
+          const age = nowT - av.born;
+          if (age > av.life) {
+            ambientList.splice(v, 1);
+            continue;
+          }
+          // level ramps up over the first sixth, holds, fades at the end
+          const lvl = age < av.life * 0.15 ?
+            av.peak * (age / (av.life * 0.15)) :
+            (age > av.life * 0.75 ?
+              av.peak * (1 - (age - av.life * 0.75) / (av.life * 0.25)) :
+              av.peak);
+
+          // vortices drift, and get KNOCKED by the icons and buttons
+          // that sweep past them
+          for (let b = 0; b < bodies.length; b++) {
+            const bd = bodies[b];
+            let bdx = av.x - bd.x;
+            let bdy = av.y - bd.y;
+            const rr = bd.r + 26;
+            let dd2 = bdx * bdx + bdy * bdy;
+            if (dd2 > rr * rr) continue;
+            // sitting dead centre: pick a direction so it still gets shoved
+            if (dd2 < 0.25) {
+              const ang = Math.random() * Math.PI * 2;
+              bdx = Math.cos(ang) * 0.5;
+              bdy = Math.sin(ang) * 0.5;
+              dd2 = 0.25;
+            }
+            const dd = Math.sqrt(dd2);
+            const push = (1 - dd / rr) * KNOCK * 0.004 * dt;
+            av.vx += (bdx / dd) * push;
+            av.vy += (bdy / dd) * push;
+            // and it gets dragged along with the body's own motion
+            const kb = 1 - Math.pow(0.998, dt);
+            av.vx += (bd.vx - av.vx) * kb;
+            av.vy += (bd.vy - av.vy) * kb;
+          }
+          av.x += av.vx * dt;
+          av.y += av.vy * dt;
+          const wv = starCanvas.width,
+            hv = starCanvas.height;
+          if (av.x < 20) {
+            av.x = 20;
+            av.vx = Math.abs(av.vx) * 0.8;
+          } else if (av.x > wv - 20) {
+            av.x = wv - 20;
+            av.vx = -Math.abs(av.vx) * 0.8;
+          }
+          if (av.y < 20) {
+            av.y = 20;
+            av.vy = Math.abs(av.vy) * 0.8;
+          } else if (av.y > hv - 20) {
+            av.y = hv - 20;
+            av.vy = -Math.abs(av.vy) * 0.8;
+          }
+          av.vx *= Math.pow(0.9995, dt);
+          av.vy *= Math.pow(0.9995, dt);
+
+          // a live vortex keeps feeding new stars into its own spiral
+          if (lvl > 0.4 && stars.length < baseCount + MAX_EXTRA) {
+            av.acc += 0.0016 * lvl * dt;
+            while (av.acc >= 1 && stars.length < baseCount + MAX_EXTRA) {
+              av.acc -= 1;
+              const ang = Math.random() * Math.PI * 2;
+              const rr2 = 6 + Math.random() * 16;
+              const nst = makeStar(
+                Math.max(0, Math.min(wv - 1, av.x + Math.cos(ang) * rr2)),
+                Math.max(0, Math.min(hv - 1, av.y + Math.sin(ang) * rr2)));
+              nst.vx = -Math.sin(ang) * 0.02 * av.pa.dir + av.vx;
+              nst.vy = Math.cos(ang) * 0.02 * av.pa.dir + av.vy;
+              stars.push(nst);
+              movingStars.add(stars.length - 1);
+            }
+          }
+          const swirlA = VORTEX_A * lvl;
+          const pullA = ATTRACT_A * 0.35;
+          const R2a = ATTRACT_R * ATTRACT_R;
+          const cap = Math.pow(0.9975, dt);
+          for (let i = 0; i < stars.length; i++) {
+            const st = stars[i];
+            if (st.held) continue; // the player's grip outranks nature
+            const dx = av.x - st.x;
+            const dy = av.y - st.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 > R2a || d2 < 1) continue;
+            const d = Math.sqrt(d2);
+            const fall = 1 - d / ATTRACT_R;
+            st.vx = st.vx * cap + (dx / d) * pullA * fall * dt;
+            st.vy = st.vy * cap + (dy / d) * pullA * fall * dt;
+            const armMul = swirlMul(av.pa, Math.atan2(-dy, -dx), d, nowT);
+            const a = swirlA * fall * armMul * av.pa.dir * dt;
+            st.vx += (-dy / d) * a;
+            st.vy += (dx / d) * a;
+            movingStars.add(i);
+          }
+        }
+
+        // GRAVITY: every body on screen pulls the stars toward it.
+        // Bigger icons pull harder; the field falls off with distance
+        // and is softened so nothing is flung to infinity.
+        for (let b = 0; b < bodies.length; b++) {
+          const bd = bodies[b];
+          const reach = bd.r * GRAV_REACH + 60;
+          const reach2 = reach * reach;
+          const gm = GRAV_G * bd.m;
+          for (let i = 0; i < stars.length; i++) {
+            const st = stars[i];
+            if (st.held) continue;
+            const dx = bd.x - st.x;
+            const dy = bd.y - st.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 > reach2 || d2 < 0.01) continue;
+            const d = Math.sqrt(d2);
+            const a = gm / (d2 + GRAV_SOFT * GRAV_SOFT) * (1 - d / reach) * dt;
+            st.vx += (dx / d) * a;
+            st.vy += (dy / d) * a;
+            movingStars.add(i);
+          }
+        }
+
+        // icon hitboxes plow through the field: stars inside a fully
+        // opaque icon are carried with its motion and pushed out the
+        // nearest side. The player's grip still outranks the plow.
+        if (sweepRects.length) {
+          const kSweep = 1 - Math.pow(0.99, dt);
+          for (let s2 = 0; s2 < sweepRects.length; s2++) {
+            const rc = sweepRects[s2];
+            const x0 = rc.x - 2,
+              y0 = rc.y - 2;
+            const x1 = rc.x + rc.w + 2,
+              y1 = rc.y + rc.h + 2;
+            for (let i = 0; i < stars.length; i++) {
+              const st = stars[i];
+              if (st.held) continue;
+              if (st.x <= x0 || st.x >= x1 || st.y <= y0 || st.y >= y1) continue;
+              // shortest way out
+              const dl = st.x - x0,
+                dr = x1 - st.x,
+                du = st.y - y0,
+                dn = y1 - st.y;
+              let ox = 0,
+                oy = 0;
+              const m = Math.min(dl, dr, du, dn);
+              if (m === dl) ox = -1;
+              else if (m === dr) ox = 1;
+              else if (m === du) oy = -1;
+              else oy = 1;
+              st.vx += ((rc.vx + ox * SWEEP_SPEED) - st.vx) * kSweep;
+              st.vy += ((rc.vy + oy * SWEEP_SPEED) - st.vy) * kSweep;
+              movingStars.add(i);
+            }
+          }
+        }
+
+        // move + walls + damping / churn
+        movingStars.forEach((i) => {
+          const st = stars[i];
+          const cl = st.cluster >= 0 ? clusters[st.cluster] : null;
+
+          if (st.held) {
+            // pinned by the pointer this frame: the grip already set
+            // the velocity, the sun does not get a say
+            st.held = false;
+          } else if (cl) {
+            // SUN MEMBER: churn around the shared centroid.
+            // Rim speed grows with mass: a few stars barely stir,
+            // a heavy sun boils. Suns are BLOBS - solid churning mass,
+            // contained from outside only, never hollowed into a ring.
+            const rim = 0.002 + 0.003 * Math.sqrt(cl.size);
+            const targetR = 1 + 0.8 * Math.sqrt(cl.size);
+            let dx = st.x - cl.cx;
+            let dy = st.y - cl.cy;
+            let d = Math.sqrt(dx * dx + dy * dy);
+            if (d < 0.01) {
+              const ang = Math.random() * Math.PI * 2;
+              dx = Math.cos(ang) * 0.01;
+              dy = Math.sin(ang) * 0.01;
+              d = 0.01;
+            }
+            const nx = dx / d;
+            const ny = dy / d;
+            // containment only: pull in when outside, collisions alone
+            // space out the interior (that keeps the blob filled)
+            let rv = 0;
+            if (d > targetR) rv = -Math.min(0.03, (d - targetR) * 0.025);
+            // spiral density wave with this sun's own personality:
+            // its own spin direction, arm count, arm curl and squiggle
+            const th = Math.atan2(dy, dx);
+            const armMul = swirlMul(cl.pa, th, d, performance.now());
+            const rimHere = cl.pa.dir * rim * armMul * Math.min(1, d / targetR);
+            // churn is tilted slightly INWARD: without this, spinning
+            // stars drift out and hollow into a ring. The inward bias
+            // feeds the core and collision pressure sets the fill -
+            // a solid churning blob.
+            const inw = rimHere * 0.35;
+            // desired = group drift + tilted churn + containment
+            const dvx = cl.mvx + (-ny) * rimHere - nx * inw + nx * rv;
+            const dvy = cl.mvy + (nx) * rimHere - ny * inw + ny * rv;
+            const k = 1 - Math.pow(0.996, dt);
+            st.vx += (dvx - st.vx) * k;
+            st.vy += (dvy - st.vy) * k;
+          } else {
+            st.vx *= freeDamp;
+            st.vy *= freeDamp;
+          }
+
+          st.x += st.vx * dt;
+          st.y += st.vy * dt;
+          if (st.x < 0) {
+            st.x = -st.x;
+            st.vx = -st.vx * WALL_REST;
+          } else if (st.x > w - 1) {
+            st.x = 2 * (w - 1) - st.x;
+            st.vx = -st.vx * WALL_REST;
+          }
+          if (st.y < 0) {
+            st.y = -st.y;
+            st.vy = -st.vy * WALL_REST;
+          } else if (st.y > h - 1) {
+            st.y = 2 * (h - 1) - st.y;
+            st.vy = -st.vy * WALL_REST;
+          }
+
+          if (!cl && st.vx * st.vx + st.vy * st.vy < 0.000004) {
+            st.vx = 0;
+            st.vy = 0;
+            movingStars.delete(i);
+          }
+        });
+
+        // spatial grid over ALL stars, as a reusable linked list in
+        // typed arrays: no per-frame allocation, no hashing
+        const CELL = 2;
+        const cols = Math.max(1, Math.ceil(w / CELL));
+        const rows = Math.max(1, Math.ceil(h / CELL));
+        if (!gridHead || gridHead.length !== cols * rows) {
+          gridHead = new Int32Array(cols * rows);
+        }
+        if (!gridNext || gridNext.length < stars.length) {
+          gridNext = new Int32Array(stars.length + 1024);
+        }
+        gridHead.fill(-1);
+        for (let i = 0; i < stars.length; i++) {
+          let gx = (stars[i].x / CELL) | 0;
+          let gy = (stars[i].y / CELL) | 0;
+          if (gx < 0) gx = 0;
+          else if (gx >= cols) gx = cols - 1;
+          if (gy < 0) gy = 0;
+          else if (gy >= rows) gy = rows - 1;
+          const k = gx + gy * cols;
+          gridNext[i] = gridHead[k];
+          gridHead[k] = i;
+        }
+
+        const D2 = COLLIDE_D * COLLIDE_D;
+        movingStars.forEach((i) => {
+          const st = stars[i];
+          const cx = (st.x / CELL) | 0;
+          const cy = (st.y / CELL) | 0;
+          for (let gy = cy - 1; gy <= cy + 1; gy++) {
+            if (gy < 0 || gy >= rows) continue;
+            for (let gx = cx - 1; gx <= cx + 1; gx++) {
+              if (gx < 0 || gx >= cols) continue;
+              for (let j = gridHead[gx + gy * cols]; j !== -1; j = gridNext[j]) {
+                if (j === i) continue;
+                if (movingStars.has(j) && j < i) continue;
+                const sj = stars[j];
+                const dx = sj.x - st.x;
+                const dy = sj.y - st.y;
+                const d2 = dx * dx + dy * dy;
+                if (d2 >= D2) continue;
+                const d = Math.sqrt(d2) || 0.001;
+                const nx = dx / d;
+                const ny = dy / d;
+                const ov = (COLLIDE_D - d) / 2;
+                st.x = Math.max(0, Math.min(w - 1, st.x - nx * ov));
+                st.y = Math.max(0, Math.min(h - 1, st.y - ny * ov));
+                sj.x = Math.max(0, Math.min(w - 1, sj.x + nx * ov));
+                sj.y = Math.max(0, Math.min(h - 1, sj.y + ny * ov));
+                const rel = (st.vx - sj.vx) * nx + (st.vy - sj.vy) * ny;
+                if (rel > 0) {
+                  const imp = rel * 0.5 * (1 + STAR_REST);
+                  st.vx -= imp * nx;
+                  st.vy -= imp * ny;
+                  sj.vx += imp * nx;
+                  sj.vy += imp * ny;
+                  movingStars.add(j);
+                }
+              }
+            }
+          }
+        });
+
+        // hand the convoy bodies back: they were only borrowed for
+        // this frame's gravity and vortex-knock passes
+        if (convoyBodies) bodies.length -= convoyBodies;
+      }
+
+      let starRafId = null;
+      let starLastTs = 0;
+
+      function starPhysicsTick(ts) {
+        const dt = Math.min(40, ts - starLastTs || 16);
+        starLastTs = ts;
+        stepStars(dt);
+        drawStars(performance.now());
+        if (movingStars.size || attract.on || ambientList.length || convoys.length) {
+          starRafId = requestAnimationFrame(starPhysicsTick);
+        } else {
+          starRafId = null;
+        }
+      }
+
+      function wakeStarPhysics() {
+        if (starRafId === null) {
+          starLastTs = 0;
+          starRafId = requestAnimationFrame(starPhysicsTick);
+        }
+      }
+
+      let pointerPa = null;
+
+      // press and hold anywhere: the pointer drags nearby stars with
+      // it. Clicking again and again on the same spot accelerates the
+      // vortex there, level by level.
+      document.addEventListener('pointerdown', (e) => {
+        if (reducedMotion.matches) return;
+        markInteracted();
+        attract.on = true;
+        attract.x = e.clientX / STAR_PIX;
+        attract.y = e.clientY / STAR_PIX;
+        // touching anywhere on the screen starts an accelerating
+        // spawn of new stars at the held point
+        attract.spawn = true;
+        attract.since = performance.now();
+        attract.acc = 0;
+        const now = performance.now();
+        const ddx = attract.x - vortex.lastX;
+        const ddy = attract.y - vortex.lastY;
+        if (now - vortex.lastT < VORTEX_WINDOW &&
+          ddx * ddx + ddy * ddy < VORTEX_NEAR * VORTEX_NEAR) {
+          vortex.level = Math.min(VORTEX_MAX, vortex.level + 1);
+        } else {
+          vortex.level = Math.max(vortex.level, 1);
+          pointerPa = makePersona(Math.floor(attract.x * 73 + attract.y * 149), true);
+        }
+        if (!pointerPa) pointerPa = makePersona(Math.floor(attract.x * 73 + attract.y * 149), true);
+        vortex.lastT = now;
+        vortex.lastX = attract.x;
+        vortex.lastY = attract.y;
+        wakeStarPhysics();
+      });
+      document.addEventListener('pointermove', (e) => {
+        if (!attract.on) return;
+        attract.x = e.clientX / STAR_PIX;
+        attract.y = e.clientY / STAR_PIX;
+      });
+      document.addEventListener('pointerup', () => {
+        attract.on = false;
+      });
+      document.addEventListener('pointercancel', () => {
+        attract.on = false;
+      });
+
+      function starTick() {
+        const now = performance.now();
+        trySpawnAmbient(now);
+        trySpawnConvoy(now);
+        if (convoys.length) wakeStarPhysics(); // trains never coast to a stop
+        twinkles = twinkles.filter(t => now - t.start < TWINKLE_MS);
+        if (Math.random() < TWINKLE_CHANCE && stars.length) {
+          twinkles.push({
+            idx: Math.floor(Math.random() * stars.length),
+            start: now
+          });
+        }
+        // only repaint while a twinkle is live (plus one frame to settle)
+        if (twinkles.length || hadTwinkles) drawStars(now);
+        hadTwinkles = twinkles.length > 0;
+      }
+
+      function startStars() {
+        if (starTimer !== null) clearInterval(starTimer);
+        drawStars(performance.now());
+        if (!reducedMotion.matches) {
+          starTimer = setInterval(starTick, 250);
+        }
+      }
+
+      /* ----- resize / orientation ----- */
+      let resizeTimer = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          computeMetrics();
+          buildSlotRects();
+          buildStars();
+          startStars();
+          render();
+          measureTrack();
+        }, 100);
+      });
+
+      // small debug handle for tinkering with the sky
+      window.fwStars = {
+        clusters: () => clusters,
+        ambient: () => ambientList,
+        convoys: () => convoys,
+        vortexLevel: () => vortex.level,
+        sweep: () => sweepRects,
+        bodies: () => bodies,
+        stars: () => stars
+      };
+
+      /* ----- start ----- */
+      items.forEach((item) => {
+        const el = createSlideElement(item);
+        slideEls.push(el);
+        track.appendChild(el);
+      });
+      computeMetrics();
+      buildSlotRects();
+      buildStars();
+      startStars();
+      render();
+      measureTrack();
+      requestAnimationFrame(measureTrack); // re-measure after first layout
+    })();
+  </script>
+
+</body>
+
+</html>
