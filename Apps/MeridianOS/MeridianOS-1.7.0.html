@@ -20,7 +20,7 @@
   r.onsuccess=function(){ var t; try{ t=r.result.transaction('apps','readonly').objectStore('apps').get('os:stable'); }catch(e){ return bail('idb'); }
     t.onsuccess=function(){ var src=t.result; if(!src||typeof src!=='string'||src.length<10000)return bail('empty');
       var f=document.createElement('iframe'); f.setAttribute('allow','camera; microphone; display-capture; fullscreen; autoplay; clipboard-read; clipboard-write; web-share'); f.allowFullscreen=true; f.srcdoc=src; document.body.appendChild(f);
-      var alive=false; addEventListener('message',function(e){ var d=e.data; if(!d||!d.meridian)return; if(d.action==='alive')alive=true; if(d.action==='reboot')location.reload(); if(d.action==='unhost')bail('asked'); });
+      var alive=false; addEventListener('message',function(e){ var d=e.data; if(!d||!d.meridian)return; if(d.action==='alive')alive=true; if(d.action==='reboot')location.reload(); if(d.action==='unhost'){ try{ localStorage.removeItem('m.os.hosted'); }catch(x){} location.reload(); } });
       setTimeout(function(){ if(!alive)bail('silent'); },15000); };
     t.onerror=function(){ bail('idb'); }; };
   r.onerror=function(){ bail('idb'); };
@@ -130,7 +130,7 @@ button{cursor:pointer;background:none;border:0;padding:0}
 .pop .li{display:flex;align-items:center;gap:8px;padding:5px 6px;border:1px solid transparent;border-radius:var(--r);color:var(--fg);cursor:pointer}
 .pop .li:hover{border-color:var(--line);background:var(--ink2)}.pop .li small{margin-left:auto;color:var(--fg3)}
 .meter{flex:1;height:8px;min-width:40px;border:1px solid #000;box-shadow:inset 1px 1px 0 var(--line);background:var(--ink2);border-radius:var(--r);overflow:hidden}.meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s}.meter.sm{display:inline-block;width:60px;height:6px;vertical-align:middle;margin-right:4px}
-.bar .upd[hidden]{display:none!important}.bar .upd{position:relative;display:grid;place-items:center}.bar .upd canvas{width:18px;height:18px}.bar .upd i{position:absolute;right:-1px;top:-1px;min-width:11px;height:11px;padding:0 2px;border-radius:6px;background:var(--accent2,#ff7ce8);color:#000;font-style:normal;font-size:8px;line-height:11px;text-align:center;font-family:var(--font-tt)}.bar .upd i:empty{display:none}.bar .upd.spin canvas{animation:updspin 1.1s linear infinite}@keyframes updspin{to{transform:rotate(360deg)}}
+.bar .upd{position:relative}.bar .upd canvas{width:16px;height:16px}.desk.narrow .tray:has(.upd.has){display:inline-flex}.desk.narrow .tray:has(.upd.has)>*:not(.upd){display:none}.build .rep .bb{display:flex;gap:3px}.build .rep .bb .btn{padding:2px 6px;min-height:0}.bar .upd i{position:absolute;right:-2px;top:-2px;min-width:11px;height:11px;padding:0 2px;border-radius:6px;background:var(--accent2,#ff7ce8);color:#000;font-style:normal;font-size:8px;line-height:11px;text-align:center;font-family:var(--font-tt)}.bar .upd.has{color:var(--accent)}.bar .upd i:empty{display:none}.bar .upd.spin canvas{animation:updspin 1.1s linear infinite}@keyframes updspin{to{transform:rotate(360deg)}}
 .build.upd .uphd{display:flex;gap:10px;align-items:center}.build.upd .uphd img{width:32px;height:32px}.build.upd .uphd b{display:block;font-size:1.05em;color:var(--fg)}.build.upd .uphd b span{color:var(--accent)}.build.upd .uphd small{color:var(--fg3)}.build.upd .upst{margin-left:auto;color:var(--fg3);font-size:.8em}
 .bar .tray .recpill[hidden]{display:none!important}.bar .tray .recpill{background:#e0263a;color:#fff;border:0;border-radius:10px;font-family:var(--font-tt);font-size:12px;padding:0 7px;height:18px;min-height:18px;width:auto;min-width:0;line-height:18px;white-space:nowrap;display:inline-flex;align-items:center;cursor:pointer;animation:recblink 1.2s steps(2) infinite;margin-right:4px}@keyframes recblink{50%{filter:brightness(.6)}}
 .portal.dl .ring{position:relative}.portal.dl .ring .ext{position:absolute;right:2px;bottom:1px;font-size:7px;letter-spacing:1px;color:var(--fg2);background:var(--tag-bg);padding:0 3px;border:1px solid #000}
@@ -805,8 +805,7 @@ body,.bar,.portal,.btn,input,textarea,select,button{-webkit-font-smoothing:none;
     </div>
     <div class="zone"><button class="pbtn clock" title="Calendar">--:--</button></div>
     <div class="zone r">
-      <span class="tray"><button class="recpill" title="recording · tap to stop and save to VIDEOS" hidden>● 00:00</button><button class="vol" title="Volume"><canvas class="px px9" width="9" height="9"></canvas></button><button class="wifi" title="Wi-Fi"><canvas class="px px9" width="9" height="9"></canvas></button><button class="gt" title="Greentooth"><canvas class="px" width="7" height="9"></canvas></button></span>
-      <button class="tbtn upd" title="updates" hidden><canvas class="px" width="12" height="12"></canvas><i></i></button>
+      <span class="tray"><button class="recpill" title="recording · tap to stop and save to VIDEOS" hidden>● 00:00</button><button class="vol" title="Volume"><canvas class="px px9" width="9" height="9"></canvas></button><button class="upd" title="Updates · fweddle.com"><canvas class="px" width="12" height="12"></canvas><i></i></button><button class="wifi" title="Wi-Fi"><canvas class="px px9" width="9" height="9"></canvas></button><button class="gt" title="Greentooth"><canvas class="px" width="7" height="9"></canvas></button></span>
       <span class="led" title="online"></span>
       <button class="tbtn tclose" title="Close">−</button>
       <button class="tbtn tpick" title="Theme customizer"><span class="gswatch"></span></button>
@@ -817,7 +816,7 @@ body,.bar,.portal,.btn,input,textarea,select,button{-webkit-font-smoothing:none;
 <div id="screen"></div>
 <div id="lock"></div>
 <div id="ask"></div>
-<div id="volPop" class="pop bevel"></div><div id="wifiPop" class="pop bevel"></div><div id="gtPop" class="pop bevel"></div><div id="powerPop" class="pop bevel"></div><div id="propsPop" class="pop bevel"></div>
+<div id="volPop" class="pop bevel"></div><div id="updPop" class="pop bevel"></div><div id="wifiPop" class="pop bevel"></div><div id="gtPop" class="pop bevel"></div><div id="powerPop" class="pop bevel"></div><div id="propsPop" class="pop bevel"></div>
 <div id="calPop" class="bevel"><div id="calHd"></div><div id="cal"></div></div>
 <div id="world"></div>
 <img id="ghost" class="px" alt=""><div id="dropbar" class="bevel"></div>
@@ -2347,16 +2346,17 @@ const Repo=(()=>{
   return {check,pull,tree,sha1blob};
 })();
 
-/* ── Updater — stable builds from www.fweddle.com. Reads the live index (imageSet), then keeps three things in step:
-      APPS    every .html the index links → fetched, hashed, installed over the baked copy when the bytes differ
-      IMAGES  the icon each entry draws (Images/…) → re-crunched when the site's bytes change
-      SYSTEM  a stable MeridianOS build on the site → state + baked apps carried over, hot-swapped in place, copy saved to DOWNLOADS
-      Venmo · CashApp · Instagram never come along. Auto-update runs at boot, on reconnect, and every six hours. ── */
+/* ── Updater — the stable channel from www.fweddle.com, ON HOLD by design.
+      Nothing installs on its own. A check only reads the live index (imageSet) and reports what differs; every item
+      waits for a tap. Apps (each .html the index links), images (the icon each entry draws) and the system itself are
+      the three kinds. A newer MeridianOS is never run straight from the wire: it is fetched into the BUILDS library, where
+      any build can be saved to disk, run, or thrown away — so a bad or hijacked release can sit there and hurt nothing.
+      Venmo · CashApp · Instagram never come along. ── */
 const Updater=(()=>{
   const K='m.update.'; const SKIP=/venmo|cash\.app|cashapp|instagram/i;
   const st={busy:false,last:+localStorage.getItem(K+'last')||0,pending:[],applied:[],log:[],err:null,os:null,rows:[]};
-  const auto=()=>localStorage.getItem(K+'auto')!=='0';
-  const setAuto=v=>{ localStorage.setItem(K+'auto',v?'1':'0'); paintTray(); };
+  const bootCheck=()=>localStorage.getItem(K+'bootcheck')!=='0';           /* a read-only look at the site when the system starts */
+  const setBootCheck=v=>{ localStorage.setItem(K+'bootcheck',v?'1':'0'); };
   const listeners=new Set(); const emit=()=>listeners.forEach(f=>{ try{f(st);}catch(e){} });
   const log=(m)=>{ st.log.push(m); if(st.log.length>80)st.log.shift(); emit(); };
   const bust=u=>u+(u.includes('?')?'&':'?')+'m='+Date.now().toString(36);
@@ -2368,6 +2368,7 @@ const Updater=(()=>{
   const enc=p=>p.split('/').map(encodeURIComponent).join('/');
   const semver=v=>String(v||'0').split('.').map(x=>parseInt(x,10)||0);
   const newer=(a,b)=>{ const x=semver(a),y=semver(b); for(let i=0;i<3;i++){ if((x[i]||0)>(y[i]||0))return true; if((x[i]||0)<(y[i]||0))return false; } return false; };
+  const fmtKB=n=>n>1048576?(n/1048576).toFixed(1)+' MB':(n/1024|0)+' KB';
   /* the index: every {src,link,title} block, in any key order, either quote style */
   function parseIndex(html){ const out=[]; const re=/\{[^{}]*\}/g; let m; while((m=re.exec(html))){ const b=m[0]; if(!/\blink\s*:/.test(b))continue; const f=k=>{ const r=b.match(new RegExp('\\b'+k+'\\s*:\\s*([\'"])((?:\\\\.|(?!\\1).)*)\\1')); return r?r[2]:''; }; out.push({src:f('src'),link:f('link'),title:f('title'),block:b}); } return out; }
   const isApp=e=>/\.html?$/i.test(e.link)&&!/^https?:/i.test(e.link);
@@ -2389,107 +2390,123 @@ const Updater=(()=>{
     return {a:null,moved:false}; }
   function subOf(e){ const m=(e.title||'').match(/v?\d+(?:\.\d+)*/); const t=(e.title||'').split(/[—–-]/)[0].trim(); return (m?m[0]+' · ':'')+t.slice(0,26); }
   function remember(a){ try{ const ov=JSON.parse(localStorage.getItem('m.apppaths')||'{}'); ov[a.id]={path:a.path,site:a.site,sub:a.sub}; localStorage.setItem('m.apppaths',JSON.stringify(ov)); }catch(e){} }
+  /* a new app on the index is registered (so it can be opened from the site) but its code is only fetched when you apply it */
   function adopt(e){ const p=dec(e.link); const f=folderOf(p)||p.split('/').pop().replace(/\.html?$/i,''); const id=slug(f); if(APPS[id]||FWEDDLE_APPS.some(a=>a.id===id))return null;
     const img=siteURL(e.src)||''; const a={id,name:f.slice(0,22),sub:subOf(e),icon:'about',path:p,site:enc(p),learned:true,img}; a.url=SITE+a.site; a.raw=`https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/`+enc(p);
-    FWEDDLE_APPS.push(a); SITE_ICONS[id]=img; try{ const nw=JSON.parse(localStorage.getItem('m.newapps')||'[]'); nw.push({id,name:a.name,sub:a.sub,path:p,site:a.site,img}); localStorage.setItem('m.newapps',JSON.stringify(nw)); }catch(x){}
+    FWEDDLE_APPS.push(a); if(img)SITE_ICONS[id]=img; try{ const nw=JSON.parse(localStorage.getItem('m.newapps')||'[]'); nw.push({id,name:a.name,sub:a.sub,path:p,site:a.site,img}); localStorage.setItem('m.newapps',JSON.stringify(nw)); }catch(x){}
     reg({id,name:a.name,sub:a.sub,icon:'about',url:a.url,fweddle:true,mount(w){ const x=document.createElement('div'); x.className='ext'; w.body.appendChild(x); const fr=document.createElement('iframe'); x.appendChild(fr); (async()=>{ const u=await Bake.url(id); fr.src=u||a.url; w.src=u?'local':'site'; })(); w._reload=async()=>{ Bake.invalidate(id); fr.src=(await Bake.url(id))||a.url; }; }});
     Scrub.keep.push(id); const P=Portals.byId('apps')||Portals.all().find(x=>!x.kind); if(P)Portals.addApp(P.id,id); return a; }
-  /* ── one app ── */
-  async function checkApp(a,e,apply){ const row={id:a.id,name:a.name,kind:'app',state:'ok',note:''}; const url=SITE+a.site;
+  /* ── one app: fetched and hashed, then HELD in the row until applied ── */
+  async function checkApp(a,e){ const row={id:a.id,name:a.name,kind:'app',state:'ok',note:''}; const url=SITE+a.site;
     const tag=await head(url); const seen=localStorage.getItem(K+'etag.'+a.id); const local=await Bake.source(a.id);
     if(tag&&seen&&tag===seen&&local){ row.note='unchanged since last check'; return row; }
     let text; try{ text=await get(url); }catch(err){ row.state='miss'; row.note=err.message; return row; }
     if(!/<(html|body|script|!doctype)/i.test(text.slice(0,6000))){ row.state='miss'; row.note='not an app page'; return row; }
     const [hl,hr]=await Promise.all([local?sha(local):Promise.resolve(''),sha(text)]);
     if(hl===hr){ if(tag)localStorage.setItem(K+'etag.'+a.id,tag); row.note='byte-identical to fweddle.com'; return row; }
-    row.state='new'; row.note=(text.length/1024|0)+' KB on fweddle.com'+(local?' · differs from this build':' · not baked yet'); row.text=text; row.etag=tag;
-    if(apply)await installApp(row); return row; }
-  async function installApp(row){ const a=FWEDDLE_APPS.find(x=>x.id===row.id); await Offline.installText(a.id,row.text,'from fweddle.com · '+(row.text.length/1024|0)+' KB'); if(row.etag)localStorage.setItem(K+'etag.'+a.id,row.etag); row.state='done'; row.note='updated from fweddle.com'; delete row.text; st.applied.push(a.name);
+    row.state='new'; row.note=fmtKB(text.length)+' on fweddle.com'+(local?' · differs from this build':' · not baked yet')+' · sha '+hr.slice(0,7); row.text=text; row.etag=tag; row.hash=hr; return row; }
+  async function installApp(row){ const a=FWEDDLE_APPS.find(x=>x.id===row.id); await Offline.installText(a.id,row.text,'from fweddle.com · '+fmtKB(row.text.length)); if(row.etag)localStorage.setItem(K+'etag.'+a.id,row.etag); row.state='done'; row.note='updated from fweddle.com'; delete row.text; st.applied.push(a.name);
     WM.allWins().filter(w=>w.app.id===a.id&&w._reload).forEach(w=>w._reload()); }
   /* ── one image ── */
-  async function checkImage(id,url,apply){ const row={id,name:id+' icon',kind:'image',state:'ok',note:''}; let buf; try{ buf=await get(url,'buf'); }catch(err){ row.state='miss'; row.note=err.message; return row; }
+  async function checkImage(id,url){ const row={id,name:id+' icon',kind:'image',state:'ok',note:''}; let buf; try{ buf=await get(url,'buf'); }catch(err){ row.state='miss'; row.note=err.message; return row; }
     const h=await sha(buf); const seen=localStorage.getItem(K+'img.'+id); const have=localStorage.getItem('m.icon4.'+id);
-    if(seen===h&&have){ row.note='same bytes'; return row; } row.state='new'; row.note=(buf.byteLength/1024|0)+' KB · '+(have?'changed on the site':'not cached yet'); row.blob=new Blob([buf]); row.hash=h;
-    if(apply)await installImage(row); return row; }
+    if(seen===h&&have){ row.note='same bytes'; return row; } row.state='new'; row.note=fmtKB(buf.byteLength)+' · '+(have?'changed on the site':'not cached yet'); row.blob=new Blob([buf]); row.hash=h; return row; }
   async function installImage(row){ if(localStorage.getItem('m.iconover.'+row.id)){ row.state='ok'; row.note='you painted your own icon — kept'; return; } const ok=await SiteIcons.put(row.id,row.blob); if(ok){ localStorage.setItem(K+'img.'+row.id,row.hash); row.state='done'; row.note='icon refreshed'; st.applied.push(row.id+' icon'); } else { row.state='miss'; row.note='could not decode image'; } delete row.blob; }
-  /* ── the system ── */
+  /* ── the system: found on the site, fetched into the library, run only by hand ── */
   async function findStable(){ try{ const j=JSON.parse(await get(STABLE.manifest)); if(j&&j.version){ const file=/^https?:/i.test(j.file||'')?j.file:SITE+'Apps/MeridianOS/'+(j.file||'MeridianOS.html'); return {version:String(j.version),url:file,notes:j.notes||'',via:'manifest'}; } }catch(e){}
     for(const u of STABLE.builds){ try{ const r=await fetch(bust(u),{cache:'no-store'}); if(!r.ok)continue; const t=await r.text(); const v=(t.match(/<meta name="meridian-version" content="([^"]+)"/)||t.match(/MERIDIAN<b>OS<\/b>\s*([\d.]+)/)||t.match(/MeridianOS\s+([\d.]+)/)||[])[1]; if(v)return {version:v,url:u,text:t,notes:'',via:'build'}; }catch(e){} }
     return null; }
-  async function checkOS(apply){ const row={id:'os',name:'MeridianOS',kind:'os',state:'ok',note:'this build is '+M_VERSION}; const s=await findStable(); st.os=s;
+  async function checkOS(){ const row={id:'os',name:'MeridianOS',kind:'os',state:'ok',note:'running '+M_VERSION}; const s=await findStable(); st.os=s;
     if(!s){ row.note+=' · no stable build published on fweddle.com yet'; return row; }
+    if(Builds.has(s.version)){ row.note+=' · stable '+s.version+(s.version===M_VERSION?'':' is in your BUILDS library'); return row; }
     if(!newer(s.version,M_VERSION)){ row.note+=' · stable is '+s.version; return row; }
-    const failed=(localStorage.getItem('m.os.hostfail')||'').split(' ')[0]; if(failed===s.version){ row.note+=' · stable '+s.version+' failed to boot here last time — save the file instead'; row.stable=s; return row; }
-    row.state='new'; row.note='stable '+s.version+' on fweddle.com'+(s.notes?' · '+s.notes:''); row.stable=s; if(apply)await installOS(row); return row; }
-  async function installOS(row){ const s=row.stable||st.os; if(!s)return; log('fetching MeridianOS '+s.version+'…'); const text=s.text||await get(s.url);
-    if(!/<!--M:STATE-->/.test(text)){ row.state='miss'; row.note='that file is not a MeridianOS build'; return; }
-    log('carrying your state and apps into '+s.version+'…'); const merged=await Build.html({src:text,state:true,apps:true});
-    try{ await Downloads.add(new Blob([merged],{type:'text/html'}),'MeridianOS-'+s.version+'.html','',{src:s.url,quiet:true}); log('saved a copy to DOWNLOADS'); }catch(e){}
-    await Store.set('os:stable',merged); localStorage.setItem('m.os.hosted',s.version); localStorage.removeItem('m.os.hostfail');
-    localStorage.setItem(K+'swapped',JSON.stringify({from:M_VERSION,to:s.version,at:Date.now()})); row.state='done'; row.note='updated to '+s.version+' · rebooting'; st.applied.push('MeridianOS '+s.version); emit();
-    Session.raw.set('m.booted5','1'); log('rebooting into '+s.version+'…'); setTimeout(()=>{ if(window.parent!==window){ try{ parent.postMessage({meridian:true,action:'reboot'},'*'); return; }catch(e){} } location.reload(); },900); }
-  const hosted=()=>window.parent!==window&&!!localStorage.getItem('m.os.hosted');
-  /* drop the hosted build and run the file's own code again */
-  async function unhost(){ try{ await Store.del('os:stable'); }catch(e){} localStorage.removeItem('m.os.hosted'); if(window.parent!==window){ try{ parent.postMessage({meridian:true,action:'unhost'},'*'); return; }catch(e){} } location.reload(); }
+    row.state='new'; row.note='stable '+s.version+' on fweddle.com'+(s.notes?' · '+s.notes:'')+' — fetch into BUILDS, then run it when you choose'; row.stable=s; return row; }
+  async function fetchOS(row){ const s=row.stable||st.os; if(!s)return; log('fetching MeridianOS '+s.version+'…'); const text=s.text||await get(s.url);
+    if(!/<!--M:STATE-->/.test(text)||!/meridian-version/.test(text)){ row.state='miss'; row.note='that file is not a MeridianOS build'; return; }
+    const h=await sha(text); await Builds.put({version:s.version,src:text,from:s.url,note:s.notes||'',hash:h});
+    row.state='done'; row.note='held in BUILDS · sha '+h.slice(0,7)+' · not running'; st.applied.push('MeridianOS '+s.version+' (held)'); emit(); }
   /* ── the run ── */
-  async function check(opts={}){ if(st.busy)return st.rows; st.busy=true; st.err=null; st.applied=[]; st.pending=[]; const apply=opts.apply!==undefined?opts.apply:auto(); const rows=[]; emit();
+  async function check(opts={}){ if(st.busy)return st.rows; st.busy=true; st.err=null; st.applied=[]; const rows=[]; paintTray(); emit();
     try{ if(!navigator.onLine)throw new Error('offline');
-      log((apply?'updating':'checking')+' against '+SITE.replace(/^https:\/\//,'')+'…');
+      log('reading '+SITE.replace(/^https:\/\//,'')+'…');
       const html=await get(SITE); const entries=parseIndex(html); if(!entries.length)throw new Error('could not read the index');
-      /* the index itself */
-      { const row={id:'fwsite',name:'ꟻweddle.com index',kind:'index',state:'ok',note:''}; const prepared=prepareIndex(html,entries); const local=await Bake.source('fwsite'); if(local&&(await sha(local))===(await sha(prepared))){ row.note='up to date'; } else { row.state='new'; row.note=entries.filter(isApp).length+' apps on the index'; row.text=prepared; if(apply){ await Offline.installText('fwsite',prepared,'the live index'); row.state='done'; row.note='index refreshed'; delete row.text; st.applied.push('index'); } } rows.push(row); }
-      /* apps: moved, new, changed */
+      { const row={id:'fwsite',name:'ꟻweddle.com index',kind:'index',state:'ok',note:''}; const prepared=prepareIndex(html,entries); const local=await Bake.source('fwsite'); if(local&&(await sha(local))===(await sha(prepared))){ row.note='up to date'; } else { row.state='new'; row.note=entries.filter(e=>isApp(e)&&!skip(e)).length+' apps on the index'; row.text=prepared; } rows.push(row); }
       const apps=entries.filter(e=>isApp(e)&&!skip(e)); const seenIds=new Set();
-      for(const e of apps){ let {a,moved}=match(e); if(!a){ a=adopt(e); if(a){ log('new on fweddle.com: '+a.name); rows.push({id:a.id,name:a.name,kind:'app',state:'done',note:'added from the index'}); } else continue; }
+      for(const e of apps){ let {a,moved}=match(e); if(!a){ a=adopt(e); if(a)log('new on fweddle.com: '+a.name); else continue; }
         else if(moved){ const p=dec(e.link); log(a.name+' moved → '+p.split('/').pop()); a.path=p; a.site=enc(p); a.url=SITE+a.site; a.sub=subOf(e)||a.sub; remember(a); localStorage.removeItem(K+'etag.'+a.id); }
         seenIds.add(a.id); const iconSrc=siteURL(e.src);
         if(iconSrc&&SITE_ICONS[a.id]!==iconSrc){ SITE_ICONS[a.id]=iconSrc; try{ const m=JSON.parse(localStorage.getItem('m.iconsrc')||'{}'); m[a.id]=iconSrc; localStorage.setItem('m.iconsrc',JSON.stringify(m)); }catch(x){} }
-        try{ rows.push(await checkApp(a,e,apply)); }catch(err){ rows.push({id:a.id,name:a.name,kind:'app',state:'miss',note:err.message}); } }
+        try{ rows.push(await checkApp(a,e)); }catch(err){ rows.push({id:a.id,name:a.name,kind:'app',state:'miss',note:err.message}); } }
       FWEDDLE_APPS.filter(a=>!seenIds.has(a.id)).forEach(a=>rows.push({id:a.id,name:a.name,kind:'app',state:'ok',note:'not on the index any more · kept as baked'}));
-      /* images: every icon the index draws, plus the ones the OS names itself */
       const imgs={}; Object.entries(SITE_ICONS).forEach(([id,u])=>{ const su=siteURL(u); if(su)imgs[id]=su; });
-      for(const [id,u] of Object.entries(imgs)){ try{ rows.push(await checkImage(id,u,apply)); }catch(err){ rows.push({id,name:id+' icon',kind:'image',state:'miss',note:err.message}); } }
-      /* the system last — it may replace the page */
-      try{ rows.push(await checkOS(apply)); }catch(err){ rows.push({id:'os',name:'MeridianOS',kind:'os',state:'miss',note:err.message}); }
-      st.pending=rows.filter(r=>r.state==='new'); st.last=Date.now(); localStorage.setItem(K+'last',String(st.last));
-      const n=st.applied.length; log(n?('updated · '+st.applied.join(', ')):(st.pending.length?st.pending.length+' update'+(st.pending.length>1?'s':'')+' waiting':'everything is current'));
-      if(n&&!opts.quiet)notify('Updated from fweddle.com',st.applied.slice(0,4).join(', ')+(n>4?' +'+(n-4):'')); else if(n&&opts.quiet)toast('↻ '+n+' update'+(n>1?'s':'')+' from fweddle.com');
-      if(n)renderAll();
-    }catch(err){ st.err=err.message; log('✕ '+err.message); if(!opts.quiet)toast('update: '+err.message); }
-    st.rows=rows; st.busy=false; paintTray(); emit(); return rows; }
-  async function applyRow(r){ if(r.kind==='app')await installApp(r); else if(r.kind==='image')await installImage(r); else if(r.kind==='os')await installOS(r); else if(r.kind==='index'){ await Offline.installText('fwsite',r.text,'the live index'); r.state='done'; r.note='index refreshed'; delete r.text; }
+      for(const [id,u] of Object.entries(imgs)){ try{ rows.push(await checkImage(id,u)); }catch(err){ rows.push({id,name:id+' icon',kind:'image',state:'miss',note:err.message}); } }
+      try{ rows.push(await checkOS()); }catch(err){ rows.push({id:'os',name:'MeridianOS',kind:'os',state:'miss',note:err.message}); }
+      st.rows=rows; st.pending=rows.filter(r=>r.state==='new'); st.last=Date.now(); localStorage.setItem(K+'last',String(st.last));
+      const n=st.pending.length; log(n?n+' update'+(n>1?'s':'')+' on hold — nothing applied':'everything is current');
+      if(n&&!opts.quiet)toast('↻ '+n+' update'+(n>1?'s':'')+' on hold'); else if(n&&opts.quiet)toast('↻ '+n+' update'+(n>1?'s':'')+' waiting on fweddle.com');
+    }catch(err){ st.err=err.message; log('✕ '+err.message); if(!opts.quiet)toast('update: '+err.message); st.rows=rows; }
+    st.busy=false; paintTray(); emit(); return st.rows; }
+  async function applyRow(r){ if(r.state!=='new')return; if(r.kind==='app')await installApp(r); else if(r.kind==='image')await installImage(r); else if(r.kind==='os')await fetchOS(r); else if(r.kind==='index'){ await Offline.installText('fwsite',r.text,'the live index'); r.state='done'; r.note='index refreshed'; delete r.text; st.applied.push('index'); }
     st.pending=st.rows.filter(x=>x.state==='new'); paintTray(); emit(); renderAll(); }
-  async function applyAll(){ for(const r of st.rows.filter(x=>x.state==='new'&&x.kind!=='os'))await applyRow(r); const os=st.rows.find(x=>x.state==='new'&&x.kind==='os'); if(os)await applyRow(os); }
-  function paintTray(){ const n=st.pending.length, on=st.busy; document.querySelectorAll('.bar .upd').forEach(b=>{ b.hidden=!(n||on); b.classList.toggle('spin',on); b.title=on?'checking fweddle.com…':n?n+' update'+(n>1?'s':'')+' waiting · tap to update':'up to date'; b.querySelector('i').textContent=on?'':n; }); }
-  /* the schedule: boot, reconnect, every six hours */
-  const EVERY=6*3600*1000;
-  function schedule(){ const due=Date.now()-st.last>EVERY; setTimeout(()=>{ if(navigator.onLine&&(due||!st.last))check({quiet:true}); },4500); setInterval(()=>{ if(navigator.onLine)check({quiet:true}); },EVERY); addEventListener('online',()=>{ if(Date.now()-st.last>EVERY)setTimeout(()=>check({quiet:true}),2000); }); paintTray(); }
-  return {check,applyRow,applyAll,auto,setAuto,state:()=>st,on:f=>{listeners.add(f);return()=>listeners.delete(f);},schedule,paintTray,parseIndex,prepareIndex,findStable,hosted,unhost};
+  async function applyAll(kinds){ for(const r of st.rows.filter(x=>x.state==='new'&&(!kinds||kinds.includes(x.kind))))await applyRow(r); }
+  function hold(r){ /* dismiss this one until the site changes again */ if(r.kind==='app'&&r.etag)localStorage.setItem(K+'etag.'+r.id,r.etag); if(r.kind==='image'&&r.hash)localStorage.setItem(K+'img.'+r.id,r.hash); r.state='ok'; r.note='held — will not be offered again until fweddle.com changes it'; delete r.text; delete r.blob; st.pending=st.rows.filter(x=>x.state==='new'); paintTray(); emit(); }
+  function paintTray(){ const n=st.pending.length, on=st.busy; document.querySelectorAll('.bar .upd').forEach(b=>{ b.classList.toggle('has',n>0); b.classList.toggle('spin',on); b.title=on?'checking fweddle.com…':n?n+' update'+(n>1?'s':'')+' on hold':'updates · fweddle.com'; b.querySelector('i').textContent=on?'':(n||''); }); }
+  /* boot: one read-only look, if allowed. Never applies. */
+  function schedule(){ if(bootCheck())setTimeout(()=>{ if(navigator.onLine)check({quiet:true}); },5000); paintTray(); }
+  const hosted=()=>window.parent!==window&&!!localStorage.getItem('m.os.hosted');
+  return {check,applyRow,applyAll,hold,bootCheck,setBootCheck,state:()=>st,on:f=>{listeners.add(f);return()=>listeners.delete(f);},schedule,paintTray,parseIndex,prepareIndex,findStable,hosted,sha,fmtKB};
 })();
-reg({id:'update',name:'Update',sub:'stable builds · fweddle.com',icon:'update',w:520,h:480,single:true,
+/* ── Builds — the library of MeridianOS builds kept on this machine. Every entry is a whole file in IndexedDB.
+      This file's own code is always entry zero. RUN switches which build the host boots; SAVE writes any of them to disk. ── */
+const Builds=(()=>{ const KEY='m.os.builds'; let list; try{ list=JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ list=[]; } if(!Array.isArray(list))list=[];
+  const save=()=>{ try{ localStorage.setItem(KEY,JSON.stringify(list)); }catch(e){} };
+  const has=v=>list.some(b=>b.version===v); const byV=v=>list.find(b=>b.version===v);
+  const running=()=>localStorage.getItem('m.os.hosted')||M_VERSION;   /* what the host actually booted (this file's own code when unset) */
+  async function put(b){ await Store.set('os:build:'+b.version,b.src); const it={version:b.version,size:b.src.length,date:Date.now(),from:b.from||'',note:b.note||'',hash:b.hash||''}; const i=list.findIndex(x=>x.version===b.version); if(i>=0)list[i]=it; else list.push(it); save(); return it; }
+  async function src(v){ return await Store.get('os:build:'+v); }
+  /* the running build, with state and installed apps, as a new library entry */
+  async function snapshot(label){ const text=await Build.html({state:true,apps:true}); const v=(label||M_VERSION).replace(/[^A-Za-z0-9._-]+/g,'-'); const h=await Updater.sha(text); const it=await put({version:v,src:text,from:'snapshot',note:'saved from this machine',hash:h}); notify('build '+v+' saved to the library',Updater.fmtKB(text.length)); return it; }
+  async function remove(v){ if(v===running()&&window.parent!==window)return toast('that build is running — roll back first'); list=list.filter(b=>b.version!==v); save(); try{ await Store.del('os:build:'+v); }catch(e){} if(localStorage.getItem('m.os.hosted')===v)localStorage.removeItem('m.os.hosted'); }
+  async function download(v){ const text=v?await src(v):await Build.html({state:true,apps:true}); if(!text)return toast('that build is missing from storage'); Build.dl(new Blob([text],{type:'text/html'}),'MeridianOS-'+(v||M_VERSION)+'.html'); toast('MeridianOS-'+(v||M_VERSION)+'.html · '+Updater.fmtKB(text.length)); }
+  /* switch: the host reboots into the chosen build; null = this file's own code */
+  async function run(v){ if(v){ const text=await src(v); if(!text)return toast('that build is missing from storage'); await Store.set('os:stable',text); localStorage.setItem('m.os.hosted',v); localStorage.removeItem('m.os.hostfail'); localStorage.setItem('m.update.swapped',JSON.stringify({from:M_VERSION,to:v,at:Date.now()})); }
+    else { try{ await Store.del('os:stable'); }catch(e){} localStorage.removeItem('m.os.hosted'); }
+    Session.raw.set('m.booted5','1'); toast(v?'rebooting into '+v+'…':'rebooting into this file…');
+    setTimeout(()=>{ if(window.parent!==window){ try{ parent.postMessage({meridian:true,action:v?'reboot':'unhost'},'*'); return; }catch(e){} } location.reload(); },900); }
+  return {all:()=>list,has,byV,put,src,snapshot,remove,download,run,running}; })();
+reg({id:'update',name:'Update',sub:'on hold · fweddle.com',icon:'update',w:520,h:520,single:true,
 mount(w){ const b=document.createElement('div'); b.className='build upd'; w.body.appendChild(b);
   const swapped=(()=>{ try{ return JSON.parse(localStorage.getItem('m.update.swapped')||'null'); }catch(e){ return null; } })();
-  b.innerHTML=`<div class="uphd"><img class="px" src="${iconURL('update')}" alt=""><div><b>MERIDIAN<span>OS</span> ${M_VERSION}</b><small>stable channel · www.fweddle.com${swapped&&swapped.to===M_VERSION?' · updated from '+swapped.from:''}${Updater.hosted()?' · running the installed build':''}</small></div><span class="upst"></span></div>
-  <div class="row"><button class="btn acc" data-a="check">↻ CHECK NOW</button><button class="btn" data-a="all">⇩ UPDATE ALL</button><label><input type="checkbox" data-a="auto" ${Updater.auto()?'checked':''}> auto-update</label></div>
-  <small style="color:var(--fg3)">Auto-update pulls the index, every app it links, their icons, and a newer MeridianOS if one is published on the site — at boot, on reconnect, every six hours. Venmo, CashApp and Instagram stay off. Your state and installed apps ride along when the system swaps.</small>
-  <h5>WHAT'S ON FWEDDLE.COM</h5><div class="reps"></div>
-  <h5>THIS FILE</h5><div class="row"><button class="btn" data-a="save">⇩ SAVE MERIDIANOS.HTML</button><button class="btn" data-a="site">↗ FWEDDLE.COM</button>${localStorage.getItem('m.os.hosted')?'<button class="btn" data-a="unhost" title="forget the installed build and run this file\'s own code">⌫ ROLL BACK</button>':''}</div>
-  <small style="color:var(--fg3)">After the system updates itself, save a fresh copy so the file on your device is the new one too.</small>
+  b.innerHTML=`<div class="uphd"><img class="px" src="${iconURL('update')}" alt=""><div><b>MERIDIAN<span>OS</span> ${M_VERSION}</b><small>stable channel · www.fweddle.com · on hold${Updater.hosted()?' · running from the BUILDS library':''}${swapped&&swapped.to===M_VERSION?' · came from '+swapped.from:''}</small></div><span class="upst"></span></div>
+  <div class="row"><button class="btn acc" data-a="check">↻ CHECK</button><button class="btn" data-a="apps">⇩ APPLY APPS + IMAGES</button><label title="one read-only look at the site when the system starts — never applies anything"><input type="checkbox" data-a="boot" ${Updater.bootCheck()?'checked':''}> look on boot</label></div>
+  <small style="color:var(--fg3)">Nothing installs by itself. A check only reads the live index and lists what differs; each item waits for your tap. A newer system is fetched into the BUILDS library below — it never runs until you press RUN, and this file's own code is always one tap away. Venmo, CashApp and Instagram stay off.</small>
+  <h5>ON HOLD · WHAT'S ON FWEDDLE.COM</h5><div class="reps"></div>
+  <h5>BUILDS · this machine</h5><div class="blds"></div>
+  <div class="row"><button class="btn" data-a="snap">◈ SNAPSHOT THIS BUILD</button><button class="btn" data-a="save">⇩ SAVE THIS BUILD</button></div>
+  <small style="color:var(--fg3)">A snapshot keeps the running system, with your state and installed apps, in the library. SAVE writes a build to disk as a file you can keep or hand out.</small>
   <pre></pre>`;
-  const box=b.querySelector('.reps'), pre=b.querySelector('pre'), stEl=b.querySelector('.upst');
-  const LBL={ok:'CURRENT',new:'UPDATE',done:'UPDATED',miss:'✕'};
-  const paint=st=>{ pre.textContent=st.log.slice(-14).join('\n'); pre.scrollTop=pre.scrollHeight; stEl.textContent=st.busy?'…':st.last?'checked '+new Date(st.last).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
-    box.innerHTML=''; if(!st.rows.length){ box.innerHTML='<small>'+(st.busy?'reading the index…':'tap CHECK NOW')+'</small>'; return; }
+  const box=b.querySelector('.reps'), blds=b.querySelector('.blds'), pre=b.querySelector('pre'), stEl=b.querySelector('.upst');
+  const LBL={ok:'CURRENT',new:'ON HOLD',done:'APPLIED',miss:'✕'};
+  const paintBuilds=()=>{ blds.innerHTML=''; const run=Builds.running(); const mine=document.createElement('div'); mine.className='rep';
+    mine.innerHTML=`<img class="px" src="${iconURL('logo')}" style="width:16px;height:16px"><span>this file · ${M_VERSION}<br><small>${Updater.hosted()?'the code in the file on disk':'running now'}</small></span><span class="${Updater.hosted()?'new':'ok'}">${Updater.hosted()?'ON DISK':'RUNNING'}</span>${Updater.hosted()?'<button class="btn" data-run="">▶ RUN</button>':'<span></span>'}`; blds.appendChild(mine);
+    Builds.all().slice().sort((a,c)=>c.date-a.date).forEach(x=>{ const d=document.createElement('div'); d.className='rep'; const isRun=Updater.hosted()&&run===x.version;
+      d.innerHTML=`<img class="px" src="${iconURL('build')}" style="width:16px;height:16px"><span>MeridianOS ${x.version}<br><small>${Updater.fmtKB(x.size)} · ${new Date(x.date).toLocaleDateString()} · ${x.from==='snapshot'?'snapshot':'fweddle.com'}${x.hash?' · sha '+x.hash.slice(0,7):''}</small></span><span class="${isRun?'ok':'new'}">${isRun?'RUNNING':'HELD'}</span><span class="bb">${isRun?'':'<button class="btn" data-run="'+x.version+'" title="reboot into this build">▶</button>'}<button class="btn" data-dl="${x.version}" title="save to disk">⇩</button><button class="btn" data-rm="${x.version}" title="delete from the library">×</button></span>`; blds.appendChild(d); });
+    blds.querySelectorAll('[data-run]').forEach(bt=>bt.onclick=()=>{ const v=bt.dataset.run; if(confirm(v?'Reboot into MeridianOS '+v+'? Your state stays; this file on disk is untouched.':'Reboot into the code in this file?'))Builds.run(v||null); });
+    blds.querySelectorAll('[data-dl]').forEach(bt=>bt.onclick=()=>Builds.download(bt.dataset.dl));
+    blds.querySelectorAll('[data-rm]').forEach(bt=>bt.onclick=async()=>{ if(confirm('Delete MeridianOS '+bt.dataset.rm+' from the library?')){ await Builds.remove(bt.dataset.rm); paintBuilds(); } }); };
+  const paint=st=>{ pre.textContent=st.log.slice(-12).join('\n'); pre.scrollTop=pre.scrollHeight; stEl.textContent=st.busy?'…':st.last?'checked '+new Date(st.last).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+    box.innerHTML=''; if(!st.rows.length){ box.innerHTML='<small>'+(st.busy?'reading the index…':'tap CHECK — it only reads')+'</small>'; paintBuilds(); return; }
     st.rows.forEach(r=>{ const d=document.createElement('div'); d.className='rep'; const a=FWEDDLE_APPS.find(x=>x.id===r.id); const ico=r.kind==='os'?iconURL('logo'):r.kind==='index'?iconURL('fwsite'):r.kind==='image'?(SiteIcons.get(r.id)||iconURL('images')):(a?appIcon(a):iconURL('about'));
-      d.innerHTML=`<img class="${r.kind==='image'||a?'site':'px'}" src="${ico}" style="width:16px;height:16px"><span>${r.name}<br><small>${r.note}</small></span><span class="${r.state==='ok'||r.state==='done'?'ok':r.state==='new'?'new':'miss'}">${LBL[r.state]||r.state}</span>${r.state==='new'?'<button class="btn" data-row="'+r.id+'">⇩</button>':'<span></span>'}`; box.appendChild(d); });
-    box.querySelectorAll('[data-row]').forEach(bt=>bt.onclick=async()=>{ const r=st.rows.find(x=>x.id===bt.dataset.row); bt.textContent='…'; try{ await Updater.applyRow(r); }catch(e){ toast('✕ '+e.message); } }); };
+      d.innerHTML=`<img class="${r.kind==='image'||a?'site':'px'}" src="${ico}" style="width:16px;height:16px"><span>${r.name}<br><small>${r.note}</small></span><span class="${r.state==='ok'||r.state==='done'?'ok':r.state==='new'?'new':'miss'}">${LBL[r.state]||r.state}</span>${r.state==='new'?'<span class="bb"><button class="btn" data-row="'+r.id+'" title="'+(r.kind==='os'?'fetch into BUILDS':'apply')+'">⇩</button><button class="btn" data-hold="'+r.id+'" title="dismiss until the site changes it again">⏸</button></span>':'<span></span>'}`; box.appendChild(d); });
+    box.querySelectorAll('[data-row]').forEach(bt=>bt.onclick=async()=>{ const r=st.rows.find(x=>x.id===bt.dataset.row); bt.textContent='…'; try{ await Updater.applyRow(r); paintBuilds(); }catch(e){ toast('✕ '+e.message); } });
+    box.querySelectorAll('[data-hold]').forEach(bt=>bt.onclick=()=>Updater.hold(st.rows.find(x=>x.id===bt.dataset.hold)));
+    paintBuilds(); };
   const off=Updater.on(paint); w._unmount=off; paint(Updater.state());
-  b.querySelector('[data-a=check]').onclick=()=>Updater.check({apply:false});
-  b.querySelector('[data-a=all]').onclick=async()=>{ if(!Updater.state().rows.length)await Updater.check({apply:true}); else await Updater.applyAll(); };
-  b.querySelector('[data-a=auto]').onchange=e=>Updater.setAuto(e.target.checked);
-  b.querySelector('[data-a=save]').onclick=async()=>{ const src=await Build.html({state:true,apps:true}); Build.dl(new Blob([src],{type:'text/html'}),'MeridianOS-'+M_VERSION+'.html'); toast('MeridianOS-'+M_VERSION+'.html · '+(src.length/1024|0)+' KB'); };
-  b.querySelector('[data-a=site]').onclick=()=>window.open(SITE,'_blank','noopener');
-  const uh=b.querySelector('[data-a=unhost]'); if(uh)uh.onclick=()=>{ if(confirm('Roll back to the code in this file?'))Updater.unhost(); };
+  b.querySelector('[data-a=check]').onclick=()=>Updater.check({});
+  b.querySelector('[data-a=apps]').onclick=async()=>{ if(!Updater.state().rows.length)return toast('check first — it only reads'); await Updater.applyAll(['app','image','index']); };
+  b.querySelector('[data-a=boot]').onchange=e=>Updater.setBootCheck(e.target.checked);
+  b.querySelector('[data-a=snap]').onclick=async()=>{ const label=prompt('name this snapshot',M_VERSION+'-'+new Date().toISOString().slice(0,10)); if(label===null)return; await Builds.snapshot(label); paintBuilds(); };
+  b.querySelector('[data-a=save]').onclick=()=>Builds.download(null);
 }});
 
 /* ── Images (viewer) + Files live as special portals; this is the viewer tile ── */
@@ -3003,7 +3020,7 @@ const Recorder=(()=>{ const src=document.createElement('video'); src.muted=true;
   function stop(){ if(!rec)return; try{ rec.stop(); }catch(e){} rec=null; Audio.blip(440,.08); document.querySelectorAll('.bar .recpill').forEach(p=>p.hidden=true); window.dispatchEvent(new CustomEvent('recstate')); }
   function release(){ if(rec)return; stopStream(stream); stream=null; stopStream(pipStream); pipStream=null; prepared=false; cancelAnimationFrame(raf); raf=null; src.srcObject=null; }
   return { prepare,start,stop,release,setPip, get canvas(){return cv;}, get active(){return !!rec;}, get prepared(){return prepared&&!!stream;}, get opts(){return opts;}, set(o){ Object.assign(opts,o); } }; })();
-document.addEventListener('click',e=>{ const p=e.target.closest('.bar .recpill'); if(p){ e.stopPropagation(); Recorder.stop(); } const u=e.target.closest('.bar .upd'); if(u){ e.stopPropagation(); WM.open(APPS.update); if(Updater.state().pending.length&&Updater.auto())Updater.applyAll(); } },true);
+document.addEventListener('click',e=>{ const p=e.target.closest('.bar .recpill'); if(p){ e.stopPropagation(); Recorder.stop(); } },true);
 
 /* ── Sounds — SOUND portal storage: blobs in IndexedDB snd:<id>, list in m.sounds with a sub (clips · instrumental · music · bits · synth) ── */
 const Sounds=(()=>{ let list; try{list=JSON.parse(localStorage.getItem('m.sounds')||'[]');}catch(e){list=[];} const save=()=>localStorage.setItem('m.sounds',JSON.stringify(list)); const urls={},peaks={};
@@ -16327,7 +16344,7 @@ const Bars=(()=>{
     nav.addEventListener('keydown',e=>{ if(e.key==='Enter'){Nav.parse(nav.value,desk);nav.blur();} if(e.key==='Escape'){bar._sync();nav.blur();} }); nav.addEventListener('focus',()=>setTimeout(()=>{ if(nav._caretEnd){ nav._caretEnd=false; try{nav.setSelectionRange(nav.value.length,nav.value.length);}catch(e){} } else nav.select(); },0)); nav.addEventListener('blur',()=>bar._sync());
     q('.logoWrap').onclick=e=>{e.stopPropagation();Power.open(q('.logoWrap'),desk);}; cwd.onclick=e=>{e.stopPropagation(); if(desk.current)desk.current.close(); else Nav.go([],desk);};
     q('.clock').onclick=e=>{e.stopPropagation(); Tray.toggle('cal',q('.clock'),desk);};
-    q('.vol').onclick=e=>{e.stopPropagation();Tray.toggle('vol',q('.vol'),desk);}; q('.wifi').onclick=e=>{e.stopPropagation();Tray.toggle('wifi',q('.wifi'),desk);}; q('.gt').onclick=e=>{e.stopPropagation();Tray.toggle('gt',q('.gt'),desk);};
+    q('.vol').onclick=e=>{e.stopPropagation();Tray.toggle('vol',q('.vol'),desk);}; q('.wifi').onclick=e=>{e.stopPropagation();Tray.toggle('wifi',q('.wifi'),desk);}; q('.upd').onclick=e=>{e.stopPropagation();Tray.toggle('upd',q('.upd'),desk);}; q('.gt').onclick=e=>{e.stopPropagation();Tray.toggle('gt',q('.gt'),desk);};
     q('.tclose').onclick=e=>{e.stopPropagation(); Audio.blip(440,.08); if(desk.current)desk.current.close(); else desk.close(); };
     q('.tpick').onclick=e=>{e.stopPropagation();closeOverlays();desk.open(APPS.theme);};
     q('.tsplit').onclick=e=>{e.stopPropagation(); Audio.blip(1320,.05); desk.clone();};
@@ -16353,7 +16370,7 @@ const Greentooth=(()=>{ // a capsulated wave: splitmix64 (Capsule) seeds it, a G
   return {key,devices,wave,scan,rekey(){ key=mix64(BigInt(Date.now())^BigInt('0x'+key)).toString(16).padStart(16,'0'); localStorage.setItem('m.gtkey',key); return key; }};
 })();
 const Tray=(()=>{
-  const pops={vol:document.getElementById('volPop'),wifi:document.getElementById('wifiPop'),gt:document.getElementById('gtPop'),cal:document.getElementById('calPop')}; let cur=null,waveRaf=null;
+  const pops={vol:document.getElementById('volPop'),upd:document.getElementById('updPop'),wifi:document.getElementById('wifiPop'),gt:document.getElementById('gtPop'),cal:document.getElementById('calPop')}; let cur=null,waveRaf=null;
   function place(el,anchor){ const r=anchor.getBoundingClientRect(); el.style.left=Math.max(8,Math.min(r.left+r.width/2-el.offsetWidth/2,innerWidth-el.offsetWidth-8))+'px'; el.style.top=Math.min(r.bottom+6,innerHeight-el.offsetHeight-8)+'px'; }
   function build(k){ const el=pops[k];
     if(k==='vol'){ el.innerHTML=`<h6>VOLUME</h6><input type="range" min="0" max="100" value="${Math.round(Audio.vol*100)}"><div class="row"><button class="btn" data-a="mute">${Audio.vol===0?'UNMUTE':'MUTE'}</button><button class="btn" data-a="test">♪ TEST</button></div><div class="row"><button class="btn" data-a="sfx">${SFX.on?'◉':'○'} SOUND EFFECTS</button></div><small>${SFX.on?'every file has its own two-note blip':'the system is silent'} · the apps keep their own sound</small>`;
@@ -16374,6 +16391,17 @@ const Tray=(()=>{
       <div class="row"><button class="btn" data-a="scan">◌ PAIR</button><button class="btn" data-a="rekey">↻ REKEY</button></div><small>a Bluetooth wave capsulated in FWD1 and encrypted with the ꟻXplore / GoatPad++ tune math. Pairing uses Web Bluetooth where the browser allows it.</small>`;
       const cv=el.querySelector('canvas'); const step=()=>{ if(!el.classList.contains('open'))return; Greentooth.wave(cv,performance.now()/1000); waveRaf=requestAnimationFrame(step); }; step();
       el.querySelector('[data-a=scan]').onclick=async()=>{ try{ const d=await Greentooth.scan(); toast('paired '+d.name); build('gt'); }catch(e){ toast(e.message); } }; el.querySelector('[data-a=rekey]').onclick=()=>{Greentooth.rekey();build('gt');}; }
+    if(k==='upd'){ const st=Updater.state(); const pend=st.pending; const run=Builds.running(); const hosted=Updater.hosted();
+      el.innerHTML=`<h6>UPDATES · fweddle.com</h6><div class="li"><span>${st.busy?'◌ reading the index…':pend.length?'⏸ '+pend.length+' on hold':'◉ nothing waiting'}</span><small>${st.last?new Date(st.last).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'never checked'}</small></div>
+      ${pend.slice(0,6).map(r=>`<div class="li" data-r="${r.id}"><span>${r.kind==='os'?'⬢ ':r.kind==='image'?'▣ ':r.kind==='index'?'ꟻ ':'▸ '}${r.name}</span><small>${r.kind==='os'?'fetch':'apply'}</small><b class="x" data-hold="${r.id}" title="hold — skip until the site changes it">⏸</b></div>`).join('')}${pend.length>6?'<small>+'+(pend.length-6)+' more in the Update tile</small>':''}
+      <div class="row"><button class="btn" data-a="check">↻ CHECK</button><button class="btn" data-a="open">UPDATE TILE ▸</button></div>
+      <h6>BUILDS</h6><div class="li" data-run="" ><span>this file · ${M_VERSION}</span><small>${hosted?'tap to run':'running'}</small></div>
+      ${Builds.all().slice().sort((a,c)=>c.date-a.date).slice(0,5).map(x=>`<div class="li" data-run="${x.version}"><span>${x.version}</span><small>${hosted&&run===x.version?'running':'tap to run'}</small><b class="x" data-dl="${x.version}" title="save to disk">⇩</b></div>`).join('')}
+      <small>nothing installs on its own — a check only reads; a new system waits in BUILDS until you run it. Any build can be saved to disk as a file.</small>`;
+      el.querySelectorAll('[data-r]').forEach(d=>d.onclick=async e=>{ if(e.target.dataset.hold!==undefined){ e.stopPropagation(); Updater.hold(st.rows.find(x=>x.id===e.target.dataset.hold)); build('upd'); return; } const r=st.rows.find(x=>x.id===d.dataset.r); d.querySelector('small').textContent='…'; try{ await Updater.applyRow(r); }catch(x){ toast('✕ '+x.message); } build('upd'); });
+      el.querySelectorAll('[data-run]').forEach(d=>d.onclick=async e=>{ if(e.target.dataset.dl!==undefined){ e.stopPropagation(); Builds.download(e.target.dataset.dl); return; } const v=d.dataset.run; const isRun=v?(hosted&&run===v):!hosted; if(isRun)return toast('already running'); if(confirm(v?'Reboot into MeridianOS '+v+'?':'Reboot into the code in this file?'))Builds.run(v||null); });
+      el.querySelector('[data-a=check]').onclick=async()=>{ build('upd'); await Updater.check({}); if(el.classList.contains('open'))build('upd'); };
+      el.querySelector('[data-a=open]').onclick=()=>{ closeOverlays(); WM.open(APPS.update); }; }
     if(k==='cal')calendar(); }
   const anchorOf={}; function toggle(k,anchor,desk){ const was=cur===k&&pops[k].classList.contains('open'); closeOverlays(); if(was)return; cur=k; anchorOf[k]=anchor; build(k); pops[k].classList.add('open'); place(pops[k],anchor); }
   return {toggle,closeAll(){ Object.values(pops).forEach(p=>p.classList.remove('open')); cancelAnimationFrame(waveRaf); }};
