@@ -1,0 +1,2199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07100a">
+<meta name="description" content="An offline generator of new mathematics across eleven genres, by Felix Weddle and free for everyone to use.">
+<title>Clover Equation Lab</title>
+<style>
+:root{color-scheme:dark;--bg:#07100a;--panel:#0a170e;--well:#030904;--dim:#2f6b46;--line:#1b3a26;--fg:#8ef7b0;--muted:#6bb88a;--hi:#c8ff5a;--paper:#e8ffe0;--rose:#ff9bb7;--lt:#3f8a5b;--dk:#010603;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.5 var(--mono);-webkit-text-size-adjust:100%}
+body{background-image:repeating-linear-gradient(180deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px);min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:#0c2214;border:2px solid;border-color:var(--lt) var(--dk) var(--dk) var(--lt);border-radius:0;padding:5px 11px;min-height:36px;cursor:pointer}
+button:active,button[aria-pressed=true]{border-color:var(--dk) var(--lt) var(--lt) var(--dk);background:#051209}
+button[aria-pressed=true]{color:var(--hi)}
+button:disabled{opacity:.42;cursor:default}
+button.primary{background:var(--hi);color:#04180c;border-color:#f1ffc4 #56721a #56721a #f1ffc4;font-weight:700}
+button.primary:active{border-color:#56721a #f1ffc4 #f1ffc4 #56721a}
+:focus-visible{outline:2px dashed var(--hi);outline-offset:2px}
+input,select,textarea{background:var(--well);border:1px solid var(--dim);border-radius:0;padding:6px 8px;min-height:34px}
+textarea{width:100%;min-height:58px;resize:vertical;color:var(--paper);line-height:1.45}
+a{color:var(--hi)}
+label,.label{color:var(--muted);font-size:12px}
+[hidden]{display:none!important}
+.top{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 18px 10px;max-width:1500px;margin:auto}
+.brand{display:flex;gap:12px;align-items:center}
+.glyph{font-size:34px;line-height:1;color:var(--hi);text-shadow:0 0 12px rgba(200,255,90,.45)}
+.brand-name{font-size:17px;color:var(--paper);letter-spacing:.5px}
+.tag{color:var(--muted);font-size:12px}
+.genres{max-width:1500px;margin:auto;padding:0 18px 12px;display:flex;align-items:center;gap:10px}
+.genres-label{color:var(--muted);font-size:12px;flex:none}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:3px 2px 6px;scrollbar-width:thin}
+.chips button{white-space:nowrap;flex:none;position:relative}
+.chips button.current::after{content:"";position:absolute;left:8px;right:8px;bottom:3px;height:2px;background:var(--hi)}
+.shell{display:grid;grid-template-columns:340px minmax(0,1fr);gap:14px;padding:0 18px 18px;max-width:1500px;margin:auto;align-items:start}
+.side{grid-column:1;grid-row:1/span 2;display:flex;flex-direction:column;gap:14px}
+.main{grid-column:2;grid-row:1;min-width:0}
+.extras{grid-column:2;grid-row:2;min-width:0;display:flex;flex-direction:column;gap:14px}
+.panel{background:var(--panel);border:1px solid var(--line);padding:14px}
+.panel h2{font-size:13px;font-weight:600;color:var(--paper);margin:0 0 10px}
+.row{display:flex;gap:8px;align-items:center}
+.grow{flex:1;min-width:0}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.note{color:var(--muted);font-size:12px;margin:6px 0 0}
+.legend{color:var(--muted);font-size:12px;margin:0 0 10px;border-left:2px solid var(--dim);padding-left:8px}
+.gen-buttons{display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:10px}
+.gen-buttons .primary{min-height:44px}
+.slider{display:grid;grid-template-columns:16px 1fr 78px;gap:8px;align-items:center;margin:6px 0}
+.slider label{color:var(--paper);font-size:13px}
+input[type=range]{accent-color:var(--hi);min-height:28px;padding:0;border:0;background:none}
+input:disabled,textarea:disabled{opacity:.4}
+.form-error{color:var(--rose);font-size:12px;margin:0 0 8px}
+.range-head{display:flex;justify-content:space-between}
+output{color:var(--paper)}
+.swatches{display:flex;gap:6px;flex-wrap:wrap}
+.swatch{width:40px;min-height:28px;padding:0}
+.swatch[aria-pressed=true]{outline:2px solid var(--hi);outline-offset:1px}
+.segmented{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.segmented button{flex:1}
+.viewer-panel{background:var(--panel);border:1px solid var(--line)}
+.viewer-head{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:12px 14px}
+.kind{color:var(--muted);font-size:12px}
+h1{font-size:22px;font-weight:600;color:var(--paper);margin:0;letter-spacing:.3px}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap}
+.progress{height:3px;background:var(--well)}
+.progress i{display:block;height:100%;width:0;background:var(--hi)}
+.viewer{position:relative;background:#000;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+canvas#fractal{display:block;width:100%;aspect-ratio:4/3;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;cursor:grab}
+.viewer[data-static=true] canvas#fractal{cursor:default}
+.nav{position:absolute;right:8px;bottom:8px;display:flex;gap:4px}
+.nav button{min-width:36px;background:rgba(7,16,10,.85)}
+.viewer[data-static=true] .nav{display:none}
+.hud{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:8px 14px;font-size:12px;color:var(--muted)}
+.status[data-busy=true]{color:var(--hi)}
+.reading{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:14px;padding:4px 14px 16px}
+.equation-lines{display:flex;flex-direction:column;gap:6px}
+.equation-lines div{display:grid;grid-template-columns:max-content 1fr;gap:10px;align-items:baseline}
+.equation-lines span{color:var(--muted);white-space:nowrap}
+.equation-lines b{font-weight:500;color:var(--paper);overflow-wrap:anywhere}
+#equationDescription{color:var(--muted);margin:10px 0 0;max-width:70ch}
+.cert{border:1px dashed var(--dim);padding:12px 12px 10px;position:relative;align-self:start;background:repeating-linear-gradient(135deg,rgba(142,247,176,.03) 0 6px,transparent 6px 12px)}
+.stamp{display:inline-block;border:3px double currentColor;color:var(--hi);padding:1px 10px;font-weight:700;transform:rotate(-4deg);letter-spacing:1px;font-size:14px}
+.cert[data-kind=classic] .stamp{color:var(--muted)}
+.cert[data-kind=custom] .stamp{color:var(--rose)}
+.odds{font-size:clamp(28px,4.4vw,42px);line-height:1.05;color:var(--paper);margin:10px 0 6px;white-space:nowrap}
+.odds sup{font-size:.5em;color:var(--hi);vertical-align:.95em;margin-left:1px}
+.cert p{margin:0 0 8px;font-size:12px;color:var(--muted)}
+.serial{font-size:12px;color:var(--fg);border-top:1px solid var(--line);padding-top:6px}
+.shelf-head{display:flex;justify-content:space-between;align-items:baseline}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px}
+.saved{position:relative}
+.saved .restore{display:block;width:100%;padding:0;text-align:left}
+.saved img{display:block;width:100%;aspect-ratio:4/3;image-rendering:pixelated;background:#000}
+.saved-label{display:block;padding:4px 6px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.saved .delete{position:absolute;top:4px;right:4px;min-height:26px;padding:0 7px;background:rgba(7,16,10,.9)}
+.empty-shelf{color:var(--muted);font-size:12px}
+.export-row{display:flex;gap:8px;flex-wrap:wrap}
+details.panel summary{cursor:pointer;color:var(--paper)}
+details.panel p,details.panel li{color:var(--muted);max-width:76ch}
+details.panel h3{color:var(--paper);font-size:13px;margin:14px 0 4px}
+pre#sourceCode{white-space:pre;overflow:auto;max-height:52vh;background:var(--well);border:1px solid var(--line);padding:10px;font-size:12px;color:var(--paper)}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--paper);color:#04180c;padding:9px 14px;max-width:min(92vw,520px);z-index:9;border:2px solid #04180c}
+dialog{background:var(--panel);color:var(--fg);border:1px solid var(--dim);max-width:min(92vw,640px);width:100%}
+dialog textarea{min-height:240px}
+footer{max-width:1500px;margin:auto;padding:8px 18px 28px;color:var(--dim);font-size:12px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.wrap{flex-wrap:wrap}
+.drop{display:flex;gap:10px;align-items:center;border:1px dashed var(--dim);padding:8px;margin-bottom:8px;min-height:64px;color:var(--muted);font-size:12px}
+.drop.over{border-color:var(--hi);background:rgba(200,255,90,.07)}
+.drop img{width:64px;height:64px;object-fit:contain;image-rendering:pixelated;background:#000;flex:none}
+.credit,.cert p.credit{color:var(--paper);font-size:12px;margin:0 0 8px}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.gloss-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.gloss-tools input{flex:1;min-width:160px}
+.gloss{max-height:560px;overflow:auto;border-top:1px solid var(--line)}
+button.gloss-row{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:8px 4px;min-height:0}
+button.gloss-row:hover{background:#0c2214}
+.gname{color:var(--paper)}
+.gloss-row code{display:block;font:12px/1.4 var(--mono);color:var(--fg);white-space:pre-wrap;overflow-wrap:anywhere;max-height:5.6em;overflow:hidden;margin:2px 0}
+.gmeta{color:var(--muted);font-size:11px}
+.ops{display:grid;grid-template-columns:max-content 1fr;gap:5px 14px;font-size:12px;margin:0;max-height:560px;overflow:auto}
+.ops dt{color:var(--hi)}
+.ops dd{margin:0;color:var(--muted)}
+@media(max-width:600px){.ops{grid-template-columns:1fr}.ops dd{margin-bottom:6px}}
+@media(max-width:1100px){.reading{grid-template-columns:1fr}}
+@media(max-width:880px){.shell{display:flex;flex-direction:column;padding:0 10px 14px}.top{padding:12px 12px 8px}.genres{padding:0 10px 10px}.genres-label{display:none}.side,.extras{width:100%}.viewer-head{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ΩᴺΩ — Unicode has no superscript omega (alpha, beta, gamma, delta,
+   phi and chi all have modifier letters; omega does not), so the mark is
+   real <sup> markup rather than a character. Plain-text exports fall back
+   to the caret form, which is the correct notation there. */
+.oo{font-size:.58em; vertical-align:super; line-height:0; letter-spacing:0}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="glyph" aria-hidden="true">ꟻ</span><div><div class="brand-name">Clover Equation Lab</div><div class="tag">New mathematics by Ω<sup class="oo">Ω</sup> Felix Weddle, minted on your device and free for everyone to use.</div></div></div>
+  <a id="helpLink" role="button" tabindex="0" style="cursor:pointer;text-decoration:underline">Field guide</a>
+</header>
+<nav class="genres" aria-label="Kind of mathematics">
+  <span class="genres-label" id="pickLabel">Generate</span>
+  <div class="chips" id="chips" role="group" aria-labelledby="pickLabel"></div>
+</nav>
+<main class="shell">
+  <div class="main">
+    <section class="viewer-panel" aria-label="Preview">
+      <div class="viewer-head">
+        <div><div class="kind" id="genreTitle">Escape-time fractal</div><h1 id="equationName">Mandelbrot</h1></div>
+        <div class="toolbar"><button id="undo" aria-label="Undo" title="Undo" disabled>↶</button><button id="redo" aria-label="Redo" title="Redo" disabled>↷</button><button id="keep" disabled>Keep</button><button id="png" disabled>Save PNG</button></div>
+      </div>
+      <div class="progress"><i id="progress"></i></div>
+      <div class="viewer" id="viewer"><canvas id="fractal" width="800" height="600" tabindex="0" aria-label="Equation preview. Drag to pan, scroll or pinch to zoom. With a keyboard, arrows pan, plus and minus zoom, zero resets."></canvas><div class="nav"><button id="zoomOut" aria-label="Zoom out">−</button><button id="reset" aria-label="Reset view">⌂</button><button id="zoomIn" aria-label="Zoom in">+</button></div></div>
+      <div class="hud"><span id="viewReadout"></span><span id="zoomReadout"></span><span id="pointerReadout"></span><span class="grow"></span><span id="renderStatus" class="status" role="status" aria-live="polite">Starting</span><button id="stop">Stop</button><button id="renderAgain" hidden>Render</button></div>
+      <div class="reading">
+        <div><div class="equation-lines" id="displayLines"></div><p id="equationDescription"></p></div>
+        <aside class="cert" id="cert" aria-label="Where this equation comes from"><div class="stamp" id="certStamp">Classic</div><div class="odds" id="certOdds"></div><p id="certLine"></p><p class="credit">Ω<sup class="oo">Ω</sup> Felix Weddle. Free for everyone to use.</p><div class="serial" id="certSerial"></div></aside>
+      </div>
+    </section>
+  </div>
+  <aside class="side" aria-label="Controls">
+    <section class="panel">
+      <h2>Discover</h2>
+      <div class="gen-buttons"><button id="generate" class="primary">Generate</button><button id="mutate" title="Nudge the numbers in this equation">Mutate</button></div>
+      <div class="field"><label for="seed">Seed</label><div class="row"><input id="seed" class="grow" value="clover" spellcheck="false" maxlength="64"><button id="replay" title="Generate again from this seed">Replay</button></div></div>
+      <div class="field"><label for="preset">Or start from a classic</label><select id="preset"></select></div>
+      <div class="field"><span class="label">BIOCODEX genomes</span><div class="row wrap"><button id="loadGenomes">Load library</button><button id="mintGenome" hidden>Mint from a genome</button></div><p class="note" id="genomeNote"></p><input type="file" id="genomeInput" accept=".gz,.json,.fweddle,application/gzip,application/json" hidden></div>
+      <p class="note" id="pickNote">Rotate lands in a different genre each time. Pick a genre above to stay in it.</p>
+    </section>
+    <section class="panel" id="imagePanel">
+      <h2>Image</h2>
+      <div class="drop" id="drop"><img id="imgThumb" alt="Loaded image, in the brightness values equations read" hidden><span id="imgInfo">Drop, paste or choose an image.</span></div>
+      <div class="row wrap"><button id="addImage">Choose image</button><button id="mintImage" disabled>Mint from image</button><button id="imgColours" disabled>Use its colours</button><button id="removeImage" disabled>Remove</button></div>
+      <input type="file" id="imageInput" accept="image/*" hidden>
+      <p class="note" id="imgNote"></p>
+    </section>
+    <section class="panel">
+      <h2>Equation</h2>
+      <p class="legend" id="legend"></p>
+      <div id="fields"></div>
+      <p id="formulaError" class="form-error" role="alert" hidden></p>
+      <div class="row"><small class="grow note" id="editorState">Ctrl + Enter applies.</small><button id="apply">Apply</button></div>
+      <div id="sliders"></div>
+      <p class="note" id="sliderHint"></p>
+    </section>
+    <section class="panel" id="modePanel">
+      <h2 id="modeTitle">Plane</h2>
+      <div class="segmented" id="modes"></div>
+      <div id="juliaControls" class="two" hidden><div class="field"><label for="juliaRe">c, real part</label><input type="number" id="juliaRe" step="any" min="-4" max="4"></div><div class="field"><label for="juliaIm">c, imaginary part</label><input type="number" id="juliaIm" step="any" min="-4" max="4"></div></div>
+    </section>
+    <section class="panel">
+      <h2>Rendering</h2>
+      <div class="field" id="knobField"><label for="knob" id="knobLabel">Escape radius</label><input type="number" id="knob" step="any"></div>
+      <div class="field" id="iterField"><div class="range-head"><label for="iterations" id="iterLabel">Iteration limit</label><output id="iterValue">256</output></div><input type="range" id="iterations" min="32" max="1024" step="16" value="256"></div>
+      <div class="field"><label for="quality">Resolution</label><select id="quality"><option value="480">480 × 360, fast</option><option value="800">800 × 600</option><option value="1440">1440 × 1080</option></select></div>
+      <div class="field"><div class="range-head"><span class="label">Palette</span><output id="paletteName">Fern</output></div><div class="swatches" id="swatches" role="group" aria-label="Palette"></div></div>
+      <div class="field"><div class="range-head"><label for="colorCycle">Colour spacing</label><output id="colorValue">36</output></div><input type="range" id="colorCycle" min="8" max="120" step="1" value="36"></div>
+    </section>
+  </aside>
+  <div class="extras">
+    <section class="panel"><div class="shelf-head"><h2>Kept equations</h2><span id="shelfCount" class="note">0 / 16</span></div><div class="shelf" id="shelf"></div></section>
+    <section class="panel" id="glossaryPanel">
+      <div class="shelf-head"><h2>Weddle glossary</h2><span class="note" id="glossCount">0 equations</span></div>
+      <p class="credit">Every equation minted, mutated, written or opened here, credited to Ω<sup class="oo">Ω</sup> Felix Weddle and free for everyone to use.</p>
+      <div class="tabs" role="group" aria-label="Glossary view"><button id="tabEq" aria-pressed="true">Equations</button><button id="tabOps" aria-pressed="false">Operators</button></div>
+      <div id="glossEq"><div class="gloss-tools"><input id="glossSearch" type="search" placeholder="Search names, formulas, fingerprints" aria-label="Search the glossary"><select id="glossGenre" aria-label="Filter by genre"></select></div><div class="gloss" id="glossList"></div><div class="export-row" style="margin-top:10px"><button id="glossTxt">Download glossary</button><button id="glossJson">Download glossary JSON</button></div></div>
+      <dl class="ops" id="glossOps" hidden></dl>
+    </section>
+    <section class="panel"><h2>Take it with you</h2><div class="export-row"><button id="copy">Copy equation</button><button id="exportJson">Download JSON</button><button id="import">Import file</button><button id="exportHtml">Download standalone HTML</button><button id="exportC">Download C source</button></div><input id="fileInput" type="file" accept="application/json,.json,.gz,image/*" hidden>
+      <details id="sourceDetails"><summary class="note">Show the C source for this equation</summary><pre id="sourceCode"></pre></details>
+    </section>
+    <details class="panel" id="guide"><summary>Field guide</summary>
+      <h3>Eleven genres</h3>
+      <p><b>Escape</b> repeats a map and colours each point by how quickly it runs away. <b>Attractor</b> follows one chaotic orbit for millions of steps. <b>Newton basin</b> walks every pixel toward a root of a complex function. <b>Domain colour</b> paints a complex function directly, hue for angle and bands for size. <b>Flow field</b> releases particles into a velocity field. <b>Lattice</b> evaluates a formula on whole-number cells and wraps it by a modulus. <b>Automaton</b> grows a one-dimensional world row by row. <b>Contour</b> draws level bands of a height field. <b>Harmonograph</b> traces decaying pendulums. <b>Quantum field</b> speaks FXplore’s operator tongue over the plane. <b>Supershape</b> lights a parametric surface in 3D, grown from the superformula Shape Atlas uses, or from a BIOCODEX genome.</p>
+      <h3>Images</h3>
+      <p>Drop, paste or choose any image. The lab keeps a small brightness map of it, up to 128 cells across, and equations read it with img(x, y). The image repeats every whole unit, so it tiles without end. Mint from image weaves it into a new equation, and Use its colours builds a palette from it. Exports embed the image so the equation stays reproducible.</p>
+      <h3>Weddle glossary</h3>
+      <p>A running record, kept in this browser, of every equation you mint, mutate, write, import or open. Search it, open any entry, or download the whole glossary. Entries that read an image keep a copy of the image for as long as there is room.</p>
+      <h3>What “1 in 10ⁿ” means</h3>
+      <p>Each generator is a grammar. Every choice it makes, which term, which function, each coefficient to three or four decimal places, multiplies the number of equations it could have produced. The lab counts those choices as it goes and shows the total. At 10²⁰ and beyond, the chance that anyone has written down the same equation is negligible. Small totals are an honest warning: a short rule can coincide with one already in a book, so treat the number as odds, not proof.</p>
+      <h3>Reading the picture</h3>
+      <p>Rose pixels mean the arithmetic broke down there, usually a division by zero or an overflow. Dark pixels in escape and basin renders did not settle within the step limit; that does not prove they never would. Density genres refine as they render, so the first frames are faint.</p>
+      <h3>Writing your own</h3>
+      <p>Use * to multiply and ^ for powers. Real genres know abs, sin, cos, tan, atan, atan2, sinh, cosh, tanh, sqrt, log, exp, pow, floor, ceil, min, max, sign, mod, fract, hypot, and, or, xor, plus pi and e. Complex genres know sin, cos, tan, sinh, cosh, tanh, exp, log, sqrt, conj, abs, re, im, arg and the constant i. The sliders a, b, p and q light up once your equation uses them.</p>
+      <h3>Ownership</h3>
+      <p>The mathematics minted here is credited to Ω<sup class="oo">Ω</sup> Felix Weddle, who reserves it for everyone: anyone may use, share and remix it. The credit travels with every export, PNG, C file and glossary entry.</p>
+    </details>
+  </div>
+</main>
+<footer><span>ꟻ Clover Equation Lab, Ω<sup class="oo">Ω</sup> Felix Weddle, free for everyone to use</span><span>Runs entirely on your device, no network needed</span></footer>
+<div id="toast" role="status" hidden></div>
+<dialog id="copyDialog"><h2>Copy your equation</h2><textarea id="copyText" readonly aria-label="Equation text"></textarea><div class="row" style="justify-content:flex-end;margin-top:8px"><button id="closeCopy">Done</button></div></dialog>
+<script id="boot-state" type="application/json">null</script>
+<script>
+'use strict';
+/* Pure mathematics core, shared verbatim with the background renderer. No DOM. */
+function equationCore() {
+  const REAL_FNS={abs:1,sin:1,cos:1,tan:1,sqrt:1,log:1,exp:1,floor:1,ceil:1,min:2,max:2,pow:2,atan2:2,atan:1,tanh:1,sinh:1,cosh:1,sign:1,mod:2,fract:1,hypot:2,and:2,or:2,xor:2};
+  const COMPLEX_FNS={sin:1,cos:1,tan:1,exp:1,log:1,sqrt:1,sinh:1,cosh:1,tanh:1,conj:1,abs:1,re:1,im:1,arg:1};
+  const K4=['a','b','p','q'];
+  const FX={gauss:x=>Math.exp(-x*x),absr:x=>Math.sqrt(Math.abs(x)),sq:x=>x*x,cube:x=>x*x*x,lat:x=>x-Math.round(x),weier:x=>Math.cos(x)+Math.cos(3*x)/2+Math.cos(9*x)/4+Math.cos(27*x)/8,ripple:x=>Math.sin(x)/(1+Math.abs(x)*0.4),lnab:x=>Math.log(1+Math.abs(x)),flo:x=>Math.floor(x*2)/2,sig:x=>Math.sign(x),quark:x=>Math.cbrt(Math.sin(3*x)),charm:x=>Math.sin(x)+Math.sin(2.618*x)/2.618,strange:x=>Math.sin(x*1.6180339)+Math.cos(x*0.6180339)/2,gluon:x=>Math.tanh(3*Math.sin(x))*Math.cos(x),spinor:x=>Math.sin(x/2),pion:x=>Math.cos(x)*Math.exp(-Math.abs(x)/Math.PI),octet:x=>Math.cos(x)+Math.cos(8*x)/8,collapse:x=>{const s=Math.sin(x);return Math.sign(s)*s*s;},tunnel:x=>Math.exp(-Math.abs(x))*Math.sign(Math.sin(3*x)),qubit:x=>{const c=Math.cos(x/2);return c*c*2-1;},lorentz:x=>2/Math.sqrt(1+x*x)-1,comet:x=>Math.exp(-x*x/4)*Math.sin(5*x),clover:x=>Math.sin(x)*Math.pow(Math.cos(2*x),2),mobius:x=>x/(1+Math.abs(x)),
+    fm:(a,b)=>Math.sin(a+1.7*Math.sin(b)),fxmod:(a,b)=>{const m=Math.abs(b)+0.7;return ((a%m)+m)%m-m/2;},powa:(a,b)=>Math.pow(Math.abs(a)+1e-6,Math.max(-3,Math.min(3,b)))*Math.sign(a||1),collide:(a,b)=>Math.tanh(a-b)*Math.cos(a+b),annihil:(a,b)=>Math.sin(a*b)*Math.exp(-Math.abs(a+b)/4),yukawa:(a,b)=>Math.exp(-Math.abs(a-b))*Math.cos(a*b),superpos:(a,b)=>(Math.sin(a)+Math.sin(b))/1.41421,entangle:(a,b)=>Math.cos(a-b),braket:(a,b)=>Math.cos(a-b)*Math.exp(-((a-b)*(a-b))/8),dilate:(a,b)=>a/Math.sqrt(1+b*b)};
+  /* FXplore's operator tongue (above) and the Gielis superformula used by Shape Atlas. */
+  const SF=(t,m,n1,n2,n3)=>{const g=m*t/4;return Math.pow(Math.pow(Math.abs(Math.cos(g)),n2)+Math.pow(Math.abs(Math.sin(g)),n3),-1/n1);};
+  for(const k in FX)REAL_FNS[k]=FX[k].length;REAL_FNS.img=2;REAL_FNS.sf=5;COMPLEX_FNS.img=1;
+  const LANG={
+    escape:{complex:false,fields:['x','y'],vars:['x','y','cx','cy','a','b','p','q']},
+    attractor:{complex:false,fields:['x','y'],vars:['x','y','a','b','p','q']},
+    basin:{complex:true,fields:['f'],vars:['z','a','b','p','q']},
+    domain:{complex:true,fields:['f'],vars:['z','a','b','p','q']},
+    flow:{complex:false,fields:['dx','dy'],vars:['x','y','a','b','p','q']},
+    lattice:{complex:false,fields:['v'],vars:['i','j','a','b','p','q']},
+    automaton:{complex:false,fields:['next'],vars:['l2','l','c','r','r2','x','t','a','b','p','q']},
+    contour:{complex:false,fields:['f'],vars:['x','y','a','b','p','q']},
+    harmonic:{complex:false,fields:['x','y'],vars:['t','a','b','p','q']},
+    field:{complex:false,fields:['f'],vars:['u','v','a','b','p','q']},
+    surface:{complex:false,fields:['x','y','z'],vars:['u','v','a','b','p','q']}
+  };
+  const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+
+  /* ── attested scripts ────────────────────────────────────────────────
+     Greek and Old Italic letters are accepted as identifiers. They are
+     transliterated to the lab's own names BEFORE tokenising, so the
+     tokeniser is untouched and the generator can never emit them — a seed
+     mints exactly what it minted before. Characters that previously threw
+     "Unexpected character" now mean something; nothing that parsed before
+     parses differently. Old Italic values follow the Old Latin
+     correspondence (U+10300-1032F, unified block, font decides variant). */
+  const SCRIPT_MAP={'α':'a','β':'b','ρ':'p','θ':'q','π':'pi','ε':'e','φ':'1.6180339887','τ':'6.2831853072','γ':'0.5772156649','δ':'4.6692016091','ω':'0.5671432904','Α':'a','Β':'b','Ρ':'p','Θ':'q','Π':'pi','Φ':'1.6180339887','𐌀':'a','𐌁':'b','𐌂':'c','𐌃':'d','𐌄':'e','𐌅':'f','𐌆':'z','𐌇':'h','𐌉':'i','𐌊':'k','𐌋':'l','𐌌':'m','𐌍':'n','𐌏':'o','𐌐':'p','𐌒':'q','𐌓':'r','𐌔':'s','𐌕':'t','𐌖':'v','𐌗':'x'};
+  function translitScript(s){
+    let out='';
+    for(const ch of String(s)){ const a=SCRIPT_MAP[ch];
+      out += a===undefined ? ch : (/^[a-z_]/.test(a)? a : '('+a+')'); }
+    return out;
+  }
+  function parse(source,lang) {
+    if(typeof source==='string') source=translitScript(source);
+    if(typeof source!=='string'||!source.trim()) throw Error('Enter an expression in every field.');
+    if(source.length>600) throw Error('Keep each expression under 600 characters.');
+    const vars=new Set(lang.vars),fns=lang.complex?COMPLEX_FNS:REAL_FNS;
+    let tokens=[],p=0;
+    while(p<source.length){
+      const rest=source.slice(p),space=/^\s+/.exec(rest);
+      if(space){p+=space[0].length;continue;}
+      const number=/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/.exec(rest);
+      if(number){const n=Number(number[0]);if(!Number.isFinite(n)||Math.abs(n)>1e100)throw Error('Number is too large.');tokens.push({t:'num',v:n});p+=number[0].length;}
+      else{const name=/^[A-Za-z_][A-Za-z_0-9]*/.exec(rest);if(name){tokens.push({t:'name',v:name[0]});p+=name[0].length;}else if('+-*/^(),'.includes(source[p]))tokens.push({t:source[p++]});else throw Error('Unexpected character “'+source[p]+'”. Use * to multiply and ^ for powers.');}
+      if(tokens.length>320)throw Error('Expression is too complex. Try fewer terms.');
+    }
+    tokens.push({t:'end'});let i=0,depth=0;
+    const match=t=>tokens[i].t===t;
+    function expect(t){if(!match(t))throw Error('Expected “'+t+'” near token '+(i+1)+'.');i++;}
+    function primary(){
+      if(++depth>60)throw Error('Too many nested parentheses or powers.');
+      let node;const token=tokens[i++];
+      if(token.t==='num')node={t:'num',v:token.v};
+      else if(token.t==='name'){
+        if(vars.has(token.v))node={t:'var',v:token.v};
+        else if(lang.complex&&token.v==='i')node={t:'imag'};
+        else if(token.v==='pi'||token.v==='e')node={t:'num',v:token.v==='pi'?Math.PI:Math.E,name:token.v};
+        else if(own(fns,token.v)){
+          expect('(');const args=[add()];while(match(',')){i++;args.push(add());}expect(')');
+          if(args.length!==fns[token.v])throw Error(token.v+' needs '+fns[token.v]+' argument(s).');
+          node={t:'fn',v:token.v,args};
+        }else throw Error('Unknown name “'+token.v+'”. Available: '+lang.vars.join(', ')+(lang.complex?', i':'')+'.');
+      }else if(token.t==='('){node=add();expect(')');}
+      else throw Error('Expected a number, variable, or parenthesized expression.');
+      depth--;return node;
+    }
+    function power(){let n=primary();if(match('^')){i++;n={t:'op',v:'^',l:n,r:unary()};}return n;}
+    function unary(){if(match('+')||match('-')){const sign=tokens[i++].t;return {t:'unary',v:sign,r:unary()};}return power();}
+    function mul(){let n=unary();while(match('*')||match('/')){const op=tokens[i++].t;n={t:'op',v:op,l:n,r:unary()};}return n;}
+    function add(){let n=mul();while(match('+')||match('-')){const op=tokens[i++].t;n={t:'op',v:op,l:n,r:mul()};}return n;}
+    const ast=add();if(!match('end'))throw Error('Unexpected token. Write 2*x rather than 2x.');return ast;
+  }
+
+  const num=v=>Number.isInteger(v)&&Math.abs(v)<1e21?v+'.0':String(v);
+  /* Real expressions → JS or C source. */
+  function emit(n,language='js'){
+    const c=language==='c';
+    switch(n.t){
+      case 'num':return num(n.v);
+      case 'var':return n.v;
+      case 'unary':return '('+n.v+'('+emit(n.r,language)+'))';
+      case 'op':{
+        const l=emit(n.l,language);
+        if(n.v==='^'){
+          if(n.r.t==='num'&&Number.isInteger(n.r.v)&&n.r.v>=0&&n.r.v<=8){
+            if(n.l.t==='var'||n.l.t==='num')return n.r.v===0?'1.0':'('+Array(n.r.v).fill(l).join('*')+')';
+            return (c?'lab_powi(':'$powi(')+l+','+n.r.v+')';
+          }
+          return (c?'pow(':'Math.pow(')+l+','+emit(n.r,language)+')';
+        }
+        return '('+l+n.v+emit(n.r,language)+')';
+      }
+      case 'fn':{
+        const args=n.args.map(a=>emit(a,language)).join(',');
+        if(c&&own(FX,n.v))return 'fx_'+n.v+'('+args+')';
+        if(c&&(n.v==='img'||n.v==='sf'))return 'lab_'+n.v+'('+args+')';
+        if(own(FX,n.v)||n.v==='img'||n.v==='sf')return '$'+n.v+'('+args+')';
+        if(c){const m={abs:'fabs',min:'lab_min',max:'lab_max',sign:'lab_sign',mod:'lab_mod',fract:'lab_fract',and:'lab_and',or:'lab_or',xor:'lab_xor'};return (m[n.v]||n.v)+'('+args+')';}
+        const m={mod:'$mod',fract:'$fract',and:'$and',or:'$or',xor:'$xor',sign:'$sign'};return (m[n.v]||'Math.'+n.v)+'('+args+')';
+      }
+    }
+    throw Error('Unsupported node.');
+  }
+  const REAL_PRELUDE='const $powi=(v,n)=>{switch(n){case 0:return 1;case 1:return v;case 2:return v*v;case 3:return v*v*v;case 4:{const s=v*v;return s*s;}default:{let r=1;for(let k=0;k<n;k++)r*=v;return r;}}},$mod=(a,b)=>a-b*Math.floor(a/b),$fract=v=>v-Math.floor(v),$and=(a,b)=>(a&b),$or=(a,b)=>(a|b),$xor=(a,b)=>(a^b),$sign=v=>v>0?1:v<0?-1:v;';
+  const RI={abs:Math.abs,sin:Math.sin,cos:Math.cos,tan:Math.tan,sqrt:Math.sqrt,log:Math.log,exp:Math.exp,floor:Math.floor,ceil:Math.ceil,min:Math.min,max:Math.max,pow:Math.pow,atan2:Math.atan2,atan:Math.atan,tanh:Math.tanh,sinh:Math.sinh,cosh:Math.cosh,hypot:Math.hypot,sign:v=>v>0?1:v<0?-1:v,mod:(a,b)=>a-b*Math.floor(a/b),fract:v=>v-Math.floor(v),and:(a,b)=>(a&b),or:(a,b)=>(a|b),xor:(a,b)=>(a^b)};
+  Object.assign(RI,FX,{sf:SF});
+  /* Closure compiler: used when a page's content-security policy forbids new Function. */
+  function closureReal(lang,asts,sampler){
+    function cl(n){
+      switch(n.t){
+        case 'num':{const v=n.v;return ()=>v;}
+        case 'var':{const k=lang.vars.indexOf(n.v);return e=>e[k];}
+        case 'unary':{const r=cl(n.r);return n.v==='-'?e=>-r(e):r;}
+        case 'op':{const l=cl(n.l),r=cl(n.r);
+          switch(n.v){case '+':return e=>l(e)+r(e);case '-':return e=>l(e)-r(e);case '*':return e=>l(e)*r(e);case '/':return e=>l(e)/r(e);default:return e=>Math.pow(l(e),r(e));}}
+        case 'fn':{const f=n.v==='img'?sampler:RI[n.v],A=n.args.map(cl);return A.length===1?e=>f(A[0](e)):A.length===2?e=>f(A[0](e),A[1](e)):e=>f(A[0](e),A[1](e),A[2](e),A[3](e),A[4](e));}
+      }
+    }
+    const F=asts.map(cl),nv=lang.vars.length;
+    return function(){const e=arguments,out=e[nv];for(let k=0;k<F.length;k++)out[k]=F[k](e);};
+  }
+
+  /* Complex expressions → flat JS with a real and imaginary temp per node. */
+  function emitComplex(ast){
+    const L=[];let k=0;const N=()=>'t'+(k++);
+    const two=(re,im)=>{const r=N(),i=N();L.push('const '+r+'='+re+','+i+'='+im+';');return [r,i];};
+    const mul=(A,B)=>two(A[0]+'*'+B[0]+'-'+A[1]+'*'+B[1],A[0]+'*'+B[1]+'+'+A[1]+'*'+B[0]);
+    const div=(A,B)=>{const d=N();L.push('const '+d+'='+B[0]+'*'+B[0]+'+'+B[1]+'*'+B[1]+';');return two('('+A[0]+'*'+B[0]+'+'+A[1]+'*'+B[1]+')/'+d,'('+A[1]+'*'+B[0]+'-'+A[0]+'*'+B[1]+')/'+d);};
+    const ex=A=>{const m=N();L.push('const '+m+'=Math.exp('+A[0]+');');return two(m+'*Math.cos('+A[1]+')',m+'*Math.sin('+A[1]+')');};
+    const lg=A=>two('0.5*Math.log('+A[0]+'*'+A[0]+'+'+A[1]+'*'+A[1]+')','Math.atan2('+A[1]+','+A[0]+')');
+    function go(n){
+      switch(n.t){
+        case 'num':return [num(n.v),'0.0'];
+        case 'imag':return ['0.0','1.0'];
+        case 'var':return n.v==='z'?['zr','zi']:[n.v,'0.0'];
+        case 'unary':{const A=go(n.r);return n.v==='-'?two('-('+A[0]+')','-('+A[1]+')'):A;}
+        case 'op':{
+          if(n.v==='^'){
+            const A=go(n.l);let e=null;
+            if(n.r.t==='num'&&Number.isInteger(n.r.v))e=n.r.v;
+            else if(n.r.t==='unary'&&n.r.v==='-'&&n.r.r.t==='num'&&Number.isInteger(n.r.r.v))e=-n.r.r.v;
+            if(e!==null&&Math.abs(e)<=32){
+              let m=Math.abs(e),base=A,res=null;
+              while(m){if(m&1)res=res?mul(res,base):base;m>>=1;if(m)base=mul(base,base);}
+              if(!res)return ['1.0','0.0'];
+              return e<0?div(['1.0','0.0'],res):res;
+            }
+            return ex(mul(go(n.r),lg(A)));
+          }
+          const A=go(n.l),B=go(n.r);
+          if(n.v==='+')return two(A[0]+'+'+B[0],A[1]+'+'+B[1]);
+          if(n.v==='-')return two(A[0]+'-('+B[0]+')',A[1]+'-('+B[1]+')');
+          if(n.v==='*')return mul(A,B);
+          return div(A,B);
+        }
+        case 'fn':{
+          const A=go(n.args[0]),x=A[0],y=A[1];
+          switch(n.v){
+            case 'exp':return ex(A);
+            case 'log':return lg(A);
+            case 'sqrt':{const m=N();L.push('const '+m+'=Math.hypot('+x+','+y+');');return two('Math.sqrt(Math.max(0,('+m+'+'+x+')/2))','('+y+'<0?-1:1)*Math.sqrt(Math.max(0,('+m+'-'+x+')/2))');}
+            case 'sin':return two('Math.sin('+x+')*Math.cosh('+y+')','Math.cos('+x+')*Math.sinh('+y+')');
+            case 'cos':return two('Math.cos('+x+')*Math.cosh('+y+')','-Math.sin('+x+')*Math.sinh('+y+')');
+            case 'sinh':return two('Math.sinh('+x+')*Math.cos('+y+')','Math.cosh('+x+')*Math.sin('+y+')');
+            case 'cosh':return two('Math.cosh('+x+')*Math.cos('+y+')','Math.sinh('+x+')*Math.sin('+y+')');
+            case 'tan':{const d=N();L.push('const '+d+'=Math.cos(2*'+x+')+Math.cosh(2*'+y+');');return two('Math.abs('+y+')>350?0:Math.sin(2*'+x+')/'+d,'Math.abs('+y+')>350?Math.sign('+y+'):Math.sinh(2*'+y+')/'+d);}
+            case 'tanh':{const d=N();L.push('const '+d+'=Math.cosh(2*'+x+')+Math.cos(2*'+y+');');return two('Math.abs('+x+')>350?Math.sign('+x+'):Math.sinh(2*'+x+')/'+d,'Math.abs('+x+')>350?0:Math.sin(2*'+y+')/'+d);}
+            case 'conj':return two(x,'-('+y+')');
+            case 'abs':return two('Math.hypot('+x+','+y+')','0.0');
+            case 're':return [x,'0.0'];
+            case 'im':return [y,'0.0'];
+            case 'arg':return two('Math.atan2('+y+','+x+')','0.0');
+            case 'img':return two('$img('+x+','+y+')','0.0');
+          }
+        }
+      }
+      throw Error('Unsupported node.');
+    }
+    const R=go(ast);
+    return L.join('')+'out[0]='+R[0]+';out[1]='+R[1]+';';
+  }
+  /* Complex arithmetic for the closure fallback. Each node writes into two register slots. */
+  function closureComplex(ast,sampler){
+    let slots=0,R=null;
+    function cl(n){
+      const k=(slots++)*2;let f;
+      switch(n.t){
+        case 'num':{const v=n.v;f=()=>{R[k]=v;R[k+1]=0;};break;}
+        case 'imag':f=()=>{R[k]=0;R[k+1]=1;};break;
+        case 'var':{if(n.v==='z')f=e=>{R[k]=e[0];R[k+1]=e[1];};else{const j=K4.indexOf(n.v)+2;f=e=>{R[k]=e[j];R[k+1]=0;};}break;}
+        case 'unary':{const c=cl(n.r),neg=n.v==='-';f=e=>{c.f(e);R[k]=neg?-R[c.k]:R[c.k];R[k+1]=neg?-R[c.k+1]:R[c.k+1];};break;}
+        case 'op':{const A=cl(n.l),B=cl(n.r),op=n.v;f=e=>{A.f(e);B.f(e);cbin(op,R[A.k],R[A.k+1],R[B.k],R[B.k+1],k);};break;}
+        case 'fn':{const A=cl(n.args[0]),name=n.v;f=e=>{A.f(e);cfn(name,R[A.k],R[A.k+1],k);};break;}
+      }
+      return {k,f};
+    }
+    function cbin(op,ar,ai,br,bi,k){
+      if(op==='+'){R[k]=ar+br;R[k+1]=ai+bi;}else if(op==='-'){R[k]=ar-br;R[k+1]=ai-bi;}
+      else if(op==='*'){R[k]=ar*br-ai*bi;R[k+1]=ar*bi+ai*br;}
+      else if(op==='/'){const d=br*br+bi*bi;R[k]=(ar*br+ai*bi)/d;R[k+1]=(ai*br-ar*bi)/d;}
+      else{const lm=.5*Math.log(ar*ar+ai*ai),la=Math.atan2(ai,ar),er=br*lm-bi*la,ei=br*la+bi*lm,m=Math.exp(er);R[k]=m*Math.cos(ei);R[k+1]=m*Math.sin(ei);}
+    }
+    function cfn(name,x,y,k){
+      let re,im;
+      switch(name){
+        case 'exp':{const m=Math.exp(x);re=m*Math.cos(y);im=m*Math.sin(y);break;}
+        case 'log':re=.5*Math.log(x*x+y*y);im=Math.atan2(y,x);break;
+        case 'sqrt':{const m=Math.hypot(x,y);re=Math.sqrt(Math.max(0,(m+x)/2));im=(y<0?-1:1)*Math.sqrt(Math.max(0,(m-x)/2));break;}
+        case 'sin':re=Math.sin(x)*Math.cosh(y);im=Math.cos(x)*Math.sinh(y);break;
+        case 'cos':re=Math.cos(x)*Math.cosh(y);im=-Math.sin(x)*Math.sinh(y);break;
+        case 'sinh':re=Math.sinh(x)*Math.cos(y);im=Math.cosh(x)*Math.sin(y);break;
+        case 'cosh':re=Math.cosh(x)*Math.cos(y);im=Math.sinh(x)*Math.sin(y);break;
+        case 'tan':{const d=Math.cos(2*x)+Math.cosh(2*y);re=Math.abs(y)>350?0:Math.sin(2*x)/d;im=Math.abs(y)>350?Math.sign(y):Math.sinh(2*y)/d;break;}
+        case 'tanh':{const d=Math.cosh(2*x)+Math.cos(2*y);re=Math.abs(x)>350?Math.sign(x):Math.sinh(2*x)/d;im=Math.abs(x)>350?0:Math.sin(2*y)/d;break;}
+        case 'conj':re=x;im=-y;break;
+        case 'abs':re=Math.hypot(x,y);im=0;break;
+        case 're':re=x;im=0;break;
+        case 'im':re=y;im=0;break;
+        case 'img':re=sampler(x,y);im=0;break;
+        default:re=Math.atan2(y,x);im=0;
+      }
+      R[k]=re;R[k+1]=im;
+    }
+    const root=cl(ast);R=new Float64Array(slots*2);
+    return function(zr,zi,a,b,p,q,out){root.f([zr,zi,a,b,p,q]);out[0]=R[root.k];out[1]=R[root.k+1];};
+  }
+
+  let evalBlocked=false;
+  const FX_PRELUDE='const '+Object.keys(FX).map(k=>'$'+k+'=$F.'+k).join(',')+';';
+  const SAMPLERS=new Map(),ZERO=()=>0;
+  /* Images are stored as luminance bytes. img(x, y) reads them with nearest-neighbour sampling and wraps, so they tile forever. */
+  function makeSampler(image){
+    if(!image||typeof image.data!=='string')return ZERO;
+    let fnS=SAMPLERS.get(image.data);if(fnS)return fnS;
+    const W=image.w|0,H=image.h|0,bin=atob(image.data),Lum=new Float64Array(W*H);
+    for(let i=0;i<W*H;i++)Lum[i]=bin.charCodeAt(i)/255;
+    fnS=function(x,y){const u=x-Math.floor(x),v=y-Math.floor(y);if(!(u>=0&&v>=0))return 0;let i=(u*W)|0,j=((1-v)*H)|0;if(i>=W)i=W-1;if(j>=H)j=H-1;return Lum[j*W+i];};
+    if(SAMPLERS.size>8)SAMPLERS.clear();SAMPLERS.set(image.data,fnS);return fnS;
+  }
+  function compileGenre(genre,exprs,image){
+    const lang=LANG[genre];if(!lang)throw Error('Unknown genre.');
+    if(!exprs||typeof exprs!=='object')throw Error('Missing expressions.');
+    const asts=lang.fields.map(f=>parse(exprs[f],lang)),sampler=makeSampler(image);
+    let fn=null;
+    if(!evalBlocked){
+      try{
+        fn=lang.complex
+          ?new Function('$img','"use strict";return function(zr,zi,a,b,p,q,out){'+emitComplex(asts[0])+'};')(sampler)
+          :new Function('$F','$img','$sf','"use strict";'+REAL_PRELUDE+FX_PRELUDE+'return function('+lang.vars.join(',')+',out){'+asts.map((a,k)=>'out['+k+']='+emit(a)+';').join('')+'};')(FX,sampler,SF);
+      }catch(e){evalBlocked=true;}
+    }
+    if(!fn)fn=lang.complex?closureComplex(asts[0],sampler):closureReal(lang,asts,sampler);
+    return {fn,asts,lang};
+  }
+
+  /* Palette look-up table: 1024 entries interpolated through cyclic stops. */
+  function makeLUT(stops){
+    const n=1024,L=new Uint8Array(n*3);
+    for(let i=0;i<n;i++){const t=i/n*(stops.length-1),j=Math.floor(t),f=t-j,A=stops[j],B=stops[Math.min(j+1,stops.length-1)];for(let c=0;c<3;c++)L[i*3+c]=Math.round(A[c]*(1-f)+B[c]*f);}
+    return L;
+  }
+  function seededRandom(n){let a=n>>>0;return function(){a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
+  function hash(str){let a=2166136261;for(let i=0;i<str.length;i++)a=Math.imul(a^str.charCodeAt(i),16777619);return a>>>0;}
+  const ROSE=[221,105,137],VOID=[6,13,10];
+
+function densityEngine(w,h,V,aspect,L,stats,passes,advance){
+    const cnt=new Float32Array(w*h),cr=new Float32Array(w*h),cg=new Float32Array(w*h),cb=new Float32Array(w*h);
+    const M=new Float64Array([V.x-V.span/2,V.y+V.span*aspect/2,w/V.span,h/(V.span*aspect)]);
+    function splat(x,y,t){
+      const px=Math.floor((x-M[0])*M[2]),py=Math.floor((M[1]-y)*M[3]);
+      if(px<0||py<0||px>=w||py>=h)return;
+      const i=py*w+px,u=t-Math.floor(t),k=(u>=0&&u<1?(u*1024)|0:0)*3;
+      cnt[i]++;cr[i]+=L[k];cg[i]+=L[k+1];cb[i]+=L[k+2];
+    }
+    return {kind:'frame',count:passes,step(k){
+      advance(k,splat);
+      const hist=new Uint32Array(256);let nz=0;
+      for(let i=0;i<cnt.length;i+=3){const c=cnt[i];if(c>0){hist[Math.min(255,(Math.log2(c)*8)|0)]++;nz++;}}
+      let acc=0,bin=0;const want=nz*.985;while(bin<255&&acc+hist[bin]<want){acc+=hist[bin];bin++;}
+      const ref=Math.pow(2,(bin+1)/8),lr=Math.log(1+Math.max(1,ref));
+      const o=new Uint8ClampedArray(w*h*4);let lit=0;
+      for(let i=0;i<cnt.length;i++){
+        const j=i*4,c=cnt[i];
+        if(c>0){lit++;const v=Math.min(1,Math.log(1+c)/lr),b=Math.pow(v,.8),hot=Math.max(0,b-.82)*260;
+          o[j]=4+cr[i]/c*b*1.15+hot;o[j+1]=8+cg[i]/c*b*1.15+hot;o[j+2]=7+cb[i]/c*b*1.15+hot;}
+        else{o[j]=4;o[j+1]=8;o[j+2]=7;}
+        o[j+3]=255;
+      }
+      stats.escaped=lit;
+      return {y:0,rows:h,pixels:o,progress:(k+1)/passes,escaped:stats.escaped,invalid:stats.invalid};
+    }};
+  }
+  function engine(s,w,h,palette){
+    const {fn}=compileGenre(s.genre,s.exprs,s.image),L=makeLUT(palette),out=[0,0];
+    const A=s.a,B=s.b,P=s.p,Q=s.q,V=s.view,aspect=h/w;
+    const X=px=>V.x+((px+.5)/w-.5)*V.span,Y=py=>V.y+(.5-(py+.5)/h)*V.span*aspect;
+    const stats={escaped:0,invalid:0};
+    const cyc=(o,i,t,shade)=>{let u=t-Math.floor(t);if(!(u>=0))u=0;const k=Math.min(1023,(u*1024)|0)*3;o[i]=L[k]*shade;o[i+1]=L[k+1]*shade;o[i+2]=L[k+2]*shade;};
+    const put=(o,i,c)=>{o[i]=c[0];o[i+1]=c[1];o[i+2]=c[2];};
+    function rows(perPixel,rowFill){
+      const band=8;
+      return {kind:'rows',count:Math.ceil(h/band),step(k){
+        const y0=k*band,n=Math.min(band,h-y0),o=new Uint8ClampedArray(w*n*4);
+        if(rowFill)for(let py=y0;py<y0+n;py++)rowFill(py,o,(py-y0)*w*4);
+        else for(let py=y0;py<y0+n;py++)for(let px=0;px<w;px++){const i=((py-y0)*w+px)*4;perPixel(px,py,o,i);o[i+3]=255;}
+        return {y:y0,rows:n,pixels:o,progress:(y0+n)/h,escaped:stats.escaped,invalid:stats.invalid};
+      }};
+    }
+    const density=(passes,advance)=>densityEngine(w,h,V,aspect,L,stats,passes,advance);
+    const area=w*h/480000;
+    switch(s.genre){
+      case 'escape':{
+        const lim=s.knob*s.knob,julia=s.mode==='julia',it=s.iterations,cycle=s.colorCycle,pl=palette.length;
+        const jr=s.juliaRe,ji=s.juliaIm,vx=V.x,vy=V.y,sp=V.span;
+        return rows(null,(py,o,base)=>{
+          const im=vy+(.5-(py+.5)/h)*sp*h/w;let esCount=0,invCount=0;
+          for(let px=0;px<w;px++){
+            const re=vx+((px+.5)/w-.5)*sp,cx=julia?jr:re,cy=julia?ji:im,i=base+px*4;
+            let x=julia?re:0,y=julia?im:0,n=0,esc=x*x+y*y>lim,bad=false;
+            while(n<it&&!esc){fn(x,y,cx,cy,A,B,P,Q,out);x=out[0];y=out[1];n++;if(x-x!==0||y-y!==0){bad=true;break;}esc=x*x+y*y>lim;}
+            if(bad){o[i]=221;o[i+1]=105;o[i+2]=137;invCount++;}
+            else if(esc){esCount++;const t=(n%cycle)/cycle*(pl-1),j=Math.floor(t),f=t-j;for(let c=0;c<3;c++)o[i+c]=Math.round(palette[j][c]*(1-f)+palette[j+1][c]*f);}
+            else{o[i]=6;o[i+1]=13;o[i+2]=10;}
+            o[i+3]=255;
+          }
+          stats.escaped+=esCount;stats.invalid+=invCount;
+        });
+      }
+      case 'attractor':{
+        const total=Math.round(s.iterations*20000*area),passes=16,per=Math.ceil(total/passes),rep=Math.max(1,Math.round(s.colorCycle/36));
+        const pos=new Float64Array([.1,.1]),rnd=seededRandom(hash(s.seed||'x'));
+        for(let n=0;n<300;n++){fn(pos[0],pos[1],A,B,P,Q,out);pos[0]=out[0];pos[1]=out[1];if(!Number.isFinite(pos[0])||!Number.isFinite(pos[1])){pos[0]=rnd()-.5;pos[1]=rnd()-.5;}}
+        return density(passes,(k,splat)=>{
+          let x=pos[0],y=pos[1],bad=0;
+          for(let m=0;m<per;m++){
+            fn(x,y,A,B,P,Q,out);let nx=out[0],ny=out[1];
+            if(!(nx-nx===0)||!(ny-ny===0)||nx>1e12||nx<-1e12||ny>1e12||ny<-1e12){bad++;nx=rnd()-.5;ny=rnd()-.5;}
+            else splat(nx,ny,(Math.atan2(ny-y,nx-x)*.15915494309189535+.5)*rep);
+            x=nx;y=ny;
+          }
+          pos[0]=x;pos[1]=y;stats.invalid+=bad;
+        });
+      }
+      case 'harmonic':{
+        const T=s.knob,total=Math.round(s.iterations*10000*area),passes=16,per=Math.ceil(total/passes),sweep=s.colorCycle/12,rnd=seededRandom(hash(s.seed||'h')^0x9e3779b9);
+        return density(passes,(k,splat)=>{
+          for(let m=0;m<per;m++){
+            const t=T*(k+rnd())/passes;
+            fn(t,A,B,P,Q,out);
+            if(Number.isFinite(out[0])&&Number.isFinite(out[1]))splat(out[0],out[1],t/T*sweep);else stats.invalid++;
+          }
+        });
+      }
+      case 'flow':{
+        const passes=Math.max(2,Math.ceil(s.iterations/16)),particles=Math.max(400,Math.round(w*h/120)),life=80,stepLen=s.knob*V.span/w,rep=Math.max(1,Math.round(s.colorCycle/36));
+        return density(passes,(k,splat)=>{
+          const rnd=seededRandom(hash(s.seed||'f')+k*7919);
+          for(let m=0;m<particles;m++){
+            let x=V.x+(rnd()-.5)*V.span*1.08,y=V.y+(rnd()-.5)*V.span*aspect*1.08;
+            for(let n=0;n<life;n++){
+              fn(x,y,A,B,P,Q,out);let u=out[0],v=out[1],mag=Math.sqrt(u*u+v*v);
+              if(!(mag>1e-12)||!Number.isFinite(mag)){if(!Number.isFinite(mag))stats.invalid++;break;}
+              const hx=x+.5*stepLen*u/mag,hy=y+.5*stepLen*v/mag;
+              fn(hx,hy,A,B,P,Q,out);u=out[0];v=out[1];mag=Math.sqrt(u*u+v*v);
+              if(!(mag>1e-12)||!Number.isFinite(mag))break;
+              x+=stepLen*u/mag;y+=stepLen*v/mag;
+              splat(x,y,(Math.atan2(v,u)/(2*Math.PI)+.5)*rep);
+            }
+          }
+        });
+      }
+      case 'basin':{
+        const relax=s.knob,maxIt=s.iterations,rep=Math.max(1,Math.round(s.colorCycle/36)),fall=Math.max(1,s.colorCycle/3);
+        const vx=V.x,vy=V.y,sp=V.span;
+        return rows(null,(py,o,base)=>{
+         const im0=vy+(.5-(py+.5)/h)*sp*aspect;let esCount=0,invCount=0;
+         for(let px=0;px<w;px++){
+          const i=base+px*4;o[i+3]=255;
+          let zr=vx+((px+.5)/w-.5)*sp,zi=im0,n=0,conv=false,bad=false;
+          for(;n<maxIt;n++){
+            fn(zr,zi,A,B,P,Q,out);const fr=out[0],fi=out[1];
+            if(fr-fr!==0||fi-fi!==0){bad=true;break;}
+            const hs=1e-7*Math.max(1,Math.abs(zr)+Math.abs(zi));
+            fn(zr+hs,zi,A,B,P,Q,out);const dr=(out[0]-fr)/hs,di=(out[1]-fi)/hs,d=dr*dr+di*di;
+            if(!(d>0)||!Number.isFinite(d))break;
+            const qr=(fr*dr+fi*di)/d,qi=(fi*dr-fr*di)/d;
+            zr-=relax*qr;zi-=relax*qi;
+            if(zr-zr!==0||zi-zi!==0){bad=true;break;}
+            if(qr*qr+qi*qi<1e-12){conv=true;break;}
+          }
+          if(bad){put(o,i,ROSE);invCount++;}
+          else if(conv){esCount++;cyc(o,i,(Math.atan2(zi,zr)/(2*Math.PI)+.5)*rep+.07*Math.log(1+Math.sqrt(zr*zr+zi*zi)),.22+.78*Math.exp(-n/fall));}
+          else put(o,i,VOID);
+         }
+         stats.escaped+=esCount;stats.invalid+=invCount;
+        });
+      }
+      case 'domain':{
+        const ring=s.knob,rep=Math.max(1,Math.round(s.colorCycle/36));
+        const vx=V.x,vy=V.y,sp=V.span;
+        return rows(null,(py,o,base)=>{
+          const im=vy+(.5-(py+.5)/h)*sp*aspect;let invCount=0;
+          for(let px=0;px<w;px++){
+            const i=base+px*4;o[i+3]=255;
+            fn(vx+((px+.5)/w-.5)*sp,im,A,B,P,Q,out);const wr=out[0],wi=out[1];
+            if(wr-wr!==0||wi-wi!==0){put(o,i,ROSE);invCount++;continue;}
+            const m2=wr*wr+wi*wi;if(m2===0){put(o,i,VOID);continue;}
+            const lm=.5*Math.log2(m2)*ring,band=lm-Math.floor(lm);
+            cyc(o,i,(Math.atan2(wi,wr)*.15915494309189535+.5)*rep,.5+.5*band);
+          }
+          stats.invalid+=invCount;
+        });
+      }
+      case 'contour':{
+        const K=s.knob,hp=V.span/w,nb=Math.max(2,Math.round(s.colorCycle/6));
+        const cx0=V.x,cy0=V.y,sp=V.span;
+        return rows(null,(py,o,base)=>{
+          const y=cy0+(.5-(py+.5)/h)*sp*aspect;let invCount=0;
+          for(let px=0;px<w;px++){
+            const i=base+px*4,x=cx0+((px+.5)/w-.5)*sp;o[i+3]=255;
+            fn(x,y,A,B,P,Q,out);const v=out[0];fn(x+hp,y,A,B,P,Q,out);const dx=out[0]-v;fn(x,y+hp,A,B,P,Q,out);const dy=out[0]-v;
+            if(v-v!==0){put(o,i,ROSE);invCount++;continue;}
+            const lv=v*K,band=Math.floor(lv),t=(((band%nb)+nb)%nb)/nb,g=Math.sqrt(dx*dx+dy*dy)*K,near=Math.round(lv),dist=Math.abs(lv-near)/(g>0&&g-g===0?g:1e-300);
+            if(dist<.55){if(near===0){o[i]=244;o[i+1]=255;o[i+2]=232;}else cyc(o,i,t,.26);}
+            else cyc(o,i,t,.92);
+          }
+          stats.invalid+=invCount;
+        });
+      }
+      case 'field':{
+        const K=s.knob,hp=V.span/w,vx=V.x,vy=V.y,sp=V.span,Lx=-.48,Ly=.58,Lz=.66;
+        return rows(null,(py,o,base)=>{
+          const y=vy+(.5-(py+.5)/h)*sp*aspect;let invCount=0;
+          for(let px=0;px<w;px++){
+            const i=base+px*4,x=vx+((px+.5)/w-.5)*sp;o[i+3]=255;
+            fn(x,y,A,B,P,Q,out);const v=out[0];
+            if(v-v!==0){put(o,i,ROSE);invCount++;continue;}
+            fn(x+hp,y,A,B,P,Q,out);let gx=(out[0]-v)/hp;fn(x,y+hp,A,B,P,Q,out);let gy=(out[0]-v)/hp;
+            if(gx-gx!==0)gx=0;if(gy-gy!==0)gy=0;
+            const nx=-gx*.35,ny=-gy*.35,nl=Math.sqrt(nx*nx+ny*ny+1),lam=(nx*Lx+ny*Ly+Lz)/nl;
+            cyc(o,i,v*K,.3+.85*(lam>0?lam:0));
+          }
+          stats.invalid+=invCount;
+        });
+      }
+      case 'surface':{
+        const yaw=s.knob*Math.PI/180,pitch=(s.mode==='top'?68:s.mode==='side'?0:24)*Math.PI/180,cyw=Math.cos(yaw),syw=Math.sin(yaw),cpt=Math.cos(pitch),spt=Math.sin(pitch);
+        const total=Math.round(s.iterations*2000*area),nv=Math.max(24,Math.round(Math.sqrt(total/2))),nu=nv*2,passes=12,rep=Math.max(1,Math.round(s.colorCycle/36));
+        const zb=new Float32Array(w*h).fill(Infinity),img=new Uint8ClampedArray(w*h*4);
+        for(let i=0;i<w*h;i++){img[i*4]=4;img[i*4+1]=8;img[i*4+2]=7;img[i*4+3]=255;}
+        const du=2*Math.PI/nu,dv=Math.PI/nv,e=1e-4,sx0=V.x,sy0=V.y,sc=w/V.span,scy=h/(V.span*aspect),lx=-.5,ld=-.62,lu=.6;
+        return {kind:'frame',count:passes,step(k){
+          let hits=0,bad=0;
+          for(let j=k;j<=nv;j+=passes){
+            const v=-Math.PI/2+j*dv;
+            for(let i=0;i<nu;i++){
+              const u=-Math.PI+i*du;
+              fn(u,v,A,B,P,Q,out);const x=out[0],y=out[1],z=out[2];
+              if(x-x!==0||y-y!==0||z-z!==0){bad++;continue;}
+              fn(u+e,v,A,B,P,Q,out);const ax=out[0]-x,ay=out[1]-y,az=out[2]-z;
+              fn(u,v+e,A,B,P,Q,out);const bx=out[0]-x,by=out[1]-y,bz=out[2]-z;
+              const nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;
+              const X=x*cyw+y*syw,D=-x*syw+y*cyw,U=z*cpt+D*spt,Dp=D*cpt-z*spt;
+              const px=Math.floor((X-sx0)*sc+w/2),py=Math.floor((sy0-U)*scy+h/2);
+              if(!(px>=-1&&py>=-1&&px<w&&py<h))continue;
+              const NX=nx*cyw+ny*syw,ND=-nx*syw+ny*cyw,NU=nz*cpt+ND*spt,NDp=ND*cpt-nz*spt,nl=Math.sqrt(NX*NX+NU*NU+NDp*NDp);
+              let lam=nl>0?Math.abs(NX*lx+NDp*ld+NU*lu)/nl:.5;if(lam-lam!==0)lam=.5;
+              const t=(u+Math.PI)/(2*Math.PI)*rep+(v+Math.PI/2)/Math.PI*.5,uu=t-Math.floor(t),kk=(uu>=0&&uu<1?(uu*1024)|0:0)*3,shade=.16+.9*lam;
+              const r=L[kk]*shade,g=L[kk+1]*shade,b=L[kk+2]*shade;
+              for(let qy=py;qy<py+2;qy++){if(qy<0||qy>=h)continue;for(let qx=px;qx<px+2;qx++){if(qx<0||qx>=w)continue;const q=qy*w+qx;if(Dp<zb[q]){zb[q]=Dp;const o=q*4;img[o]=r;img[o+1]=g;img[o+2]=b;hits++;}}}
+            }
+          }
+          stats.invalid+=bad;stats.escaped+=hits;
+          return {y:0,rows:h,pixels:img.slice(),progress:(k+1)/passes,escaped:stats.escaped,invalid:stats.invalid};
+        }};
+      }
+      case 'lattice':{
+        const M=Math.max(2,Math.round(s.knob));let cI=NaN,cJ=NaN,cr=0,cg=0,cb=0,bad=false;
+        return rows((px,py,o,i)=>{
+          const I=Math.floor(X(px)),J=Math.floor(Y(py));
+          if(I!==cI||J!==cJ){
+            cI=I;cJ=J;fn(I,J,A,B,P,Q,out);const v=out[0];
+            bad=!Number.isFinite(v);
+            if(!bad){const res=((Math.floor(v)%M)+M)%M,k=Math.min(1023,((res/M)*1024)|0)*3;cr=L[k];cg=L[k+1];cb=L[k+2];}
+          }
+          if(bad){put(o,i,ROSE);stats.invalid++;}else{o[i]=cr;o[i+1]=cg;o[i+2]=cb;}
+        });
+      }
+      case 'automaton':{
+        const K=Math.max(2,Math.min(8,Math.round(s.knob))),cs=w>=1440?4:w>=800?3:2,W=Math.ceil(w/cs),G=Math.ceil(h/cs),per=Math.max(1,Math.floor(12/cs));
+        let row=new Float64Array(W),next=new Float64Array(W);
+        const rnd=seededRandom(hash((s.seed||'ca')+'|'+s.exprs.next));
+        if(s.mode==='dot')row[Math.floor(W/2)]=1;else for(let x=0;x<W;x++)row[x]=Math.floor(rnd()*K);
+        const colors=[];for(let st=0;st<K;st++){if(st===0){colors.push([8,14,12]);continue;}const t=K===2?.6:.14+.53*(st-1)/(K-2),k=Math.min(1023,(t*1024)|0)*3;colors.push([L[k],L[k+1],L[k+2]]);}
+        return {kind:'rows',count:Math.ceil(G/per),step(k){
+          const g0=k*per,g1=Math.min(G,g0+per),y0=g0*cs,y1=Math.min(h,g1*cs),o=new Uint8ClampedArray(w*(y1-y0)*4);
+          for(let g=g0;g<g1;g++){
+            const top=g*cs-y0;
+            for(let x=0;x<W;x++){const c=colors[row[x]]||colors[0];if(row[x]>0)stats.escaped++;
+              for(let dy=0;dy<cs&&top+dy<y1-y0;dy++)for(let dx=0;dx<cs&&x*cs+dx<w;dx++){const i=((top+dy)*w+x*cs+dx)*4;o[i]=c[0];o[i+1]=c[1];o[i+2]=c[2];o[i+3]=255;}}
+            for(let x=0;x<W;x++){
+              fn(row[(x-2+W)%W],row[(x-1+W)%W],row[x],row[(x+1)%W],row[(x+2)%W],x,g,A,B,P,Q,out);
+              let v=out[0];if(!Number.isFinite(v)){stats.invalid++;v=0;}
+              next[x]=((Math.floor(v)%K)+K)%K;
+            }
+            const tmp=row;row=next;next=tmp;
+          }
+          return {y:y0,rows:y1-y0,pixels:o,progress:y1/h,escaped:stats.escaped,invalid:stats.invalid};
+        }};
+      }
+    }
+    throw Error('No renderer for this genre.');
+  }
+  return {parse,emit,compileGenre,engine,LANG,REAL_FNS,COMPLEX_FNS,hash,seededRandom,FX,SF,makeSampler};
+}
+
+/* Seeded generators. Each genre has its own grammar and its own screen for visible structure. No DOM. */
+function generatorCore(core) {
+  function seeded(seed){let a=2166136261;for(let i=0;i<seed.length;i++)a=Math.imul(a^seed.charCodeAt(i),16777619);return function(){a+=0x6D2B79F5;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
+  const dec=step=>Math.max(0,Math.ceil(-Math.log10(step)-1e-9));
+  const fmt=v=>String(Number((+v).toFixed(4)));
+  /* Every random choice adds log10(options) to R.bits: how many distinct paths the generator could have taken. */
+  function rng(seed){
+    const r=seeded(String(seed));
+    const R={bits:0,r,
+      float(lo,hi,step){const n=Math.max(1,Math.round((hi-lo)/step));R.bits+=Math.log10(n+1);return Number((lo+Math.floor(r()*(n+1))*step).toFixed(dec(step)));},
+      mag(lo,hi,step){R.bits+=Math.log10(2);return (r()<.5?-1:1)*R.float(lo,hi,step);},
+      int(lo,hi){const n=hi-lo+1;R.bits+=Math.log10(n);return lo+Math.floor(r()*n);},
+      pick(a){R.bits+=Math.log10(a.length);return a[Math.floor(r()*a.length)];},
+      chance(p){R.bits+=Math.log10(2);return r()<p;}
+    };
+    return R;
+  }
+  /* Terms: {c: number | slider letter, body: string | null}. Bodies must already be atomic. */
+  function sum(terms){
+    let s='';
+    terms.forEach((t,k)=>{
+      let neg=false,text;
+      if(typeof t.c==='number'){neg=t.c<0;const m=Math.abs(t.c);text=t.body==null?fmt(m):(m===1?t.body:fmt(m)+'*'+t.body);}
+      else text=t.body==null?t.c:t.c+'*'+t.body;
+      s+=k===0?(neg?'-':'')+text:(neg?' - ':' + ')+text;
+    });
+    return s||'0';
+  }
+  const wrap=b=>{let t=b,prev;do{prev=t;t=t.replace(/\([^()]*\)/g,'_');}while(t!==prev);return /\s[+-]\s/.test(t)||/^-/.test(t)?'('+b+')':b;};
+  const atom=b=>{let t=b,prev;do{prev=t;t=t.replace(/\([^()]*\)/g,'_');}while(t!==prev);return /^[A-Za-z0-9_.]+$/.test(t)?b:'('+b+')';};
+  function sliders(){const pool=['a','b','p','q'];return {vals:{a:0,b:0,p:0,q:0},take(R,lo,hi,step){if(!pool.length)return null;const l=pool.shift();this.vals[l]=R.mag(lo,hi,step);return l;}};}
+  const cplx=(u,v)=>{if(Math.abs(v)<1e-9)return u<0?'('+fmt(u)+')':fmt(u);if(Math.abs(u)<1e-9)return '('+fmt(v)+'*i)';return '('+fmt(u)+(v<0?' - ':' + ')+fmt(Math.abs(v))+'*i)';};
+  const binom=(n,k)=>{let r=1;for(let i=1;i<=k;i++)r=r*(n-i+1)/i;return r;};
+  function zpow(d,X,Y){
+    const re=[],im=[];
+    for(let k=0;k<=d;k++){
+      const parts=[];if(d-k>0)parts.push(d-k===1?X:X+'^'+(d-k));if(k>0)parts.push(k===1?Y:Y+'^'+k);
+      const body=parts.join('*'),c=binom(d,k),sign=(k%4===2||k%4===3)?-1:1;
+      (k%2===0?re:im).push({c:sign*c,body});
+    }
+    return [sum(re),sum(im)];
+  }
+
+  const CANDIDATE={
+    escape(R,opts={}){
+      const S=sliders(),d=R.pick([2,2,2,3,3,4,5]),variant=R.pick(['plain','plain','conjugate','ship','fold-real','fold-imag','fold-input']);
+      const X=variant==='ship'||variant==='fold-input'?'abs(x)':'x',Y=variant==='ship'?'abs(y)':'y';
+      let [rx,ry]=zpow(d,X,Y);
+      if(variant==='conjugate')ry='-('+ry+')';
+      if(variant==='fold-real')rx='abs('+rx+')';
+      if(variant==='fold-imag')ry='abs('+ry+')';
+      let twist='';
+      if(R.chance(.45)){
+        const u=R.float(.6,1.25,.001),v=R.mag(.05,.6,.001),RX=wrap(rx),RY=wrap(ry);
+        rx=sum([{c:u,body:RX},{c:-v,body:RY}]);ry=sum([{c:u,body:RY},{c:v,body:RX}]);twist=', twisted by '+fmt(u)+(v<0?' − ':' + ')+fmt(Math.abs(v))+'i';
+      }
+      const atoms=['sin(x)','sin(y)','cos(x*y)','sin(2*x)','sin(2*y)','tanh(x)','tanh(y)','x*y','x/(1 + y^2)','y/(1 + x^2)','sin(x + y)','cos(x - y)','x^2','y^2','exp(-(x^2 + y^2))','abs(x)','abs(y)','x','y','cy','cx','sin(x*y)','atan(y)','fract(x)'];
+      const extra=R.int(1,3);
+      const X0=[],Y0=[];
+      for(let k=0;k<extra;k++){
+        const letter=R.chance(.6)?S.take(R,.05,.7,.01):null;
+        const toX=R.chance(.5),t={c:letter||R.mag(.03,.6,.001),body:R.pick(atoms.filter(a=>a!==(toX?'cx':'cy')))};
+        (toX?X0:Y0).push(t);
+      }
+      if(opts.image){const sc=fmt(R.float(1.5,6,.5));(R.chance(.5)?X0:Y0).push({c:R.mag(.05,.6,.001),body:R.pick(['img(x/'+sc+' + 0.5, y/'+sc+' + 0.5)','img(cx/'+sc+' + 0.5, cy/'+sc+' + 0.5)'])});}
+      const ex=sum([{c:1,body:wrap(rx)},{c:1,body:'cx'},...X0]),ey=sum([{c:1,body:wrap(ry)},{c:1,body:'cy'},...Y0]);
+      return {genre:'escape',exprs:{x:ex,y:ey},...S.vals,knob:4,mode:R.chance(.35)?'julia-pick':'parameter',iterations:256,
+        note:'Degree '+d+' '+variant.replace('-',' ')+' recurrence'+twist+', with '+extra+' perturbation term'+(extra>1?'s':'')+'.'};
+    },
+    attractor(R){
+      const S=sliders(),comp=()=>{
+        const n=R.int(2,3),terms=[],seen=new Set();
+        for(let k=0;k<n;k++){
+          const kind=R.pick(['trig','trig','trig','prod','wild']);let body;
+          if(kind==='trig'){
+            const f=R.pick(['sin','cos','sin','cos','tanh']),kl=S.take(R,.6,2.8,.01),k1=kl||fmt(R.mag(.4,2.8,.01)),v=R.pick(['x','y']);
+            body=R.chance(.4)?f+'('+k1+'*'+v+' '+(R.chance(.5)?'+':'-')+' '+fmt(R.float(.1,1.8,.01))+'*'+(v==='x'?'y':'x')+')':f+'('+k1+'*'+v+')';
+          }else if(kind==='prod')body='sin('+fmt(R.float(.4,2.6,.01))+'*x)*cos('+fmt(R.float(.4,2.6,.01))+'*y)';
+          else body=R.pick(['sin(x*y)','cos(x^2 - y)','sin(x - y^2)','tanh(x*y)','cos(x + y)*sin(x)','sin(hypot(x, y))']);
+          if(seen.has(body)){k--;continue;}seen.add(body);
+          terms.push({c:R.mag(.35,1.6,.01),body});
+        }
+        if(R.chance(.3))terms.push({c:R.mag(.05,.4,.01),body:R.pick(['x','y'])});
+        return sum(terms);
+      };
+      return {genre:'attractor',exprs:{x:comp(),y:comp()},...S.vals,iterations:256,note:'A chaotic planar map built from '+R.pick(['layered','crossed','woven','braided'])+' trigonometric terms.'};
+    },
+    basin(R){
+      const S=sliders(),C=()=>cplx(R.mag(0,1.6,.001),R.mag(0,1.6,.001)),n=R.int(3,8),m=R.int(1,n-1);
+      const forms=[
+        ()=>'z^'+n+' + '+C()+'*z^'+m+' + '+C(),
+        ()=>'z^'+n+' - '+C()+' + '+(S.take(R,.1,.9,.01)||'0.5')+'*sin(z)',
+        ()=>'(z^'+n+' - 1)*(z - '+C()+') + '+(S.take(R,.05,.8,.01)||'0.3')+'*z^'+m,
+        ()=>'sin(z)*(z^2 - '+C()+') - '+C(),
+        ()=>'z^'+n+' - '+C()+'*exp('+(S.take(R,.1,.9,.01)||'0.4')+'*z)',
+        ()=>'cosh(z) - '+C()+'*z^'+m,
+        ()=>'(z^'+n+' - '+C()+')/(z^'+m+' + '+C()+')',
+        ()=>'z^'+n+' + '+C()+'*z*cos('+(S.take(R,.2,1.4,.01)||'1')+'*z) - 1'
+      ];
+      let f=R.pick(forms)();
+      if(R.chance(.35))f+=' + '+(S.take(R,.05,.5,.01)||'0.2')+'*z^'+R.int(1,4);
+      const relax=R.chance(.6)?1:R.float(.55,1.45,.05);
+      return {genre:'basin',exprs:{f},...S.vals,knob:relax,iterations:64,note:'Newton’s method'+(relax!==1?' with relaxation '+relax:'')+' on a degree-'+n+' '+R.pick(['tangle','braid','weave','knot'])+'.'};
+    },
+    domain(R,opts={}){
+      const S=sliders();let usedPQ=false;
+      const layers=R.int(2,3),C=()=>{if(!usedPQ&&R.chance(.25)){usedPQ=true;S.vals.p=R.mag(.2,1.5,.01);S.vals.q=R.mag(.2,1.5,.01);return '(p + q*i)';}return cplx(R.mag(0,1.8,.001),R.mag(0,1.8,.001));};
+      let u='z';const ops=[];
+      for(let k=0;k<layers;k++){
+        const U=atom(u),op=R.pick(['pow','pow','mobius','sin','cos','exp','tan','log','sqrt','recip','expmul','sinh','square-shift','conjmix']);ops.push(op);
+        switch(op){
+          case 'pow':u=U+'^'+R.int(2,5);break;
+          case 'mobius':u='('+u+' - '+C()+')/('+u+' + '+C()+')';break;
+          case 'sin':case 'cos':case 'exp':case 'tan':case 'log':case 'sqrt':case 'sinh':u=op+'('+u+')';break;
+          case 'recip':u=U+' + '+C()+'/'+U;break;
+          case 'expmul':u=U+'*exp('+C()+'*'+U+')';break;
+          case 'square-shift':u=U+'^2 - '+C();break;
+          case 'conjmix':u='conj('+u+')*'+U+'^2';break;
+        }
+      }
+      if(R.chance(.6))u=R.chance(.5)?u+' + '+C():C()+'*'+atom(u);
+      if(opts.image)u=atom(u)+'*(1 + '+cplx(R.mag(.2,1.5,.001),R.mag(0,1,.001))+'*img(z/'+fmt(R.float(1,8,.5))+'))';
+      return {genre:'domain',exprs:{f:u},...S.vals,knob:R.pick([.5,1,1,1.5,2]),note:'A '+layers+'-layer composition: '+ops.join(' → ')+'.'};
+    },
+    flow(R,opts={}){
+      const S=sliders(),atoms=['y','x','x*y','x^2','y^2','sin(K*x)','sin(K*y)','cos(K*x)','cos(K*y)','sin(x*y)','tanh(x)','tanh(y)','x^3','y^3','sin(x + y)','cos(x - y)','x*cos(y)','y*sin(x)','exp(-x^2)','atan(y)'];
+      const comp=rot=>{
+        const n=R.int(2,3),terms=[];
+        if(rot)terms.push({c:rot,body:null});
+        for(let k=0;k<n;k++){const letter=R.chance(.45)?S.take(R,.2,1.5,.01):null;terms.push({c:letter||R.mag(.1,1.5,.01),body:R.pick(atoms).replace('K',fmt(R.float(.5,3,.1)))});}
+        return terms;
+      };
+      const spin=R.chance(.5),w=R.float(.3,1.2,.1),tx=comp(),ty=comp();
+      if(opts.image){const sc=fmt(R.float(4,16,.5)),c=R.float(.5,1.5,.01),ph=fmt(R.float(0,6.28,.01)),b='(6.2832*img(x/'+sc+' + 0.5, y/'+sc+' + 0.5) + '+ph+')';tx.push({c,body:'cos'+b});ty.push({c,body:'sin'+b});}
+      if(spin){tx.unshift({c:w,body:'y'});ty.unshift({c:-w,body:'x'});}
+      return {genre:'flow',exprs:{dx:sum(tx.filter(t=>t.body)),dy:sum(ty.filter(t=>t.body))},...S.vals,knob:1,iterations:256,note:(spin?'A spiralling':'A branching')+' vector field traced by particles.'};
+    },
+    lattice(R,opts={}){
+      const k=()=>R.int(2,29),latom=()=>R.pick(['i','j','i*j','i^2','j^2',k()+'*i',k()+'*j','(i + j)','(i - j)','abs(i - j)','i*i*j','(i*i + j*j)']);
+      const combo=(A,B)=>{switch(R.pick(['xor','xor','and','or','add','mul','mod','div'])){
+        case 'xor':return 'xor('+A+', '+B+')';case 'and':return 'and('+A+', '+B+')';case 'or':return 'or('+A+', '+B+')';
+        case 'add':return A+' + '+B;case 'mul':return wrap(A)+'*'+wrap(B);case 'mod':return 'mod('+A+', abs('+B+') + '+k()+')';default:return 'floor('+A+'/(abs('+B+') + '+k()+'))';}};
+      let v=combo(latom(),latom());
+      if(R.chance(.55))v=combo(v,latom());
+      if(R.chance(.3))v=combo(v,latom());
+      if(opts.image){const sc=R.int(24,160);v=combo('floor('+R.int(4,64)+'*img(i/'+sc+', j/'+sc+'))',R.chance(.5)?latom():'('+v+')');}
+      const span=R.pick([96,192,384,768]);
+      return {genre:'lattice',exprs:{v},a:0,b:0,p:0,q:0,knob:R.pick([2,3,4,5,6,7,8,9,11,12,13,16,17,24,31,32,64]),view:{x:span/2,y:span*3/8,span},note:'Integer weave on a '+span+'-cell window.'};
+    },
+    automaton(R){
+      const K=R.pick([2,3,3,4,4,5,6]),n=R.int(2,5),atoms=['l','r','c','l2','r2','l*r','c*c','l*c','c*r','xor(l, r)','xor(l2, c)','and(l, r2)','or(c, r)','abs(l - r)','max(l, r2)','min(l2, c)','l*c*r','floor((l + c + r)/2)','xor(l2, r2)','and(c, xor(l, r))','xor(l, 2*r)','or(l2, and(c, r2))','floor((l2 + r2)/2)','abs(l2 - c)','max(l*r, c)','xor(c*c, l + r)'];
+      const terms=[];
+      for(let k=0;k<n;k++){let body=R.pick(atoms);if(R.chance(.4)){const o=R.pick(['xor','and','or','max','min']);body=o+'('+body+', '+R.pick(atoms)+')';}terms.push({c:K>2?R.int(1,K-1):1,body});}
+      if(R.chance(.4))terms.push({c:R.int(1,K-1),body:null});
+      if(R.chance(.08))terms.push({c:1,body:R.pick(['and(t, c)','mod(x, 7)'])});
+      return {genre:'automaton',exprs:{next:sum(terms)},a:0,b:0,p:0,q:0,knob:K,mode:R.chance(.3)?'noise':'dot',note:K+'-state rule with a radius-2 neighbourhood.'};
+    },
+    contour(R,opts={}){
+      const S=sliders(),n=R.int(3,5),terms=[];
+      const atom=()=>{switch(R.int(0,13)){
+        case 0:return 'sin('+(S.take(R,.4,2.5,.01)||fmt(R.float(.4,2.5,.003)))+'*x + '+fmt(R.float(.2,2.5,.003))+'*y)';
+        case 1:return 'cos('+fmt(R.float(.2,2.5,.003))+'*x - '+fmt(R.float(.2,2.5,.003))+'*y)';
+        case 2:return 'x^2';case 3:return 'y^2';case 4:return 'x*y';case 5:return 'sin(x*y)';
+        case 6:return 'cos(hypot(x, y)*'+fmt(R.float(.5,4,.1))+')';
+        case 7:return 'exp(-(x^2 + y^2)/'+fmt(R.float(1,8,.5))+')';
+        case 8:return 'tanh(x - y^2)';case 9:return '(abs(x) - abs(y))';case 10:return '(y^3 - x)';
+        case 11:return 'sin(x)*cos(y)';case 12:return 'atan2(y, x)';default:return 'log(1 + x^2 + y^2)';}};
+      for(let k=0;k<n;k++)terms.push({c:R.mag(.2,1.6,.01),body:atom()});
+      if(opts.image){const sc=fmt(R.float(4,16,.5));terms.push({c:R.mag(1,3,.01),body:'img(x/'+sc+' + 0.5, y/'+sc+' + 0.5)'});}
+      return {genre:'contour',exprs:{f:sum(terms)},...S.vals,knob:3,note:'Level sets of a '+n+'-term scalar field.'};
+    },
+    field(R,opts={}){
+      const S=sliders(),UN=['sin','cos','tanh','gauss','absr','sq','lat','weier','ripple','lnab','quark','charm','strange','gluon','spinor','pion','octet','collapse','tunnel','qubit','lorentz','comet','clover','mobius'],BI=['+','-','*','fm','fxmod','powa','min','max','collide','annihil','yukawa','superpos','entangle','braket','dilate'],KK=['pi','1.618','e','4.6692','2.5029','0.5772','1.2021','1.3704','0.7071','1.4142','2.9979'];
+      let usedImg=false;
+      const leaf=()=>{const r=R.int(0,9);
+        if(r<=3)return fmt(R.float(.2,3,.001))+'*u';
+        if(r<=7)return fmt(R.float(.2,3,.001))+'*v';
+        if(r===8&&opts.image&&!usedImg){usedImg=true;const sc=fmt(R.float(3,12,.5));return 'img(u/'+sc+' + 0.5, v/'+sc+' + 0.5)';}
+        return R.chance(.5)?R.pick(KK):(S.take(R,.3,2.5,.01)||fmt(R.float(.5,5.5,.01)));};
+      const grow=d=>{
+        if(d<=0||R.chance(.14))return leaf();
+        if(R.chance(.5))return R.pick(UN)+'('+grow(d-1)+')';
+        const op=R.pick(BI),A=grow(d-1),B=grow(d-1);
+        return op.length===1?'('+A+' '+op+' '+B+')':op+'('+A+', '+B+')';
+      };
+      let f=grow(R.int(3,5));
+      if(!/\bu\b/.test(f))f='collide('+f+', '+fmt(R.float(.3,2,.01))+'*u)';
+      if(!/\bv\b/.test(f))f='superpos('+f+', '+fmt(R.float(.3,2,.01))+'*v)';
+      if(opts.image&&!usedImg){const sc=fmt(R.float(3,12,.5));f='fm('+f+', '+fmt(R.float(1,5,.1))+'*img(u/'+sc+' + 0.5, v/'+sc+' + 0.5))';}
+      return {genre:'field',exprs:{f},...S.vals,knob:1,note:'A field grown from FXplore’s operator tongue.'};
+    },
+    surface(R,opts={}){
+      const S=sliders(),gn=opts.genome,kind=gn?'super':R.pick(['super','super','super','torus','shell']);
+      const sfp=(vn,m)=>'sf('+vn+', '+m+', '+fmt(R.float(.2,8,.01))+', '+fmt(R.float(.3,12,.01))+', '+fmt(R.float(.3,12,.01))+')';
+      const mods=[],notes=[],nm=R.int(0,2);
+      for(let k=0;k<nm;k++){switch(R.int(0,4)){
+        case 0:{const hh=fmt(R.float(.1,.6,.01)),kk=R.int(2,9);mods.push('(1 - '+hh+'*sin('+kk+'*u)^2*sin('+kk+'*v)^2)');notes.push('holiness');break;}
+        case 1:mods.push('(1 + '+fmt(R.float(.05,.3,.01))+'*gluon('+R.int(2,9)+'*u + '+R.int(1,6)+'*v))');notes.push('gluon ripple');break;
+        case 2:mods.push('(1 + '+fmt(R.float(.05,.25,.01))+'*weier('+R.int(1,5)+'*v))');notes.push('Weierstrass bands');break;
+        case 3:mods.push('(1 + '+fmt(R.float(.05,.3,.01))+'*clover('+R.int(1,6)+'*u))');notes.push('clover lobes');break;
+        default:{const l=S.take(R,.05,.4,.01);if(l){mods.push('(1 + '+l+'*quark('+R.int(2,8)+'*v + u))');notes.push('quark sea');}}
+      }}
+      if(opts.image){mods.push('(1 + '+fmt(R.float(.12,.45,.01))+'*img(u/6.2832 + 0.5, v/3.1416 + 0.5))');notes.push('image relief');}
+      const M=mods.length?'*'+mods.join('*'):'';
+      let x,y,z,note;
+      if(kind==='super'){
+        const A=gn?'sf(u, '+gn.m+', '+fmt(gn.n1)+', '+fmt(gn.n2)+', '+fmt(gn.n3)+')':sfp('u',R.int(1,20)),B=sfp('v',R.int(1,12));
+        x=A+'*cos(u)*'+B+'*cos(v)'+M;y=A+'*sin(u)*'+B+'*cos(v)'+M;z=B+'*sin(v)'+M;
+        note='A Gielis supershape'+(gn?' grown from the genome of '+gn.accession:'')+'.';
+      }else if(kind==='torus'){
+        const Rr=fmt(R.float(1,2.2,.01)),rr=fmt(R.float(.25,.9,.01))+M,wn=R.int(0,5),ang=wn?'2*v + '+wn+'*u':'2*v';
+        x='('+Rr+' + '+rr+'*cos('+ang+'))*cos(u)';y='('+Rr+' + '+rr+'*cos('+ang+'))*sin(u)';z=rr+'*sin('+ang+')';
+        note='A torus'+(wn?' with its tube twisted '+wn+' times':'')+'.';
+      }else{
+        const k=fmt(R.float(.08,.3,.01)),nn=R.int(2,5),hh=fmt(R.float(.5,2.5,.01)),a='exp('+k+'*u)';
+        x=a+'*cos('+nn+'*u)*(1 + cos(2*v))'+M;y=a+'*sin('+nn+'*u)*(1 + cos(2*v))'+M;z=a+'*(sin(2*v) + '+hh+'*u)'+M;
+        note='A logarithmic seashell with '+nn+' turns.';
+      }
+      if(notes.length)note+=' Post effects: '+notes.join(', ')+'.';
+      return {genre:'surface',exprs:{x,y,z},...S.vals,knob:R.float(0,355,5),mode:R.chance(.7)?'tilt':R.pick(['top','side']),iterations:256,note};
+    },
+    harmonic(R){
+      const S=sliders(),base=R.pick([1,1,2,3]),decays=[];
+      const comp=letter=>{
+        const n=R.int(1,3),terms=[];
+        for(let k=0;k<n;k++){
+          const mult=R.pick([1,2,3,4,5,6]),det=k===0?S.take(R,.001,.03,.001):null,f=base*mult,freq=det?'('+f+' + '+det+')':fmt(f+R.mag(0,.02,.001));
+          const inner=R.chance(.25)?freq+'*t + '+fmt(R.float(.1,1.2,.05))+'*sin('+fmt(R.float(.05,1,.01))+'*t)':freq+'*t';
+          const d=R.float(.0015,.012,.0005);decays.push(d);
+          terms.push({c:R.mag(.3,1.2,.01),body:'sin('+inner+' + '+fmt(R.float(0,6.28,.01))+')*exp(-'+fmt(d)+'*t)'});
+        }
+        return sum(terms);
+      };
+      const x=comp('a'),y=comp('b'),dmin=Math.min(...decays),T=Math.max(60,Math.min(2000,Math.round(Math.log(8)/dmin/10)*10));
+      return {genre:'harmonic',exprs:{x,y},...S.vals,knob:T,iterations:256,note:'A damped harmonograph on a base frequency of '+base+', with '+R.pick(['drifting','beating','modulated','detuned'])+' partials.'};
+    }
+  };
+
+  /* Screens: fast low-resolution probes. Return good, score, and a framed home view when the genre needs one. */
+  function frameBox(minX,maxX,minY,maxY,margin=1.12){
+    const bw=maxX-minX,bh=maxY-minY;if(!(bw>0)||!(bh>0))return null;
+    return {x:(minX+maxX)/2,y:(minY+maxY)/2,span:Math.max(bw,bh/.75)*margin};
+  }
+  function escapeMask(fn,s,view,julia,W,H){
+    const mask=new Uint8Array(W*H),out=[0,0];let bounded=0,invalid=0;
+    for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+      const re=view.x+((i+.5)/W-.5)*view.span,im=view.y+(.5-(j+.5)/H)*view.span*.75,cx=julia?s.juliaRe:re,cy=julia?s.juliaIm:im;
+      let x=julia?re:0,y=julia?im:0,n=0,bad=false;
+      while(n<64&&x*x+y*y<=16){fn(x,y,cx,cy,s.a,s.b,s.p,s.q,out);x=out[0];y=out[1];n++;if(!Number.isFinite(x)||!Number.isFinite(y)){bad=true;break;}}
+      const inside=!bad&&x*x+y*y<=16;mask[j*W+i]=inside?1:0;bounded+=inside;invalid+=bad;
+    }
+    let edges=0,minI=W,maxI=-1,minJ=H,maxJ=-1;const border=[];
+    for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+      const m=mask[j*W+i];let e=false;
+      if(i>0&&mask[j*W+i-1]!==m){edges++;e=true;}if(j>0&&mask[(j-1)*W+i]!==m){edges++;e=true;}
+      if(e&&m){border.push(j*W+i);if(i<minI)minI=i;if(i>maxI)maxI=i;if(j<minJ)minJ=j;if(j>maxJ)maxJ=j;}
+    }
+    const cell=view.span/W;
+    const home=maxI<0?null:frameBox(view.x+(minI/W-.5)*view.span-cell,view.x+((maxI+1)/W-.5)*view.span+cell,view.y+(.5-(maxJ+1)/H)*view.span*.75-cell,view.y+(.5-minJ/H)*view.span*.75+cell,1.18);
+    if(home)home.span=Math.max(.25,Math.min(12,home.span));
+    return {mask,bounded:bounded/(W*H),invalid:invalid/(W*H),edges,border,home};
+  }
+  /* Clumpiness: how much more often 2×2 blocks are uniform than independent noise would allow. Noise ≈ 1. */
+  function clump(grid,W,H,K){
+    const hist=new Float64Array(K);for(let i=0;i<W*H;i++)hist[grid[i]]++;
+    let expected=0;for(const c of hist)expected+=Math.pow(c/(W*H),4);
+    let uni=0;for(let j=1;j<H;j++)for(let i=1;i<W;i++){const v=grid[j*W+i];uni+=v===grid[j*W+i-1]&&v===grid[(j-1)*W+i]&&v===grid[(j-1)*W+i-1];}
+    return (uni/((W-1)*(H-1)))/Math.max(expected,1e-6);
+  }
+  const SCREEN={
+    escape(s,R,opts){
+      const {fn}=core.compileGenre('escape',s.exprs,s.image),W=64,H=48;
+      if(s.mode==='julia-pick'){
+        const probe=escapeMask(fn,s,{x:-.2,y:0,span:5.6},false,W,H);
+        if(probe.border.length>6){
+          const cell=probe.border[Math.floor(R.r()*probe.border.length)],i=cell%W,j=(cell-i)/W;
+          s.juliaRe=Number((-.2+((i+.5)/W-.5)*5.6).toFixed(4));s.juliaIm=Number((((.5-(j+.5)/H))*5.6*.75).toFixed(4));R.bits+=Math.log10(probe.border.length);
+          s.mode='julia';
+        }else s.mode='parameter';
+      }
+      if(s.mode==='julia-pick')s.mode='parameter';
+      const julia=s.mode==='julia',m=escapeMask(fn,s,{x:julia?0:-.2,y:0,span:julia?4.8:5.6},julia,W,H);
+      return {good:m.bounded>.012&&m.bounded<.72&&m.edges>56&&m.invalid<.02&&!!m.home,score:m.edges-Math.abs(m.bounded-.22)*220-m.invalid*800,home:m.home};
+    },
+    attractor(s){
+      const {fn}=core.compileGenre('attractor',s.exprs,s.image),out=[0,0];let x=.1,y=.1;
+      for(let n=0;n<300;n++){fn(x,y,s.a,s.b,s.p,s.q,out);x=out[0];y=out[1];if(!Number.isFinite(x)||Math.abs(x)+Math.abs(y)>1e5)return {good:false,score:-1e9};}
+      const N=6000,xs=new Float64Array(N),ys=new Float64Array(N);let x2=x+1e-9,y2=y,ly=0;
+      for(let n=0;n<N;n++){
+        fn(x,y,s.a,s.b,s.p,s.q,out);const nx=out[0],ny=out[1];fn(x2,y2,s.a,s.b,s.p,s.q,out);
+        if(!Number.isFinite(nx)||!Number.isFinite(ny)||Math.abs(nx)+Math.abs(ny)>1e5)return {good:false,score:-1e9};
+        let dx=out[0]-nx,dy=out[1]-ny,d=Math.hypot(dx,dy);if(!(d>0))d=1e-12;ly+=Math.log(d/1e-9);
+        x=nx;y=ny;x2=x+dx*1e-9/d;y2=y+dy*1e-9/d;xs[n]=x;ys[n]=y;
+      }
+      const sx=Array.from(xs).sort((a,b)=>a-b),sy=Array.from(ys).sort((a,b)=>a-b),lo=Math.floor(N*.003),hi=Math.floor(N*.997);
+      const home=frameBox(sx[lo],sx[hi],sy[lo],sy[hi],1.14);if(!home)return {good:false,score:-1e9};
+      const occ=new Uint8Array(48*36);let cells=0;
+      for(let n=0;n<N;n++){const i=Math.floor(((xs[n]-home.x)/home.span+.5)*48),j=Math.floor((.5-(ys[n]-home.y)/(home.span*.75))*36);if(i>=0&&j>=0&&i<48&&j<36&&!occ[j*48+i]){occ[j*48+i]=1;cells++;}}
+      const lambda=ly/N;
+      return {good:lambda>.01&&cells>150&&home.span>1e-3,score:cells+Math.min(lambda,1)*200,home};
+    },
+    basin(s){
+      const {fn}=core.compileGenre('basin',s.exprs,s.image),out=[0,0],W=48,H=36,span=4.5,ids=new Int16Array(W*H).fill(-1),roots=[],counts=[];let conv=0;
+      for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+        let zr=((i+.5)/W-.5)*span,zi=(.5-(j+.5)/H)*span*.75,ok=false;
+        for(let n=0;n<40;n++){
+          fn(zr,zi,s.a,s.b,s.p,s.q,out);const fr=out[0],fi=out[1];if(!Number.isFinite(fr+fi))break;
+          const h=1e-7*Math.max(1,Math.abs(zr)+Math.abs(zi));fn(zr+h,zi,s.a,s.b,s.p,s.q,out);
+          const dr=(out[0]-fr)/h,di=(out[1]-fi)/h,d=dr*dr+di*di;if(!(d>0)||!Number.isFinite(d))break;
+          const qr=(fr*dr+fi*di)/d,qi=(fi*dr-fr*di)/d;zr-=s.knob*qr;zi-=s.knob*qi;
+          if(!Number.isFinite(zr+zi))break;if(qr*qr+qi*qi<1e-10){ok=true;break;}
+        }
+        if(ok){conv++;let id=roots.findIndex(r=>Math.abs(r[0]-zr)+Math.abs(r[1]-zi)<1e-3);if(id<0){id=roots.length;roots.push([zr,zi]);counts.push(0);}counts[id]++;ids[j*W+i]=id;}
+      }
+      let edges=0;for(let j=0;j<H;j++)for(let i=0;i<W;i++){const v=ids[j*W+i];if(i>0&&ids[j*W+i-1]!==v)edges++;if(j>0&&ids[(j-1)*W+i]!==v)edges++;}
+      const major=counts.filter(c=>c>W*H*.01).length,frac=conv/(W*H);
+      return {good:major>=2&&edges>=60&&frac>.4,score:edges+major*20+frac*100,home:{x:0,y:0,span}};
+    },
+    domain(s){
+      const {fn}=core.compileGenre('domain',s.exprs,s.image),out=[0,0],W=40,H=30;let best={good:false,score:-1e9};
+      for(const span of [2.5,6,14]){
+        let finite=0,twist=0;const bins=new Uint8Array(16),lms=[],hues=new Int8Array(W*H).fill(-1);
+        for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+          fn(((i+.5)/W-.5)*span,(.5-(j+.5)/H)*span*.75,s.a,s.b,s.p,s.q,out);
+          if(!Number.isFinite(out[0])||!Number.isFinite(out[1]))continue;finite++;
+          const hb=Math.min(15,Math.floor((Math.atan2(out[1],out[0])/(2*Math.PI)+.5)*16));bins[hb]=1;hues[j*W+i]=hb;
+          const m=Math.hypot(out[0],out[1]);if(m>0)lms.push(Math.log2(m));
+          if(i>0&&hues[j*W+i-1]>=0){const dd=Math.abs(hues[j*W+i-1]-hb);if(dd>1&&dd<15)twist++;}
+        }
+        const mean=lms.reduce((a,b)=>a+b,0)/Math.max(1,lms.length),sd=Math.sqrt(lms.reduce((a,b)=>a+(b-mean)*(b-mean),0)/Math.max(1,lms.length));
+        const nb=bins.reduce((a,b)=>a+b,0),ff=finite/(W*H);
+        const r={good:ff>.9&&nb>=12&&sd>.25&&sd<60&&twist>=20&&twist<700,score:nb*4+Math.min(twist,300)*.5+ff*50-(twist>700?400:0),home:{x:0,y:0,span}};
+        if(r.good&&!best.good||r.good===best.good&&r.score>best.score)best=r;
+      }
+      return best;
+    },
+    flow(s){
+      const {fn}=core.compileGenre('flow',s.exprs,s.image),out=[0,0],W=32,H=24,span=8,bins=new Uint8Array(16),su=new Int8Array(W*H),sv=new Int8Array(W*H);let bad=0,flips=0;
+      for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+        fn(((i+.5)/W-.5)*span,(.5-(j+.5)/H)*span*.75,s.a,s.b,s.p,s.q,out);
+        if(!Number.isFinite(out[0])||!Number.isFinite(out[1])){bad++;continue;}
+        bins[Math.min(15,Math.floor((Math.atan2(out[1],out[0])/(2*Math.PI)+.5)*16))]=1;
+        su[j*W+i]=Math.sign(out[0]);sv[j*W+i]=Math.sign(out[1]);
+        if(i>0){flips+=su[j*W+i]!==su[j*W+i-1];flips+=sv[j*W+i]!==sv[j*W+i-1];}
+        if(j>0){flips+=su[j*W+i]!==su[(j-1)*W+i];flips+=sv[j*W+i]!==sv[(j-1)*W+i];}
+      }
+      const nb=bins.reduce((a,b)=>a+b,0);
+      return {good:bad<W*H*.02&&nb>=13&&flips>=24,score:nb*6+Math.min(flips,260)-bad*5,home:{x:0,y:0,span}};
+    },
+    lattice(s){
+      const {fn}=core.compileGenre('lattice',s.exprs,s.image),out=[0],v=s.view||{x:96,y:72,span:192},W=Math.min(96,Math.round(v.span)),H=Math.round(W*.75),M=Math.max(2,Math.round(s.knob)),g=new Int32Array(W*H),hist=new Float64Array(M);let bad=0,diff=0;
+      const I0=Math.floor(v.x-W/2),J0=Math.floor(v.y+H/2);
+      for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+        const I=I0+i,J=J0-j;fn(I,J,s.a,s.b,s.p,s.q,out);
+        if(!Number.isFinite(out[0])){bad++;continue;}const res=((Math.floor(out[0])%M)+M)%M;g[j*W+i]=res;hist[res]++;if(i>0&&g[j*W+i-1]!==res)diff++;
+      }
+      let ent=0;for(const c of hist)if(c>0){const q=c/(W*H);ent-=q*Math.log2(q);}
+      let periodic=false;
+      for(const [pi,pj] of [[1,0],[2,0],[0,1],[0,2],[1,1],[2,2],[3,0],[0,3]]){let same=0;for(let j=pj;j<H;j++)for(let i=pi;i<W;i++)same+=g[j*W+i]===g[(j-pj)*W+i-pi];if(same>(W-pi)*(H-pj)*.97){periodic=true;break;}}
+      const df=diff/((W-1)*H),bins=Math.min(M,4),coarse=new Uint8Array(W*H);for(let i=0;i<W*H;i++)coarse[i]=Math.floor(g[i]*bins/M);
+      const cl=clump(coarse,W,H,bins);
+      return {good:bad===0&&!periodic&&ent>Math.min(.9,.5*Math.log2(M))&&df>.08&&df<.9&&cl>1.2,score:ent*40+(periodic?-300:0)-Math.abs(df-.5)*60+Math.min(cl,6)*25,home:v};
+    },
+    automaton(s){
+      const {fn}=core.compileGenre('automaton',s.exprs,s.image),out=[0],K=Math.max(2,Math.round(s.knob)),W=128,G=128,rows=[];
+      let row=new Float64Array(W),next=new Float64Array(W);const rnd=seeded((s.seed||'ca')+'|probe'),st=new Uint8Array(W*G);
+      if(s.mode==='dot')row[W>>1]=1;else for(let x=0;x<W;x++)row[x]=Math.floor(rnd()*K);
+      for(let g=0;g<G;g++){
+        for(let x=0;x<W;x++){fn(row[(x-2+W)%W],row[(x-1+W)%W],row[x],row[(x+1)%W],row[(x+2)%W],x,g,s.a,s.b,s.p,s.q,out);const v=Number.isFinite(out[0])?out[0]:0;next[x]=((Math.floor(v)%K)+K)%K;}
+        const t=row;row=next;next=t;for(let x=0;x<W;x++)st[g*W+x]=row[x];if(g>=G-20)rows.push(Array.from(row));
+      }
+      const last=rows[rows.length-1],counts=new Array(K).fill(0);for(const v of last)counts[v]++;
+      if(Math.max(...counts)>W*.94)return {good:false,score:-500};
+      for(let back=1;back<=8;back++)for(const shift of [0,1,-1,2,-2]){const prev=rows[rows.length-1-back];let same=0;for(let x=0;x<W;x++)same+=prev[(x+shift*back+W*16)%W]===last[x];if(same>=W-1)return {good:false,score:-300};}
+      let pats=new Set();for(let r=1;r<rows.length;r++)for(let x=0;x<W;x++)pats.add(rows[r-1][x]*64+rows[r-1][(x+1)%W]*8+rows[r][x]);
+      const nz=last.filter(v=>v>0).length;
+      const cl=clump(st.subarray(W*24),W,G-24,K);
+      return {good:pats.size>=Math.min(K*K*K*.5,40)&&(s.mode!=='dot'||nz>=12)&&cl>1.15,score:pats.size+nz*.2+Math.min(cl,8)*20};
+    },
+    contour(s,R,opts){
+      const {fn}=core.compileGenre('contour',s.exprs,s.image),out=[0],W=64,H=48,span=8,b=new Float64Array(W*H);let bad=0,changes=0,zeros=0;
+      const vals=[];
+      for(let j=0;j<H;j++)for(let i=0;i<W;i++){fn(((i+.5)/W-.5)*span,(.5-(j+.5)/H)*span*.75,s.a,s.b,s.p,s.q,out);if(Number.isFinite(out[0]))vals.push(out[0]);}
+      vals.sort((m,n)=>m-n);
+      const range=vals.length?vals[Math.floor(vals.length*.95)]-vals[Math.floor(vals.length*.05)]:0;
+      if(!(range>1e-9))return {good:false,score:-1e9};
+      if(!opts.keepLevels)s.knob=Math.max(.25,Math.min(40,Number(((R?12+R.r()*16:18)/range).toPrecision(2))));
+      for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+        fn(((i+.5)/W-.5)*span,(.5-(j+.5)/H)*span*.75,s.a,s.b,s.p,s.q,out);const v=out[0];
+        if(!Number.isFinite(v)){bad++;continue;}b[j*W+i]=v;
+        if(i>0){changes+=Math.floor(v*s.knob)!==Math.floor(b[j*W+i-1]*s.knob);zeros+=Math.sign(v)!==Math.sign(b[j*W+i-1]);}
+        if(j>0)changes+=Math.floor(v*s.knob)!==Math.floor(b[(j-1)*W+i]*s.knob);
+      }
+      return {good:bad===0&&changes>=150&&changes<=4200&&zeros>=6,score:Math.min(changes,1500)-Math.max(0,changes-3000)+zeros-bad*10,home:{x:0,y:0,span}};
+    },
+    field(s,R,opts){
+      const {fn}=core.compileGenre('field',s.exprs,s.image),out=[0],W=64,H=48,span=8,vals=new Float64Array(W*H);let bad=0;
+      for(let j=0;j<H;j++)for(let i=0;i<W;i++){fn(((i+.5)/W-.5)*span,(.5-(j+.5)/H)*span*.75,s.a,s.b,s.p,s.q,out);const v=out[0];if(!Number.isFinite(v))bad++;else vals[j*W+i]=v;}
+      if(bad>W*H*.01)return {good:false,score:-1e9};
+      const sorted=Array.from(vals).sort((m,n)=>m-n),range=sorted[Math.floor(W*H*.95)]-sorted[Math.floor(W*H*.05)];
+      if(!(range>1e-4))return {good:false,score:-1e9};
+      if(!opts.keepLevels)s.knob=Math.max(.01,Math.min(100,Number(((R?5+R.r()*5:7)/range).toPrecision(2))));
+      let changes=0,diff=0;
+      for(let j=0;j<H;j++)for(let i=0;i<W;i++){const c=Math.floor(vals[j*W+i]*s.knob);if(i>0){changes+=c!==Math.floor(vals[j*W+i-1]*s.knob);diff+=Math.abs(vals[j*W+i]-vals[j*W+i-1]);}if(j>0)changes+=c!==Math.floor(vals[(j-1)*W+i]*s.knob);}
+      const rough=diff/((W-1)*H)/range;
+      return {good:changes>=90&&changes<=2600&&rough<.2,score:Math.min(changes,1200)-Math.max(0,changes-2000)-rough*500,rough,home:{x:0,y:0,span}};
+    },
+    surface(s){
+      const {fn}=core.compileGenre('surface',s.exprs,s.image),out=[0,0,0],NU=64,NV=32,yaw=s.knob*Math.PI/180,pitch=(s.mode==='top'?68:s.mode==='side'?0:24)*Math.PI/180;
+      const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch),xs=[],ys=[];let bad=0;
+      for(let j=0;j<=NV;j++)for(let i=0;i<NU;i++){const u=-Math.PI+i*2*Math.PI/NU,v=-Math.PI/2+j*Math.PI/NV;fn(u,v,s.a,s.b,s.p,s.q,out);
+        if(!Number.isFinite(out[0])||!Number.isFinite(out[1])||!Number.isFinite(out[2])||Math.abs(out[0])+Math.abs(out[1])+Math.abs(out[2])>1e6){bad++;continue;}
+        const D=-out[0]*sy+out[1]*cy;xs.push(out[0]*cy+out[1]*sy);ys.push(out[2]*cp+D*sp);}
+      if(bad>NU*(NV+1)*.03||xs.length<100)return {good:false,score:-1e9};
+      const sx=xs.slice().sort((a,b)=>a-b),sy2=ys.slice().sort((a,b)=>a-b),lo=Math.floor(xs.length*.005),hi=Math.floor(xs.length*.995);
+      const home=frameBox(sx[lo],sx[hi],sy2[lo],sy2[hi],1.18);if(!home||home.span<1e-3||home.span>1e5)return {good:false,score:-1e9};
+      const occ=new Uint8Array(48*36);let cells=0;
+      for(let n=0;n<xs.length;n++){const i=Math.floor(((xs[n]-home.x)/home.span+.5)*48),j=Math.floor((.5-(ys[n]-home.y)/(home.span*.75))*36);if(i>=0&&j>=0&&i<48&&j<36&&!occ[j*48+i]){occ[j*48+i]=1;cells++;}}
+      return {good:cells>=160,score:cells-bad*5,home};
+    },
+    harmonic(s){
+      const {fn}=core.compileGenre('harmonic',s.exprs,s.image),out=[0,0],N=6000,xs=new Float64Array(N),ys=new Float64Array(N);let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+      for(let n=0;n<N;n++){fn(s.knob*n/N,s.a,s.b,s.p,s.q,out);if(!Number.isFinite(out[0]+out[1]))return {good:false,score:-1e9};xs[n]=out[0];ys[n]=out[1];minX=Math.min(minX,out[0]);maxX=Math.max(maxX,out[0]);minY=Math.min(minY,out[1]);maxY=Math.max(maxY,out[1]);}
+      const home=frameBox(minX,maxX,minY,maxY,1.1);if(!home)return {good:false,score:-1e9};
+      const occ=new Uint8Array(48*36);let cells=0;
+      for(let n=0;n<N;n++){const i=Math.floor(((xs[n]-home.x)/home.span+.5)*48),j=Math.floor((.5-(ys[n]-home.y)/(home.span*.75))*36);if(i>=0&&j>=0&&i<48&&j<36&&!occ[j*48+i]){occ[j*48+i]=1;cells++;}}
+      return {good:cells>=90&&cells<=1350,score:Math.min(cells,900)-Math.max(0,cells-1100),home};
+    }
+  };
+
+  const ADJ=['Folded','Burning','Quiet','Hollow','Split','Salt','Velvet','Tidal','Broken','Lantern','Copper','Feral','Glass','Slow','Mirrored','Sunken','Wandering','Paper','Solar','Humming','Crooked','Soft','Unlisted','Loose','Borrowed','Stubborn','Tender','Static','Orbital','Molten'];
+  const NOUN={
+    escape:['Crown','Coast','Harbor','Cathedral','Delta','Reef','Archipelago','Shoreline','Estuary','Island'],
+    attractor:['Lantern','Moth','Engine','Ribbon','Veil','Swarm','Orbit','Loom','Smoke','Compass'],
+    basin:['Watershed','Mosaic','Compass','Quilt','Vault','Keystone','Prism','Crossroads','Tessera','Rosette'],
+    domain:['Weather','Pinwheel','Aurora','Iris','Tide Chart','Eye','Vortex','Nebula','Petal','Lens'],
+    flow:['Current','Drift','Wind Map','River','Migration','Grain','Undertow','Breeze','Rain','Pilgrimage'],
+    lattice:['Textile','Carpet','Circuit','Weave','Tapestry','Ledger','Brickwork','Quilt','Motherboard','Mural'],
+    automaton:['Chronicle','Colony','Rumor','Lineage','Scroll','Garden','Census','Cascade','Tapestry','Signal'],
+    contour:['Terrain','Survey','Atlas','Plateau','Valley','Topography','Ridge','Basin','Isobar','Map'],
+    harmonic:['Pendulum','Lullaby','Signature','Scribble','Knot','Ribbon','Waltz','Chord','Loop','Echo'],
+    field:['Quark Sea','Séance','Tongue','Condensate','Superposition','Choir','Resonance','Static','Omen','Field'],
+    surface:['Shell','Creature','Relic','Chrysalis','Seed Pod','Lantern','Totem','Bloom','Husk','Specimen']
+  };
+  function name(genre,R){return ADJ[Math.floor(R.r()*ADJ.length)]+' '+NOUN[genre][Math.floor(R.r()*NOUN[genre].length)];}
+
+  /* Mutation: jitter numeric literals (never exponents) and used sliders. */
+  function jitter(genre,exprs,R,strength){
+    const lang=core.LANG[genre],intMode=genre==='lattice'||genre==='automaton',outExprs={};
+    for(const f of lang.fields){
+      const ast=core.parse(exprs[f],lang);let touched=0;
+      (function walk(n,exponent){
+        if(!n)return;
+        if(n.t==='num'&&!exponent&&!n.name&&R.r()<.55){
+          if(intMode){if(Number.isInteger(n.v)){n.v=Math.max(1,n.v+(R.r()<.5?-1:1));touched++;}}
+          else{n.v=Number((n.v*(1+(R.r()-.5)*2*strength)).toFixed(3))||n.v;touched++;}
+        }
+        if(n.t==='op'){walk(n.l,false);walk(n.r,n.v==='^');}
+        if(n.t==='unary')walk(n.r,exponent);
+        if(n.t==='fn')n.args.forEach(a=>walk(a,false));
+      })(ast,false);
+      outExprs[f]=touched?print(ast):exprs[f];
+    }
+    return outExprs;
+  }
+  const PREC=n=>n.t==='op'?(n.v==='^'?4:n.v==='*'||n.v==='/'?2:1):n.t==='unary'?3:5;
+  function needParen(child,parentPrec,right,op){
+    const c=PREC(child);
+    if(op==='^')return right?false:c<=4;
+    if(c<parentPrec)return true;
+    if(right&&c===parentPrec&&(op==='-'||op==='/'))return true;
+    return false;
+  }
+  function print(n){
+    const sub=(c,p,right,op)=>needParen(c,p,right,op)?'('+print(c)+')':print(c);
+    switch(n.t){
+      case 'num':return n.name||fmt(n.v);
+      case 'imag':return 'i';
+      case 'var':return n.v;
+      case 'unary':return n.v+sub(n.r,3,false,'u');
+      case 'fn':return n.v+'('+n.args.map(print).join(', ')+')';
+      case 'op':{
+        if(n.v==='^')return sub(n.l,4,false,'^')+'^'+(PREC(n.r)<5?'('+print(n.r)+')':print(n.r));
+        const p=PREC(n),sp=n.v==='*'||n.v==='/'?'':' ';
+        if((n.v==='+'||n.v==='-')&&n.r.t==='unary'&&n.r.v==='-'){const op=n.v==='+'?'-':'+';return sub(n.l,p,false,op)+' '+op+' '+sub(n.r.r,p,true,op);}
+        return sub(n.l,p,false,n.v)+sp+n.v+sp+sub(n.r,p,true,n.v);
+      }
+    }
+    return '';
+  }
+  return {rng,candidate:(g,R,opts)=>CANDIDATE[g](R,opts||{}),screen:(s,R,opts={})=>SCREEN[s.genre](s,R,opts),name,jitter,print,needParen,PREC,seeded,fmt};
+}
+
+const core=equationCore(),gen=generatorCore(core);
+const $=id=>document.getElementById(id);
+const pristineHTML='<!doctype html>\n'+document.documentElement.outerHTML;
+const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const clampNum=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const CREDIT={owner:'Felix Weddle',mark:'Ω^Ω',line:'Ω^Ω Felix Weddle. Everyone is free to use it.'};
+/* a document fragment, so the mark keeps its true exponent even where a
+   node is built with textContent and markup would show up as literal tags */
+function ooNode(){const f=document.createDocumentFragment();f.append('Ω');const u=document.createElement('sup');u.className='oo';u.textContent='Ω';f.append(u);return f;}
+const PALETTES={
+  mint:[[5,19,18],[19,66,54],[38,131,97],[132,214,138],[235,251,187],[49,150,112],[5,19,18]],
+  acid:[[20,6,40],[255,40,140],[255,170,20],[60,255,120],[230,255,255],[40,120,255],[20,6,40]],
+  ember:[[20,14,28],[88,34,61],[199,73,84],[252,160,84],[255,239,178],[133,53,67],[20,14,28]],
+  violet:[[16,17,35],[61,36,101],[136,85,176],[225,150,192],[180,241,218],[79,81,132],[16,17,35]],
+  ice:[[8,21,38],[22,65,101],[49,148,190],[122,221,235],[225,248,247],[42,125,162],[8,21,38]],
+  mono:[[12,18,17],[62,79,72],[150,171,153],[238,245,224],[158,177,164],[57,76,65],[12,18,17]],
+  vellum:[[36,28,18],[92,72,44],[168,140,96],[226,208,170],[243,236,214],[120,96,60],[36,28,18]],
+  bronze:[[18,14,12],[74,44,26],[150,96,42],[206,152,72],[238,214,160],[96,60,32],[18,14,12]],
+  aegean:[[10,18,30],[24,58,96],[46,120,170],[140,198,222],[242,246,246],[188,92,60],[10,18,30]]
+};
+const PALETTE_NAMES={mint:'Fern',acid:'Acid',ember:'Ember',violet:'Orchid',ice:'Glacier',mono:'Graphite',vellum:'Vellum',bronze:'Bronze',aegean:'Aegean',image:'From image'};
+const paletteOf=s=>s.palette==='image'&&Array.isArray(s.imagePalette)?s.imagePalette:(PALETTES[s.palette]||PALETTES.mint);
+const IMAGE_GENRES=['escape','contour','flow','lattice','domain','field','surface'];
+const ORDER=['escape','attractor','basin','domain','flow','lattice','automaton','contour','harmonic','field','surface'];
+const GENRES={
+  escape:{title:'Escape',long:'Escape-time fractal',labels:{x:'xₙ₊₁ =',y:'yₙ₊₁ ='},legend:'Uses the previous x and y. cx and cy are the pixel in the parameter plane, or the fixed constant c in the Julia plane.',knob:{label:'Escape radius',min:2,max:100,def:4},iter:{label:'Iteration limit',min:32,max:1024,step:16,def:256},modes:[['parameter','Parameter plane'],['julia','Julia plane']],modeTitle:'Plane',view:{x:-.5,y:0,span:3.6},read:'complex'},
+  attractor:{title:'Attractor',long:'Strange attractor',labels:{x:'xₙ₊₁ =',y:'yₙ₊₁ ='},legend:'One orbit runs for millions of steps. Brightness shows where it keeps returning.',knob:null,iter:{label:'Orbit length',min:32,max:1024,step:16,def:256},modes:null,view:{x:0,y:0,span:5},read:'plane'},
+  basin:{title:'Newton basin',long:'Newton basin',labels:{f:'f(z) ='},legend:'z is complex and i is √−1. Newton’s method walks each pixel to a root of f. Hue says which root, shade says how fast.',knob:{label:'Relaxation',min:.1,max:2,def:1},iter:{label:'Newton steps',min:16,max:256,step:8,def:64},modes:null,view:{x:0,y:0,span:4.5},read:'complex'},
+  domain:{title:'Domain colour',long:'Domain colouring',labels:{f:'w = f(z) ='},legend:'Each pixel is a complex z. Hue is the angle of w and the bands step through its size, so zeros and poles become pinwheels.',knob:{label:'Ring density',min:.1,max:6,def:1},iter:null,modes:null,view:{x:0,y:0,span:6},read:'complex'},
+  flow:{title:'Flow field',long:'Flow field',labels:{dx:'dx/dt =',dy:'dy/dt ='},legend:'A velocity at every point. Thousands of particles drift along it and leave trails.',knob:{label:'Step length',min:.2,max:4,def:1},iter:{label:'Passes',min:32,max:1024,step:16,def:256},modes:null,view:{x:0,y:0,span:8},read:'plane'},
+  lattice:{title:'Lattice',long:'Integer lattice',labels:{v:'v(i, j) ='},legend:'i and j are whole-number cells. Colour is v modulo the modulus; and, or and xor work on bits.',knob:{label:'Modulus',min:2,max:256,def:16},iter:null,modes:null,view:{x:96,y:72,span:192},read:'cell'},
+  automaton:{title:'Automaton',long:'Cellular automaton',labels:{next:'next ='},legend:'Each row is one generation. l2, l, c, r and r2 are the cells around the current one; x is the column and t the generation. The result is taken modulo the number of states.',knob:{label:'States',min:2,max:8,def:3},iter:null,modes:[['noise','Random first row'],['dot','Single live cell']],modeTitle:'First row',view:{x:0,y:0,span:4},read:'none'},
+  contour:{title:'Contour',long:'Contour map',labels:{f:'f(x, y) ='},legend:'A height field drawn as level bands. The pale line is where f equals zero.',knob:{label:'Level density',min:.05,max:40,def:3},iter:null,modes:null,view:{x:0,y:0,span:8},read:'plane'},
+  harmonic:{title:'Harmonograph',long:'Harmonograph',labels:{x:'x(t) =',y:'y(t) ='},legend:'A pen follows the curve over time. Ink pools where it moves slowly.',knob:{label:'Duration',min:20,max:4000,def:400},iter:{label:'Ink amount',min:32,max:1024,step:16,def:256},modes:null,view:{x:0,y:0,span:5},read:'plane'},
+  field:{title:'Quantum field',long:'Quantum field (FXplore)',labels:{f:'f(u, v) ='},legend:'FXplore’s operator tongue over the plane: quark, gluon, yukawa, collapse, tunnel and more. Colour bands follow f and light rakes across its slope. The Operators tab in the glossary defines every word.',knob:{label:'Band scale',min:.01,max:100,def:1},iter:null,modes:null,view:{x:0,y:0,span:8},read:'plane'},
+  surface:{title:'Supershape',long:'Parametric surface (Shape Atlas)',labels:{x:'x(u, v) =',y:'y(u, v) =',z:'z(u, v) ='},legend:'u runs from −π to π and v from −π/2 to π/2. sf(angle, m, n1, n2, n3) is the Gielis superformula Shape Atlas grows its creatures from.',knob:{label:'Turn in degrees',min:0,max:360,def:30},iter:{label:'Sample density',min:32,max:1024,step:16,def:256},modes:[['tilt','Tilted'],['top','From above'],['side','Side on']],modeTitle:'Camera',view:{x:0,y:0,span:3},read:'none'}
+};
+const CLASSICS={
+  'escape:mandel':{genre:'escape',name:'Mandelbrot',note:'The classic zₙ₊₁ = zₙ² + c.',exprs:{x:'x^2 - y^2 + cx',y:'2*x*y + cy'},view:{x:-.5,y:0,span:3.6}},
+  'escape:julia':{genre:'escape',name:'Julia spiral',note:'The quadratic recurrence with c fixed at −0.745 + 0.186i.',exprs:{x:'x^2 - y^2 + cx',y:'2*x*y + cy'},mode:'julia',view:{x:0,y:0,span:3.5}},
+  'escape:cubic':{genre:'escape',name:'Cubic Multibrot',note:'zₙ₊₁ = zₙ³ + c. A higher power changes the symmetry.',exprs:{x:'x^3 - 3*x*y^2 + cx',y:'3*x^2*y - y^3 + cy'},view:{x:0,y:0,span:3.5}},
+  'escape:quartic':{genre:'escape',name:'Quartic Multibrot',note:'zₙ₊₁ = zₙ⁴ + c, expanded into real and imaginary parts.',exprs:{x:'x^4 - 6*x^2*y^2 + y^4 + cx',y:'4*x^3*y - 4*x*y^3 + cy'},view:{x:0,y:0,span:3.5}},
+  'escape:ship':{genre:'escape',name:'Burning Ship',note:'Fold both components with absolute values before squaring.',exprs:{x:'x^2 - y^2 + cx',y:'2*abs(x*y) + cy'},view:{x:-.4,y:-.5,span:3.7}},
+  'escape:tricorn':{genre:'escape',name:'Tricorn',note:'Square the conjugate instead of z.',exprs:{x:'x^2 - y^2 + cx',y:'-2*x*y + cy'},view:{x:-.2,y:0,span:4.4}},
+  'escape:celtic':{genre:'escape',name:'Celtic',note:'Fold the real part of z² before adding c.',exprs:{x:'abs(x^2 - y^2) + cx',y:'2*x*y + cy'},view:{x:-.4,y:0,span:3.8}},
+  'escape:feather':{genre:'escape',name:'Sine feather',note:'The quadratic recurrence with two adjustable sine nudges.',exprs:{x:'x^2 - y^2 + cx + a*sin(y)',y:'2*x*y + cy + b*sin(x)'},a:.36,b:-.28,view:{x:-.4,y:0,span:3.8}},
+  'attractor:clifford':{genre:'attractor',name:'Clifford attractor',note:'A well-known sine map popularised by Clifford Pickover.',exprs:{x:'sin(a*y) + p*cos(a*x)',y:'sin(b*x) + q*cos(b*y)'},a:-1.4,b:1.6,p:1,q:.7,view:{x:0,y:0,span:4.6}},
+  'basin:newton3':{genre:'basin',name:'Newton z³ − 1',note:'Newton’s method on the three cube roots of unity.',exprs:{f:'z^3 - 1'},knob:1,iterations:64,view:{x:0,y:0,span:4}},
+  'domain:poles':{genre:'domain',name:'Poles and zeros',note:'A rational function with simple zeros, a double zero and two poles.',exprs:{f:'(z^2 - 1)*(z - 2 - i)^2/(z^2 + 2 + 2*i)'},knob:1,view:{x:0,y:0,span:7}},
+  'flow:vanderpol':{genre:'flow',name:'Van der Pol oscillator',note:'A nonlinear oscillator that settles onto a limit cycle.',exprs:{dx:'y',dy:'a*(1 - x^2)*y - x'},a:1,knob:1,view:{x:0,y:0,span:9}},
+  'lattice:xor':{genre:'lattice',name:'XOR texture',note:'The bitwise XOR of the coordinates, a demo-scene staple.',exprs:{v:'xor(i, j)'},knob:64,view:{x:128,y:96,span:256}},
+  'automaton:rule30':{genre:'automaton',name:'Rule 30',note:'Wolfram’s elementary automaton, grown from one cell.',exprs:{next:'xor(l, or(c, r))'},knob:2,mode:'dot'},
+  'contour:eggcrate':{genre:'contour',name:'Egg crate',note:'Level bands of sin x cos y on a gentle slope.',exprs:{f:'sin(x)*cos(y) + 0.3*x'},knob:3,view:{x:0,y:0,span:14}},
+  'harmonic:lissajous':{genre:'harmonic',name:'Damped Lissajous',note:'Two decaying pendulums in a 2 : 3 ratio.',exprs:{x:'sin(2*t)*exp(-0.003*t)',y:'sin(3*t + 1.57)*exp(-0.003*t)'},knob:900,view:{x:0,y:0,span:2.8}},
+  'field:weier':{genre:'field',name:'Weierstrass weave',note:'A truncated Weierstrass function in both directions, one of FXplore’s basic words.',exprs:{f:'weier(u)*weier(v)'},knob:.6,view:{x:0,y:0,span:12}},
+  'surface:gielis':{genre:'surface',name:'Gielis supershape',note:'Johan Gielis’s superformula as a spherical product, the seed of every Shape Atlas creature.',exprs:{x:'sf(u, 6, 1, 7, 8)*cos(u)*sf(v, 3, 2, 4, 4)*cos(v)',y:'sf(u, 6, 1, 7, 8)*sin(u)*sf(v, 3, 2, 4, 4)*cos(v)',z:'sf(v, 3, 2, 4, 4)*sin(v)'},knob:30,mode:'tilt',view:{x:0,y:0,span:3.2}},
+  'surface:torus':{genre:'surface',name:'Torus',note:'The ring torus, a tube swept around a circle.',exprs:{x:'(1.6 + 0.6*cos(2*v))*cos(u)',y:'(1.6 + 0.6*cos(2*v))*sin(u)',z:'0.6*sin(2*v)'},knob:20,mode:'tilt',view:{x:0,y:0,span:5}}
+};
+const OLD_PRESETS={mandel:'escape:mandel',julia:'escape:julia',cubic:'escape:cubic',quartic:'escape:quartic',ship:'escape:ship',tricorn:'escape:tricorn',celtic:'escape:celtic',feather:'escape:feather'};
+const spanLimits=g=>g==='lattice'?[4,1e6]:[1e-10,1e6];
+function limitView(v,g){const [lo,hi]=spanLimits(g);return {x:clampNum(v.x,-1e6,1e6),y:clampNum(v.y,-1e6,1e6),span:clampNum(v.span,lo,hi)};}
+function defaultsFor(g){const G=GENRES[g];return {v:2,genre:g,exprs:{},a:0,b:0,p:0,q:0,knob:G.knob?G.knob.def:1,mode:G.modes?G.modes[0][0]:'none',juliaRe:-.745,juliaIm:.186,view:clone(G.view),home:clone(G.view),iterations:G.iter?G.iter.def:256,quality:800,palette:'mint',colorCycle:36,seed:'clover',pick:'rotate',name:'Untitled',note:'',bits:0,minted:'',preset:'custom',image:null,imagePalette:null,cite:''};}
+function classicState(key,base){
+  const c=CLASSICS[key],s={...defaultsFor(c.genre),...clone(c),preset:key,bits:0,minted:''};
+  if(base)for(const k of ['seed','pick','palette','quality','colorCycle'])s[k]=base[k];
+  s.view=clone(c.view||GENRES[c.genre].view);s.home=clone(s.view);return s;
+}
+function validateState(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('The file does not contain an equation.');
+  if(raw.genre===undefined&&typeof raw.exprX==='string'&&typeof raw.exprY==='string')
+    raw={...raw,genre:'escape',exprs:{x:raw.exprX,y:raw.exprY},knob:raw.bailout,note:raw.description,preset:own(OLD_PRESETS,raw.preset)?OLD_PRESETS[raw.preset]:'custom'};
+  const g=raw.genre;if(typeof g!=='string'||!own(GENRES,g))throw Error('Unknown genre.');
+  const G=GENRES[g],lang=core.LANG[g],s=defaultsFor(g);
+  if(!raw.exprs||typeof raw.exprs!=='object')throw Error('Missing expressions.');
+  for(const f of lang.fields){if(typeof raw.exprs[f]!=='string')throw Error('Missing the '+f+' expression.');s.exprs[f]=raw.exprs[f].trim();}
+  core.compileGenre(g,s.exprs);
+  const bounds={a:[-10,10],b:[-10,10],p:[-10,10],q:[-10,10],juliaRe:[-4,4],juliaIm:[-4,4],iterations:[16,1024],colorCycle:[8,120],bits:[0,500]};
+  if(G.knob)bounds.knob=[G.knob.min,G.knob.max];
+  for(const [k,[lo,hi]] of Object.entries(bounds))if(raw[k]!==undefined){if(typeof raw[k]!=='number'||!Number.isFinite(raw[k])||raw[k]<lo||raw[k]>hi)throw Error('Invalid '+k+' value.');s[k]=raw[k];}
+  s.iterations=Math.round(s.iterations);s.colorCycle=Math.round(s.colorCycle);
+  const [lo,hi]=spanLimits(g);
+  for(const k of ['view','home'])if(raw[k]!==undefined){const v=raw[k];if(!v||!Number.isFinite(v.x)||!Number.isFinite(v.y)||!Number.isFinite(v.span)||Math.abs(v.x)>1e6||Math.abs(v.y)>1e6||v.span<lo||v.span>hi)throw Error('Invalid camera view.');s[k]={x:v.x,y:v.y,span:v.span};}
+  if(raw.home===undefined)s.home=clone(s.view);
+  if(raw.quality!==undefined){if(![480,800,1440].includes(raw.quality))throw Error('Invalid resolution.');s.quality=raw.quality;}
+  if(Array.isArray(raw.imagePalette)){if(raw.imagePalette.length!==7||!raw.imagePalette.every(c=>Array.isArray(c)&&c.length===3&&c.every(v=>Number.isInteger(v)&&v>=0&&v<=255)))throw Error('Invalid image palette.');s.imagePalette=raw.imagePalette.map(c=>c.slice());}
+  if(raw.palette!==undefined){if(raw.palette==='image'){if(!s.imagePalette)throw Error('Missing image palette.');s.palette='image';}else{if(typeof raw.palette!=='string'||!own(PALETTES,raw.palette))throw Error('Unknown palette.');s.palette=raw.palette;}}
+  if(raw.image){const im=raw.image;if(typeof im!=='object'||!Number.isInteger(im.w)||!Number.isInteger(im.h)||im.w<1||im.h<1||im.w>160||im.h>160||typeof im.data!=='string'||!/^[A-Za-z0-9+/]*={0,2}$/.test(im.data)||im.data.length!==4*Math.ceil(im.w*im.h/3))throw Error('Invalid image.');s.image={name:typeof im.name==='string'&&im.name?im.name.slice(0,80):'image',w:im.w,h:im.h,data:im.data,hash:core.hash(im.data).toString(16).padStart(8,'0')};}
+  if(raw.mode!==undefined&&G.modes){if(!G.modes.some(m=>m[0]===raw.mode))throw Error('Invalid mode.');s.mode=raw.mode;}
+  if(raw.pick!==undefined&&(raw.pick==='rotate'||own(GENRES,raw.pick)))s.pick=raw.pick;
+  for(const [k,n] of [['name',80],['note',400],['seed',64],['minted',40],['cite',200]])if(typeof raw[k]==='string')s[k]=raw[k].slice(0,n);
+  s.preset=typeof raw.preset==='string'&&(own(CLASSICS,raw.preset)||raw.preset==='unlisted')?raw.preset:'custom';
+  if(s.preset!=='unlisted')s.bits=0;
+  return s;
+}
+
+let state=classicState('escape:mandel',null);
+try{const boot=JSON.parse($('boot-state').textContent);if(boot)state=validateState(boot);}catch(e){setTimeout(()=>toast('Could not restore the embedded equation: '+e.message),0);}
+let recentGenres=[];
+let history=[clone(state)],historyIndex=0,saved=[],worker=null,fallbackTimer=0,renderSequence=0,renderComplete=false,renderTimer=0,toastTimer=0,generationToken=0,activeGeneration=0;
+const cv=$('fractal'),ctx=cv.getContext('2d',{alpha:false});
+function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
+function updateHistoryButtons(){$('undo').disabled=historyIndex===0;$('redo').disabled=historyIndex===history.length-1;}
+function record(){if(JSON.stringify(history[historyIndex])===JSON.stringify(state))return;history=history.slice(0,historyIndex+1);history.push(clone(state));if(history.length>60)history.shift();historyIndex=history.length-1;updateHistoryButtons();}
+const usesImg=exprs=>Object.values(exprs||{}).some(e=>/\bimg\s*\(/.test(e));
+const usedSliders=exprs=>['a','b','p','q'].filter(k=>new RegExp('\\b'+k+'\\b').test(Object.values(exprs).join(' ')));
+function fingerprint(s){const h=core.hash(s.genre+'|'+JSON.stringify(s.exprs)+'|'+[s.a,s.b,s.p,s.q,s.knob,s.mode].join(',')+(s.image&&usesImg(s.exprs)?'|'+s.image.hash:'')).toString(16).toUpperCase().padStart(8,'0');return h.slice(0,4)+'-'+h.slice(4);}
+const SUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+const exponent=s=>Math.max(1,Math.floor(s.bits));
+
+/* Static controls built once. */
+(function buildControls(){
+  const chips=$('chips');
+  for(const key of ['rotate',...ORDER]){const b=document.createElement('button');b.dataset.pick=key;b.textContent=key==='rotate'?'↻ Rotate':GENRES[key].title;b.title=key==='rotate'?'Each generation lands in a different genre':'Generate a new '+GENRES[key].long.toLowerCase();chips.appendChild(b);}
+  const sel=$('preset'),blank=document.createElement('option');blank.value='';blank.textContent='Choose a classic…';sel.appendChild(blank);
+  for(const g of ORDER){const group=document.createElement('optgroup');group.label=GENRES[g].long;for(const [k,c] of Object.entries(CLASSICS))if(c.genre===g){const o=document.createElement('option');o.value=k;o.textContent=c.name;group.appendChild(o);}sel.appendChild(group);}
+  const sl=$('sliders');
+  for(const k of ['a','b','p','q']){const row=document.createElement('div');row.className='slider';row.innerHTML='<label for="'+k+'">'+k+'</label><input type="range" id="'+k+'" min="-3" max="3" step="0.001"><input type="number" id="'+k+'Value" min="-10" max="10" step="any" aria-label="'+k+' value">';sl.appendChild(row);}
+  const sw=$('swatches');
+  for(const [k,stops] of Object.entries(PALETTES)){const b=document.createElement('button');b.className='swatch';b.dataset.palette=k;b.title=PALETTE_NAMES[k];b.setAttribute('aria-label',PALETTE_NAMES[k]+' palette');b.style.background='linear-gradient(90deg,'+stops.slice(0,6).map(c=>'rgb('+c.join(',')+')').join(',')+')';sw.appendChild(b);}
+  const ib=document.createElement('button');ib.className='swatch';ib.dataset.palette='image';ib.title='From image';ib.setAttribute('aria-label','Palette taken from the image');ib.hidden=true;sw.appendChild(ib);
+})();
+
+function buildFields(){
+  const lang=core.LANG[state.genre],box=$('fields');
+  if(box.dataset.genre!==state.genre){
+    box.replaceChildren();box.dataset.genre=state.genre;
+    for(const f of lang.fields){
+      const d=document.createElement('div');d.className='field';
+      const l=document.createElement('label');l.htmlFor='expr-'+f;l.textContent=GENRES[state.genre].labels[f];
+      const t=document.createElement('textarea');t.id='expr-'+f;t.spellcheck=false;t.maxLength=600;t.setAttribute('autocapitalize','off');t.setAttribute('autocomplete','off');
+      t.oninput=()=>{$('editorState').textContent='Changes waiting. Ctrl + Enter applies.';$('formulaError').hidden=true;};
+      t.onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();applyEquation();}};
+      d.append(l,t);box.appendChild(d);
+    }
+  }
+  for(const f of lang.fields)$('expr-'+f).value=state.exprs[f];
+}
+function describe(){
+  let t=state.note||'';
+  if(state.genre==='escape'&&state.mode==='julia')t+=(t?' ':'')+'Julia plane with c = '+state.juliaRe+(state.juliaIm<0?' − ':' + ')+Math.abs(state.juliaIm)+'i.';
+  const used=usedSliders(state.exprs);if(used.length)t+=(t?' ':'')+used.map(k=>k+' = '+state[k]).join(', ')+'.';
+  return t;
+}
+function drawCertificate(){
+  const s=state,kind=s.preset==='unlisted'?'unlisted':own(CLASSICS,s.preset)?'classic':'custom';
+  $('cert').dataset.kind=kind;const odds=$('certOdds');odds.replaceChildren();
+  if(kind==='unlisted'){
+    $('certStamp').textContent='Unlisted';
+    const sup=document.createElement('sup');sup.textContent=String(exponent(s));odds.append('1 in 10',sup);
+    $('certLine').textContent='One of about 10'+String(exponent(s)).replace(/\d/g,d=>SUP[d])+' equations this genre can mint. Minted '+(s.minted||'here')+' from seed “'+s.seed+'”.'+(exponent(s)<12?' Short odds: a rule this simple may already exist somewhere.':'');
+  }else if(kind==='classic'){
+    $('certStamp').textContent='Classic';odds.textContent='On record';
+    $('certLine').textContent='A known equation. You can look this one up. Generate to mint one nobody has seen.';
+  }else{
+    $('certStamp').textContent='Edited';odds.textContent='Hand-tuned';
+    $('certLine').textContent='Changed by hand, so the odds were not counted. Generate to mint a counted one.';
+  }
+  $('certSerial').textContent='Fingerprint '+fingerprint(s);
+}
+function syncUI(){
+  const G=GENRES[state.genre],lang=core.LANG[state.genre];
+  document.querySelectorAll('[data-pick]').forEach(el=>{el.setAttribute('aria-pressed',String(el.dataset.pick===state.pick));el.classList.toggle('current',el.dataset.pick===state.genre);});
+  $('seed').value=state.seed;$('preset').value=own(CLASSICS,state.preset)?state.preset:'';
+  $('legend').textContent=G.legend;buildFields();
+  const used=usedSliders(state.exprs);
+  for(const k of ['a','b','p','q']){const on=used.includes(k);$(k).disabled=$(k+'Value').disabled=!on;$(k).value=clampNum(state[k],-3,3);$(k+'Value').value=state[k];$(k).parentElement.hidden=!on&&used.length>0;}
+  $('sliderHint').textContent=used.length?'Drag to bend the equation. Type beyond ±3 in the box.':'Use a, b, p or q in the equation to get live sliders.';
+  $('modePanel').hidden=!G.modes;
+  if(G.modes){
+    $('modeTitle').textContent=G.modeTitle;const box=$('modes');box.replaceChildren();
+    for(const [m,label] of G.modes){const b=document.createElement('button');b.textContent=label;b.setAttribute('aria-pressed',String(state.mode===m));b.onclick=()=>switchMode(m);box.appendChild(b);}
+  }
+  $('juliaControls').hidden=!(state.genre==='escape'&&state.mode==='julia');$('juliaRe').value=state.juliaRe;$('juliaIm').value=state.juliaIm;
+  $('knobField').hidden=!G.knob;if(G.knob){$('knobLabel').textContent=G.knob.label+' ('+G.knob.min+' to '+G.knob.max+')';$('knob').min=G.knob.min;$('knob').max=G.knob.max;$('knob').value=state.knob;}
+  $('iterField').hidden=!G.iter;if(G.iter){$('iterLabel').textContent=G.iter.label;$('iterations').min=G.iter.min;$('iterations').max=G.iter.max;$('iterations').step=G.iter.step;$('iterations').value=state.iterations;$('iterValue').value=state.iterations;}
+  $('quality').value=state.quality;$('colorCycle').value=state.colorCycle;$('colorValue').value=state.colorCycle;$('paletteName').value=PALETTE_NAMES[state.palette];
+  document.querySelectorAll('[data-palette]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.palette===state.palette)));
+  const lines=$('displayLines');lines.replaceChildren();
+  for(const f of lang.fields){const d=document.createElement('div'),sp=document.createElement('span'),b=document.createElement('b');sp.textContent=G.labels[f];b.textContent=state.exprs[f];d.append(sp,b);lines.appendChild(d);}
+  $('genreTitle').textContent=G.long;$('equationName').textContent=state.name;$('equationDescription').textContent=describe();
+  $('formulaError').hidden=true;$('editorState').textContent='Ctrl + Enter applies.';
+  $('viewer').dataset.static=String(state.genre==='automaton');
+  syncImagePanel();
+  drawCertificate();updateViewHUD();updateHistoryButtons();updateSource();
+}
+function updateViewHUD(){
+  if(state.genre==='automaton'){$('viewReadout').textContent='Generations run downward';$('zoomReadout').textContent='';return;}
+  const f=v=>Math.abs(v)<1e-8&&v!==0?v.toExponential(3):Number(v.toPrecision(8)).toString();
+  $('viewReadout').textContent='Centre '+f(state.view.x)+', '+f(state.view.y);
+  const z=state.home.span/state.view.span;$('zoomReadout').textContent=(z>=1e5?z.toExponential(2):z.toFixed(2))+'×';
+}
+
+/* Rendering: a background worker when possible, the main thread when not. */
+function cancelRender(){clearTimeout(renderTimer);clearTimeout(fallbackTimer);if(worker){worker.terminate();worker=null;}renderSequence++;}
+function renderNow(){
+  cancelRender();renderComplete=false;
+  const id=renderSequence,s=clone(state),w=s.quality,h=Math.round(w*3/4),started=performance.now(),palette=paletteOf(s);
+  cv.width=w;cv.height=h;ctx.fillStyle='#040807';ctx.fillRect(0,0,w,h);
+  $('png').disabled=$('keep').disabled=true;$('stop').hidden=false;$('renderAgain').hidden=true;
+  $('renderStatus').textContent='Rendering';$('renderStatus').dataset.busy='true';$('progress').style.width='0%';
+  function receive(data){
+    if(id!==renderSequence)return;
+    if(data.error){failure(data.error);return;}
+    const px=data.pixels instanceof Uint8ClampedArray?data.pixels:new Uint8ClampedArray(data.pixels);
+    ctx.putImageData(new ImageData(px,w,data.rows),0,data.y);
+    $('progress').style.width=(Math.min(1,data.progress)*100)+'%';
+    if(data.done){
+      renderComplete=true;const ms=performance.now()-started;
+      $('renderStatus').textContent=(ms/1000).toFixed(2)+' s, '+(data.invalid?data.invalid.toLocaleString()+' undefined':w+' × '+h);
+      $('renderStatus').title=data.invalid?'Rose pixels are where the arithmetic broke down.':'';
+      $('renderStatus').dataset.busy='false';$('stop').hidden=true;$('png').disabled=$('keep').disabled=false;
+      if(worker){worker.terminate();worker=null;}
+    }
+  }
+  function failure(message){if(id!==renderSequence)return;cancelRender();$('renderStatus').textContent='Render failed';$('renderStatus').dataset.busy='false';$('stop').hidden=true;$('renderAgain').hidden=false;toast('Could not render: '+message);}
+  function fallback(){
+    if(id!==renderSequence)return;if(worker){worker.terminate();worker=null;}
+    let eng,k=0;try{eng=core.engine(s,w,h,palette);}catch(e){failure(e.message);return;}
+    (function step(){if(id!==renderSequence)return;try{const r=eng.step(k++);receive({...r,done:k>=eng.count});if(k<eng.count)fallbackTimer=setTimeout(step,0);}catch(e){failure(e.message);}})();
+  }
+  try{
+    const source='const core=('+equationCore.toString()+')();onmessage=function(e){let eng;try{eng=core.engine(e.data.s,e.data.w,e.data.h,e.data.palette);}catch(err){postMessage({error:err.message});return;}let k=0;function step(){try{const r=eng.step(k++);postMessage({y:r.y,rows:r.rows,pixels:r.pixels.buffer,progress:r.progress,escaped:r.escaped,invalid:r.invalid,done:k>=eng.count},[r.pixels.buffer]);if(k<eng.count)setTimeout(step,0);}catch(err){postMessage({error:err.message});}}step();};';
+    const url=URL.createObjectURL(new Blob([source],{type:'text/javascript'}));try{worker=new Worker(url);}finally{URL.revokeObjectURL(url);}
+    worker.onmessage=e=>receive(e.data);worker.onerror=e=>{e.preventDefault();fallback();};worker.postMessage({s,w,h,palette});
+  }catch(e){fallback();}
+}
+function commit(next,{render=true}={}){generationToken++;state=validateState(next);syncUI();record();if(render)renderNow();}
+function queueChange(){cancelRender();renderComplete=false;$('png').disabled=$('keep').disabled=true;renderTimer=setTimeout(()=>{record();updateSource();renderNow();},140);}
+function setPreset(key){if(!own(CLASSICS,key))return;try{const b=state;commit({...classicState(key,b),image:b.image,imagePalette:b.imagePalette});logGlossary(state,'classic');}catch(e){toast(e.message);}}
+
+/* Generation: seeded, per-genre grammar, screened for visible structure. */
+function newSeed(){if(globalThis.crypto&&crypto.getRandomValues){const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0].toString(36);}return Math.floor(Math.random()*0xffffffff).toString(36);}
+const tick=()=>new Promise(r=>setTimeout(r,0));
+const genreForSeed=seed=>ORDER[core.hash(seed+'|genre')%ORDER.length];
+function setBusy(on){for(const el of [$('generate'),$('mutate'),$('replay'),...document.querySelectorAll('[data-pick]')])el.disabled=on;$('generate').textContent=on?'Searching…':'Generate';}
+async function generate(fresh,pick=state.pick,opts={}){
+  const token=++generationToken;activeGeneration=token;
+  let seed=fresh?newSeed():($('seed').value.trim().slice(0,64)||'clover');
+  let genre=pick==='rotate'?genreForSeed(seed):pick;
+  if(fresh&&pick==='rotate'){const avoid=new Set([state.genre,...recentGenres.slice(-5)]);for(let n=0;n<400&&avoid.has(genre);n++){seed=newSeed();genre=genreForSeed(seed);}}
+  if(opts.forceImg&&!IMAGE_GENRES.includes(genre))genre=IMAGE_GENRES[core.hash(seed+'|imgenre')%IMAGE_GENRES.length];
+  $('seed').value=seed;setBusy(true);
+  const lang=core.LANG[genre],G=GENRES[genre],R=gen.rng(seed+'|'+genre);let best=null;
+  const useImg=!!state.image&&IMAGE_GENRES.includes(genre)&&(opts.forceImg||core.hash(seed+'|img')%10<6);
+  const genome=opts.genome&&biocodex&&genre==='surface'?biocodex[core.hash(seed+'|genome')%biocodex.length]:null;
+  const copts={image:useImg,genome};
+  try{
+    for(let i=0;i<80;i++){
+      if(token!==generationToken)return;
+      const before=R.bits;
+      try{
+        const c=gen.candidate(genre,R,copts);
+        for(const f of lang.fields)c.exprs[f]=gen.print(core.parse(c.exprs[f],lang));
+        c.seed=seed;c.juliaRe=-.745;c.juliaIm=.186;c.image=state.image;
+        const q=gen.screen(c,R);c.bits=R.bits-before+(genome?Math.log10(biocodex.length):0);
+        if(!best||(q.good&&!best.q.good)||(q.good===best.q.good&&q.score>best.q.score))best={c,q};
+        if(q.good)break;
+      }catch(_){}
+      if(i%3===2)await tick();
+    }
+    if(token!==generationToken)return;
+    if(!best)throw Error('no candidate compiled');
+    const {c,q}=best;
+    const s={...defaultsFor(genre),...c,genre,seed,pick,preset:'unlisted',name:(gen.name(genre,R)+(genome?' '+genome.accession:'')).slice(0,80),note:(c.note||'')+(useImg&&state.image?' It reads the image “'+state.image.name+'”.':''),image:state.image,imagePalette:state.imagePalette,cite:genome?(genome.kind.toUpperCase()+' '+genome.accession+' — '+genome.definition+'. '+genome.cite).slice(0,200):'',bits:Math.round(c.bits*10)/10,minted:new Date().toISOString().slice(0,10),palette:state.palette,quality:state.quality,colorCycle:state.colorCycle};
+    if(!G.modes||!G.modes.some(m=>m[0]===s.mode))s.mode=G.modes?G.modes[0][0]:'none';
+    s.knob=G.knob?clampNum(typeof c.knob==='number'?c.knob:G.knob.def,G.knob.min,G.knob.max):1;
+    s.iterations=G.iter?clampNum(c.iterations||G.iter.def,16,1024):256;
+    s.view=limitView(q.home||c.view||G.view,genre);s.home=clone(s.view);
+    commit(s);logGlossary(state,genome?'genome':useImg?'image':'minted');recentGenres.push(genre);if(recentGenres.length>8)recentGenres.shift();
+  }catch(e){toast('Generation failed: '+e.message);}
+  finally{if(activeGeneration===token)setBusy(false);}
+}
+function mutate(){
+  generationToken++;
+  const R=gen.rng(newSeed()),g=state.genre;let found=null;
+  for(let t=0;t<10;t++){
+    try{
+      const c=clone(state);c.exprs=gen.jitter(g,c.exprs,R,.12);
+      for(const k of usedSliders(c.exprs))c[k]=clampNum(Math.round((c[k]*(1+(R.r()-.5)*.24)+(R.r()-.5)*.06)*1000)/1000,-10,10);
+      if(g==='escape'&&c.mode==='julia'){c.juliaRe=clampNum(Math.round((c.juliaRe+(R.r()-.5)*.03)*1e4)/1e4,-4,4);c.juliaIm=clampNum(Math.round((c.juliaIm+(R.r()-.5)*.03)*1e4)/1e4,-4,4);}
+      const changed=JSON.stringify(c.exprs)!==JSON.stringify(state.exprs)||['a','b','p','q','juliaRe','juliaIm'].some(k=>c[k]!==state[k]);
+      if(!changed)continue;
+      core.compileGenre(g,c.exprs);
+      const q=gen.screen(c,R,{keepLevels:true});found={c,q};if(q.good)break;
+    }catch(_){}
+  }
+  if(!found){toast('This equation has no numbers to vary. Edit it by hand or generate a new one.');return;}
+  const {c,q}=found;
+  if((g==='attractor'||g==='harmonic'||g==='surface')&&q.home){c.view=limitView(q.home,g);c.home=clone(c.view);}
+  c.name=(state.name.replace(/ variation$/,'')+' variation').slice(0,80);
+  if(c.preset!=='unlisted'){c.preset='custom';}
+  try{commit(c);logGlossary(state,'mutated');}catch(e){toast(e.message);}
+}
+function applyEquation(){
+  const exprs={};for(const f of core.LANG[state.genre].fields)exprs[f]=$('expr-'+f).value.trim();
+  try{core.compileGenre(state.genre,exprs);commit({...clone(state),exprs,preset:'custom',bits:0,name:state.preset==='custom'?state.name:'My '+GENRES[state.genre].long.toLowerCase(),note:'Written by hand.'});logGlossary(state,'written');}
+  catch(e){$('formulaError').textContent=e.message;$('formulaError').hidden=false;}
+}
+function switchMode(m){
+  if(state.mode===m)return;const s=clone(state);s.mode=m;
+  if(s.genre==='escape'){s.view=m==='julia'?{x:0,y:0,span:3.5}:clone(GENRES.escape.view);s.home=clone(s.view);}
+  commit(s);
+}
+
+/* C export: one portable renderer per genre, following the same arithmetic as the lab. */
+function cplxC(n){
+  switch(n.t){
+    case 'num':return '('+core.emit(n,'c')+')';
+    case 'imag':return 'I';
+    case 'var':return n.v;
+    case 'unary':return '('+n.v+'('+cplxC(n.r)+'))';
+    case 'op':{
+      if(n.v==='^'){
+        let e=null;if(n.r.t==='num'&&Number.isInteger(n.r.v))e=n.r.v;else if(n.r.t==='unary'&&n.r.v==='-'&&n.r.r.t==='num'&&Number.isInteger(n.r.r.v))e=-n.r.r.v;
+        return e!==null&&Math.abs(e)<=32?'lab_cpowi('+cplxC(n.l)+', '+e+')':'cpow('+cplxC(n.l)+', '+cplxC(n.r)+')';
+      }
+      return '('+cplxC(n.l)+' '+n.v+' '+cplxC(n.r)+')';
+    }
+    case 'fn':if(n.v==='img')return 'lab_cimg('+cplxC(n.args[0])+')';return ({sin:'csin',cos:'ccos',tan:'ctan',exp:'cexp',log:'clog',sqrt:'csqrt',sinh:'csinh',cosh:'ccosh',tanh:'ctanh',conj:'conj',abs:'cabs',re:'creal',im:'cimag',arg:'carg'})[n.v]+'('+cplxC(n.args[0])+')';
+  }
+  throw Error('Unsupported node.');
+}
+function cPrelude(s,lang){
+  const safe=t=>String(t).replace(/\*\//g,'* /');
+  let out=`static inline double lab_round(double x) { return floor(x+0.5); }
+static inline double fx_gauss(double x) { return exp(-x*x); }
+static inline double fx_absr(double x) { return sqrt(fabs(x)); }
+static inline double fx_sq(double x) { return x*x; }
+static inline double fx_cube(double x) { return x*x*x; }
+static inline double fx_lat(double x) { return x-lab_round(x); }
+static inline double fx_weier(double x) { return cos(x)+cos(3*x)/2+cos(9*x)/4+cos(27*x)/8; }
+static inline double fx_ripple(double x) { return sin(x)/(1+fabs(x)*0.4); }
+static inline double fx_lnab(double x) { return log(1+fabs(x)); }
+static inline double fx_flo(double x) { return floor(x*2)/2; }
+static inline double fx_sig(double x) { return lab_sign(x); }
+static inline double fx_quark(double x) { return cbrt(sin(3*x)); }
+static inline double fx_charm(double x) { return sin(x)+sin(2.618*x)/2.618; }
+static inline double fx_strange(double x) { return sin(x*1.6180339)+cos(x*0.6180339)/2; }
+static inline double fx_gluon(double x) { return tanh(3*sin(x))*cos(x); }
+static inline double fx_spinor(double x) { return sin(x/2); }
+static inline double fx_pion(double x) { return cos(x)*exp(-fabs(x)/LAB_PI); }
+static inline double fx_octet(double x) { return cos(x)+cos(8*x)/8; }
+static inline double fx_collapse(double x) { double s=sin(x); return lab_sign(s)*s*s; }
+static inline double fx_tunnel(double x) { return exp(-fabs(x))*lab_sign(sin(3*x)); }
+static inline double fx_qubit(double x) { double c=cos(x/2); return c*c*2-1; }
+static inline double fx_lorentz(double x) { return 2/sqrt(1+x*x)-1; }
+static inline double fx_comet(double x) { return exp(-x*x/4)*sin(5*x); }
+static inline double fx_clover(double x) { return sin(x)*pow(cos(2*x),2); }
+static inline double fx_mobius(double x) { return x/(1+fabs(x)); }
+static inline double fx_fm(double a, double b) { return sin(a+1.7*sin(b)); }
+static inline double fx_fxmod(double a, double b) { double m=fabs(b)+0.7; return fmod(fmod(a,m)+m,m)-m/2; }
+static inline double fx_powa(double a, double b) { return pow(fabs(a)+1e-6,fmax(-3,fmin(3,b)))*lab_sign((a!=0&&!isnan(a))?a:1); }
+static inline double fx_collide(double a, double b) { return tanh(a-b)*cos(a+b); }
+static inline double fx_annihil(double a, double b) { return sin(a*b)*exp(-fabs(a+b)/4); }
+static inline double fx_yukawa(double a, double b) { return exp(-fabs(a-b))*cos(a*b); }
+static inline double fx_superpos(double a, double b) { return (sin(a)+sin(b))/1.41421; }
+static inline double fx_entangle(double a, double b) { return cos(a-b); }
+static inline double fx_braket(double a, double b) { return cos(a-b)*exp(-((a-b)*(a-b))/8); }
+static inline double fx_dilate(double a, double b) { return a/sqrt(1+b*b); }
+static inline double lab_sf(double t, double m, double n1, double n2, double n3) { double g=m*t/4; return pow(pow(fabs(cos(g)),n2)+pow(fabs(sin(g)),n3),-1/n1); }
+`;
+  if(s.image&&usesImg(s.exprs)){
+    const bin=atob(s.image.data),bytes=[];for(let i=0;i<bin.length;i++)bytes.push(bin.charCodeAt(i));
+    const rows=[];for(let i=0;i<bytes.length;i+=40)rows.push('  '+bytes.slice(i,i+40).join(','));
+    out+=`/* Image “${safe(s.image.name)}”, ${s.image.w} x ${s.image.h} luminance cells. img() wraps every whole unit. */
+static const int IW=${s.image.w}, IH=${s.image.h};
+static const unsigned char IMG[${s.image.w*s.image.h}]={
+${rows.join(',\n')}
+};
+static inline double lab_img(double x, double y) { double u=x-floor(x), v=y-floor(y); if(!(u>=0&&v>=0)) return 0; int i=(int)(u*IW), j=(int)((1-v)*IH); if(i>=IW) i=IW-1; if(j>=IH) j=IH-1; return IMG[j*IW+i]/255.0; }
+`;
+  }else out+='static inline double lab_img(double x, double y) { (void)x; (void)y; return 0; }\n';
+  if(lang.complex)out+='static inline double lab_cimg(double complex z) { return lab_img(creal(z),cimag(z)); }\n';
+  return out;
+}
+function cSource(s=state){
+  const {asts,lang}=core.compileGenre(s.genre,s.exprs),g=s.genre,G=GENRES[g],stops=paletteOf(s),w=s.quality,h=Math.round(w*3/4),num=v=>core.emit({t:'num',v},'c'),safe=t=>String(t).replace(/\*\//g,'* /');
+  const density=['attractor','harmonic','flow'].includes(g),u32=v=>(v>>>0)+'u';
+  const field=lang.complex
+    ?'static double complex field(double complex z, double a, double b, double p, double q) {\n  (void)a; (void)b; (void)p; (void)q;\n  return '+cplxC(asts[0])+';\n}'
+    :'static void field('+lang.vars.map(v=>'double '+v).join(', ')+', double *o) {\n  '+lang.vars.map(v=>'(void)'+v+';').join(' ')+'\n'+asts.map((a,k)=>'  o['+k+'] = '+core.emit(a,'c')+';').join('\n')+'\n}';
+  const rep='int rep=(int)floor(CYCLE/36.0+0.5); if(rep<1) rep=1;';
+  const at='unsigned char *o3=img+((long)py*W+px)*3;';
+  const BODY={
+    escape:`  const double lim=KNOB*KNOB, JR=${num(s.juliaRe)}, JI=${num(s.juliaIm)};
+  const int julia=${s.mode==='julia'?1:0};
+  for(int py=0;py<H;py++){
+    double im=VY+(0.5-(py+0.5)/H)*SPAN*H/W;
+    for(int px=0;px<W;px++){
+      ${at}
+      double re=VX+((px+0.5)/W-0.5)*SPAN, cx=julia?JR:re, cy=julia?JI:im, x=julia?re:0.0, y=julia?im:0.0, o[2];
+      int n=0, bad=0, esc=x*x+y*y>lim;
+      while(n<ITER&&!esc){ field(x,y,cx,cy,A,B,P,Q,o); x=o[0]; y=o[1]; n++; if(!isfinite(x)||!isfinite(y)){bad=1;break;} esc=x*x+y*y>lim; }
+      if(bad){ o3[0]=221;o3[1]=105;o3[2]=137; invalid++; }
+      else if(esc){ double t=(double)(n%CYCLE)/CYCLE*(NSTOPS-1); int j=(int)floor(t); double f=t-j; for(int c=0;c<3;c++) o3[c]=u8(floor(STOPS[j][c]*(1-f)+STOPS[j+1][c]*f+0.5)); }
+      else { o3[0]=6;o3[1]=13;o3[2]=10; }
+    }
+  }`,
+    attractor:`  long total=(long)floor(ITER*20000.0*AREA+0.5), per=(long)ceil((double)total/16); ${rep}
+  double x=0.1, y=0.1, o[2];
+  seed_rng(${u32(core.hash(s.seed||'x'))});
+  for(int n=0;n<300;n++){ field(x,y,A,B,P,Q,o); x=o[0]; y=o[1]; if(!isfinite(x)||!isfinite(y)){ x=rnd()-0.5; y=rnd()-0.5; } }
+  for(int k=0;k<16;k++) for(long m=0;m<per;m++){
+    field(x,y,A,B,P,Q,o); double nx=o[0], ny=o[1];
+    if(!isfinite(nx)||!isfinite(ny)||nx>1e12||nx<-1e12||ny>1e12||ny<-1e12){ invalid++; nx=rnd()-0.5; ny=rnd()-0.5; }
+    else splat(nx,ny,(atan2(ny-y,nx-x)*0.15915494309189535+0.5)*rep);
+    x=nx; y=ny;
+  }
+  tone(img);`,
+    harmonic:`  long total=(long)floor(ITER*10000.0*AREA+0.5), per=(long)ceil((double)total/16);
+  const double T=KNOB, sweep=CYCLE/12.0; double o[2];
+  seed_rng(${u32(core.hash(s.seed||'h')^0x9e3779b9)});
+  for(int k=0;k<16;k++) for(long m=0;m<per;m++){
+    double t=T*(k+rnd())/16;
+    field(t,A,B,P,Q,o);
+    if(isfinite(o[0])&&isfinite(o[1])) splat(o[0],o[1],t/T*sweep); else invalid++;
+  }
+  tone(img);`,
+    flow:`  int passes=(int)ceil(ITER/16.0); if(passes<2) passes=2;
+  long particles=(long)floor((double)W*H/120+0.5); if(particles<400) particles=400;
+  const double stepLen=KNOB*SPAN/W; ${rep} double o[2];
+  for(int k=0;k<passes;k++){
+    seed_rng((uint32_t)(${u32(core.hash(s.seed||'f'))}+(uint32_t)k*7919u));
+    for(long m=0;m<particles;m++){
+      double x=VX+(rnd()-0.5)*SPAN*1.08, y=VY+(rnd()-0.5)*SPAN*ASPECT*1.08;
+      for(int n=0;n<80;n++){
+        field(x,y,A,B,P,Q,o); double u=o[0], v=o[1], mag=sqrt(u*u+v*v);
+        if(!(mag>1e-12)||!isfinite(mag)){ if(!isfinite(mag)) invalid++; break; }
+        double hx=x+0.5*stepLen*u/mag, hy=y+0.5*stepLen*v/mag;
+        field(hx,hy,A,B,P,Q,o); u=o[0]; v=o[1]; mag=sqrt(u*u+v*v);
+        if(!(mag>1e-12)||!isfinite(mag)) break;
+        x+=stepLen*u/mag; y+=stepLen*v/mag;
+        splat(x,y,(atan2(v,u)/(2*LAB_PI)+0.5)*rep);
+      }
+    }
+  }
+  tone(img);`,
+    basin:`  const double relax=KNOB; ${rep} double fall=CYCLE/3.0; if(fall<1) fall=1;
+  for(int py=0;py<H;py++){
+    double im0=VY+(0.5-(py+0.5)/H)*SPAN*ASPECT;
+    for(int px=0;px<W;px++){
+      ${at}
+      double zr=VX+((px+0.5)/W-0.5)*SPAN, zi=im0; int n=0, conv=0, bad=0;
+      for(;n<ITER;n++){
+        double complex f=field(CMPLX(zr,zi),A,B,P,Q); double fr=creal(f), fi=cimag(f);
+        if(!isfinite(fr)||!isfinite(fi)){ bad=1; break; }
+        double hs=1e-7*fmax(1,fabs(zr)+fabs(zi));
+        double complex f2=field(CMPLX(zr+hs,zi),A,B,P,Q);
+        double dr=(creal(f2)-fr)/hs, di=(cimag(f2)-fi)/hs, d=dr*dr+di*di;
+        if(!(d>0)||!isfinite(d)) break;
+        double qr=(fr*dr+fi*di)/d, qi=(fi*dr-fr*di)/d; zr-=relax*qr; zi-=relax*qi;
+        if(!isfinite(zr)||!isfinite(zi)){ bad=1; break; }
+        if(qr*qr+qi*qi<1e-12){ conv=1; break; }
+      }
+      if(bad){ o3[0]=221;o3[1]=105;o3[2]=137; invalid++; }
+      else if(conv) cyc(o3,(atan2(zi,zr)/(2*LAB_PI)+0.5)*rep+0.07*log(1+sqrt(zr*zr+zi*zi)),0.22+0.78*exp(-n/fall));
+      else { o3[0]=6;o3[1]=13;o3[2]=10; }
+    }
+  }`,
+    domain:`  const double ring=KNOB; ${rep}
+  for(int py=0;py<H;py++){
+    double im=VY+(0.5-(py+0.5)/H)*SPAN*ASPECT;
+    for(int px=0;px<W;px++){
+      ${at}
+      double complex wv=field(CMPLX(VX+((px+0.5)/W-0.5)*SPAN,im),A,B,P,Q); double wr=creal(wv), wi=cimag(wv);
+      if(!isfinite(wr)||!isfinite(wi)){ o3[0]=221;o3[1]=105;o3[2]=137; invalid++; continue; }
+      double m2=wr*wr+wi*wi; if(m2==0){ o3[0]=6;o3[1]=13;o3[2]=10; continue; }
+      double lm=0.5*log2(m2)*ring, band=lm-floor(lm);
+      cyc(o3,(atan2(wi,wr)*0.15915494309189535+0.5)*rep,0.5+0.5*band);
+    }
+  }`,
+    contour:`  const double K=KNOB, hp=SPAN/W; int nb=(int)floor(CYCLE/6.0+0.5); if(nb<2) nb=2; double o[1];
+  for(int py=0;py<H;py++){
+    double y=VY+(0.5-(py+0.5)/H)*SPAN*ASPECT;
+    for(int px=0;px<W;px++){
+      ${at}
+      double x=VX+((px+0.5)/W-0.5)*SPAN;
+      field(x,y,A,B,P,Q,o); double v=o[0]; field(x+hp,y,A,B,P,Q,o); double dx=o[0]-v; field(x,y+hp,A,B,P,Q,o); double dy=o[0]-v;
+      if(!isfinite(v)){ o3[0]=221;o3[1]=105;o3[2]=137; invalid++; continue; }
+      double lv=v*K, band=floor(lv), t=fmod(fmod(band,nb)+nb,nb)/nb, g=sqrt(dx*dx+dy*dy)*K, near=floor(lv+0.5), dist=fabs(lv-near)/(g>0&&isfinite(g)?g:1e-300);
+      if(dist<0.55){ if(near==0){ o3[0]=244;o3[1]=255;o3[2]=232; } else cyc(o3,t,0.26); }
+      else cyc(o3,t,0.92);
+    }
+  }`,
+    lattice:`  double M=floor(KNOB+0.5); if(M<2) M=2; double o[1];
+  for(int py=0;py<H;py++){
+    double J=floor(VY+(0.5-(py+0.5)/H)*SPAN*ASPECT);
+    for(int px=0;px<W;px++){
+      ${at}
+      field(floor(VX+((px+0.5)/W-0.5)*SPAN),J,A,B,P,Q,o); double v=o[0];
+      if(!isfinite(v)){ o3[0]=221;o3[1]=105;o3[2]=137; invalid++; continue; }
+      double res=fmod(fmod(floor(v),M)+M,M); int k=(int)(res/M*1024); if(k>1023) k=1023; k*=3;
+      o3[0]=LUT[k]; o3[1]=LUT[k+1]; o3[2]=LUT[k+2];
+    }
+  }`,
+    field:`  const double K=KNOB, hp=SPAN/W, Lx=-0.48, Ly=0.58, Lz=0.66; double o[1];
+  for(int py=0;py<H;py++){
+    double y=VY+(0.5-(py+0.5)/H)*SPAN*ASPECT;
+    for(int px=0;px<W;px++){
+      ${at}
+      double x=VX+((px+0.5)/W-0.5)*SPAN;
+      field(x,y,A,B,P,Q,o); double v=o[0];
+      if(!isfinite(v)){ o3[0]=221;o3[1]=105;o3[2]=137; invalid++; continue; }
+      field(x+hp,y,A,B,P,Q,o); double gx=(o[0]-v)/hp;
+      field(x,y+hp,A,B,P,Q,o); double gy=(o[0]-v)/hp;
+      if(!isfinite(gx)){ gx=0; }
+      if(!isfinite(gy)){ gy=0; }
+      double nx=-gx*0.35, ny=-gy*0.35, nl=sqrt(nx*nx+ny*ny+1), lam=(nx*Lx+ny*Ly+Lz)/nl;
+      cyc(o3,v*K,0.3+0.85*(lam>0?lam:0));
+    }
+  }`,
+    surface:`  const double yaw=KNOB*LAB_PI/180, pitch=${s.mode==='top'?68:s.mode==='side'?0:24}*LAB_PI/180, cyw=cos(yaw), syw=sin(yaw), cpt=cos(pitch), spt=sin(pitch);
+  long total=(long)floor(ITER*2000.0*AREA+0.5); int nv=(int)floor(sqrt(total/2.0)+0.5); if(nv<24) nv=24;
+  const int nu=nv*2; ${rep}
+  float *zb=malloc(sizeof(float)*(size_t)W*H); double o[3];
+  if(!zb) return 1;
+  for(long i=0;i<(long)W*H;i++){ zb[i]=INFINITY; img[i*3]=4; img[i*3+1]=8; img[i*3+2]=7; }
+  const double du=2*LAB_PI/nu, dv=LAB_PI/nv, e=1e-4, sc=W/SPAN, scy=H/(SPAN*ASPECT), lx=-0.5, ld=-0.62, lu=0.6;
+  for(int k=0;k<12;k++) for(int j=k;j<=nv;j+=12){
+    double v=-LAB_PI/2+j*dv;
+    for(int i=0;i<nu;i++){
+      double u=-LAB_PI+i*du;
+      field(u,v,A,B,P,Q,o); double x=o[0], y=o[1], z=o[2];
+      if(!isfinite(x)||!isfinite(y)||!isfinite(z)){ invalid++; continue; }
+      field(u+e,v,A,B,P,Q,o); double ax=o[0]-x, ay=o[1]-y, az=o[2]-z;
+      field(u,v+e,A,B,P,Q,o); double bx=o[0]-x, by=o[1]-y, bz=o[2]-z;
+      double nx=ay*bz-az*by, ny=az*bx-ax*bz, nz=ax*by-ay*bx;
+      double X=x*cyw+y*syw, D=-x*syw+y*cyw, U=z*cpt+D*spt, Dp=D*cpt-z*spt;
+      double fpx=floor((X-VX)*sc+W/2.0), fpy=floor((VY-U)*scy+H/2.0);
+      if(!(fpx>=-1&&fpy>=-1&&fpx<W&&fpy<H)) continue;
+      double NX=nx*cyw+ny*syw, ND=-nx*syw+ny*cyw, NU=nz*cpt+ND*spt, NDp=ND*cpt-nz*spt, nl=sqrt(NX*NX+NU*NU+NDp*NDp);
+      double lam=nl>0?fabs(NX*lx+NDp*ld+NU*lu)/nl:0.5;
+      if(!isfinite(lam)){ lam=0.5; }
+      double t=(u+LAB_PI)/(2*LAB_PI)*rep+(v+LAB_PI/2)/LAB_PI*0.5, uu=t-floor(t), shade=0.16+0.9*lam;
+      int kk=(uu>=0&&uu<1?(int)(uu*1024):0)*3, px=(int)fpx, py=(int)fpy;
+      unsigned char r=u8(LUT[kk]*shade), g=u8(LUT[kk+1]*shade), bl=u8(LUT[kk+2]*shade);
+      for(int qy=py;qy<py+2;qy++){ if(qy<0||qy>=H) continue; for(int qx=px;qx<px+2;qx++){ if(qx<0||qx>=W) continue; long q=(long)qy*W+qx; if(Dp<zb[q]){ zb[q]=(float)Dp; img[q*3]=r; img[q*3+1]=g; img[q*3+2]=bl; } } }
+    }
+  }`,
+    automaton:`  int K=(int)floor(KNOB+0.5); if(K<2) K=2; if(K>8) K=8;
+  int cs=W>=1440?4:W>=800?3:2, CW=(W+cs-1)/cs, CG=(H+cs-1)/cs;
+  double *row=calloc(CW,sizeof(double)), *next=calloc(CW,sizeof(double)), o[1];
+  unsigned char colors[8][3];
+  if(!row||!next) return 1;
+  seed_rng(${u32(core.hash((s.seed||'ca')+'|'+s.exprs.next))});
+  if(${s.mode==='dot'?1:0}) row[CW/2]=1; else for(int x=0;x<CW;x++) row[x]=floor(rnd()*K);
+  for(int st=0;st<K;st++){
+    if(st==0){ colors[0][0]=8; colors[0][1]=14; colors[0][2]=12; continue; }
+    double t=K==2?0.6:0.14+0.53*(st-1)/(K-2); int k=(int)(t*1024); if(k>1023) k=1023; k*=3;
+    for(int c=0;c<3;c++) colors[st][c]=LUT[k+c];
+  }
+  for(int g=0;g<CG;g++){
+    for(int x=0;x<CW;x++){
+      int st=(int)row[x]; const unsigned char *c=colors[st>=0&&st<K?st:0];
+      for(int dy=0;dy<cs&&g*cs+dy<H;dy++) for(int dx=0;dx<cs&&x*cs+dx<W;dx++){ unsigned char *o3=img+((long)(g*cs+dy)*W+x*cs+dx)*3; o3[0]=c[0]; o3[1]=c[1]; o3[2]=c[2]; }
+    }
+    for(int x=0;x<CW;x++){
+      field(row[(x-2+CW)%CW],row[(x-1+CW)%CW],row[x],row[(x+1)%CW],row[(x+2)%CW],x,g,A,B,P,Q,o);
+      double v=o[0]; if(!isfinite(v)){ invalid++; v=0; }
+      next[x]=fmod(fmod(floor(v),K)+K,K);
+    }
+    double *tmp=row; row=next; next=tmp;
+  }`
+  };
+  return `/* ${safe(s.name)}
+   ${G.long}, from Clover Equation Lab.
+${lang.fields.map(f=>'   '+f+' = '+s.exprs[f]).join('\n')}
+   Fingerprint ${fingerprint(s)}${s.preset==='unlisted'?', one of about 10^'+exponent(s)+' equations its generator can mint':''}.
+${s.image&&usesImg(s.exprs)?'   Reads the image “'+safe(s.image.name)+'”, embedded below.\n':''}${s.cite?'   Source: '+safe(s.cite)+'\n':''}   ${CREDIT.line}
+
+   Compile: cc equation.c -O2 -std=c11 -ffp-contract=off -lm -o equation
+   Run:     ./equation result.ppm      (binary P6 PPM, ${w} x ${h})
+   Same view, rule and palette as the lab. Floating-point differences
+   between compilers can move a handful of pixels. */
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+${lang.complex?'#include <complex.h>\n#ifndef CMPLX\n#define CMPLX(x, y) ((double complex)((double)(x) + _Complex_I * (double)(y)))\n#endif\n':''}
+#define LAB_PI 3.141592653589793
+static const int W=${w}, H=${h}, ITER=${s.iterations}, CYCLE=${s.colorCycle};
+static const double A=${num(s.a)}, B=${num(s.b)}, P=${num(s.p)}, Q=${num(s.q)}, KNOB=${num(s.knob)};
+static const double VX=${num(s.view.x)}, VY=${num(s.view.y)}, SPAN=${num(s.view.span)};
+static const unsigned char STOPS[${stops.length}][3]={${stops.map(c=>'{'+c.join(',')+'}').join(',')}};
+enum { NSTOPS=${stops.length} };
+static unsigned char LUT[3072];
+static long invalid=0;
+
+static inline double lab_min(double p, double q) { return isnan(p)||isnan(q) ? NAN : fmin(p,q); }
+static inline double lab_max(double p, double q) { return isnan(p)||isnan(q) ? NAN : fmax(p,q); }
+static inline double lab_sign(double v) { return v>0 ? 1 : v<0 ? -1 : v; }
+static inline double lab_mod(double a, double b) { return a-b*floor(a/b); }
+static inline double lab_fract(double v) { return v-floor(v); }
+static inline int32_t lab_i32(double v) { if(!isfinite(v)) return 0; double t=fmod(trunc(v),4294967296.0); if(t<0) t+=4294967296.0; return (int32_t)(uint32_t)t; }
+static inline double lab_and(double a, double b) { return (double)(lab_i32(a)&lab_i32(b)); }
+static inline double lab_or(double a, double b) { return (double)(lab_i32(a)|lab_i32(b)); }
+static inline double lab_xor(double a, double b) { return (double)(lab_i32(a)^lab_i32(b)); }
+static inline double lab_powi(double v, int n) { switch(n){ case 0: return 1; case 1: return v; case 2: return v*v; case 3: return v*v*v; case 4: { double s=v*v; return s*s; } default: { double r=1; for(int k=0;k<n;k++) r*=v; return r; } } }
+${cPrelude(s,lang)}${lang.complex?'static inline double complex lab_cpowi(double complex z, int n) { int m=n<0?-n:n; double complex r=1, base=z; int first=1; while(m){ if(m&1){ r=first?base:r*base; first=0; } m>>=1; if(m) base=base*base; } return n<0 ? 1.0/r : r; }\n':''}
+/* Match JavaScript's clamped, round-half-to-even byte conversion. */
+static unsigned char u8(double v) { if(!(v>0)) return 0; if(v>=255) return 255; double f=floor(v), d=v-f; if(d<0.5) return (unsigned char)f; if(d>0.5) return (unsigned char)(f+1); return (unsigned char)(fmod(f,2)==0?f:f+1); }
+static void build_lut(void) { for(int i=0;i<1024;i++){ double t=(double)i/1024*(NSTOPS-1); int j=(int)floor(t); double f=t-j; const unsigned char *a=STOPS[j], *b=STOPS[j+1<NSTOPS?j+1:NSTOPS-1]; for(int c=0;c<3;c++) LUT[i*3+c]=(unsigned char)floor(a[c]*(1-f)+b[c]*f+0.5); } }
+static inline void cyc(unsigned char *o, double t, double shade) { double u=t-floor(t); if(!(u>=0)) u=0; int k=(int)(u*1024); if(k>1023) k=1023; k*=3; o[0]=u8(LUT[k]*shade); o[1]=u8(LUT[k+1]*shade); o[2]=u8(LUT[k+2]*shade); }
+static uint32_t rs;
+static inline void seed_rng(uint32_t s) { rs=s; }
+static inline double rnd(void) { rs+=0x6D2B79F5u; uint32_t t=rs; t=(t^(t>>15))*(t|1u); t^=t+(t^(t>>7))*(t|61u); return (double)(t^(t>>14))/4294967296.0; }
+${density?`static const double ASPECT=(double)${h}/${w}, AREA=(double)${w}*${h}/480000;
+static double M0, M1, M2, M3;
+static float *cnt, *cr, *cg, *cb;
+static void splat(double x, double y, double t) {
+  double fx=floor((x-M0)*M2), fy=floor((M1-y)*M3);
+  if(!(fx>=0&&fy>=0&&fx<W&&fy<H)) return;
+  long i=(long)fy*W+(long)fx; double u=t-floor(t); int k=(u>=0&&u<1?(int)(u*1024):0)*3;
+  cnt[i]+=1; cr[i]+=LUT[k]; cg[i]+=LUT[k+1]; cb[i]+=LUT[k+2];
+}
+static void tone(unsigned char *img) {
+  unsigned long hist[256]={0}; long nz=0;
+  for(long i=0;i<(long)W*H;i+=3){ double c=cnt[i]; if(c>0){ int b=(int)(log2(c)*8); if(b>255) b=255; hist[b]++; nz++; } }
+  double acc=0, want=nz*0.985; int bin=0; while(bin<255&&acc+hist[bin]<want){ acc+=hist[bin]; bin++; }
+  double ref=pow(2,(bin+1)/8.0), lr=log(1+fmax(1,ref));
+  for(long i=0;i<(long)W*H;i++){
+    unsigned char *o=img+i*3; double c=cnt[i];
+    if(c>0){ double v=fmin(1,log(1+c)/lr), b=pow(v,0.8), hot=fmax(0,b-0.82)*260; o[0]=u8(4+cr[i]/c*b*1.15+hot); o[1]=u8(8+cg[i]/c*b*1.15+hot); o[2]=u8(7+cb[i]/c*b*1.15+hot); }
+    else { o[0]=4; o[1]=8; o[2]=7; }
+  }
+}
+`:`static const double ASPECT=(double)${h}/${w}${g==='surface'?', AREA=(double)'+w+'*'+h+'/480000':''};
+`}
+${field}
+
+int main(int argc, char **argv) {
+  const char *path=argc>1?argv[1]:"equation.ppm";
+  unsigned char *img=calloc((size_t)W*H,3);
+  if(!img) return 1;
+  build_lut();
+  (void)ITER; (void)CYCLE; (void)KNOB; (void)ASPECT; (void)A; (void)B; (void)P; (void)Q; (void)VX; (void)VY; (void)SPAN;
+${density?`  cnt=calloc((size_t)W*H,sizeof(float)); cr=calloc((size_t)W*H,sizeof(float)); cg=calloc((size_t)W*H,sizeof(float)); cb=calloc((size_t)W*H,sizeof(float));
+  if(!cnt||!cr||!cg||!cb) return 1;
+  (void)AREA; M0=VX-SPAN/2; M1=VY+SPAN*ASPECT/2; M2=W/SPAN; M3=H/(SPAN*ASPECT);
+`:''}${BODY[g]}
+  FILE *file=fopen(path,"wb");
+  if(!file){ perror(path); return 1; }
+  fprintf(file,"P6\\n%d %d\\n255\\n",W,H);
+  if(fwrite(img,3,(size_t)W*H,file)!=(size_t)W*H){ perror("write"); fclose(file); return 1; }
+  if(fclose(file)!=0){ perror("close"); return 1; }
+  if(invalid) fprintf(stderr,"%ld undefined samples\\n",invalid);
+  return 0;
+}
+`;
+}
+function updateSource(){if($('sourceDetails').open){try{$('sourceCode').textContent=cSource();}catch(e){$('sourceCode').textContent=e.message;}}}
+
+/* Sharing and keeping. */
+function safeName(){return state.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,70)||'equation';}
+function download(data,name,type){const blob=data instanceof Blob?data:new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
+function equationText(){
+  const s=state,G=GENRES[s.genre],lines=[s.name,G.long];
+  for(const f of core.LANG[s.genre].fields)lines.push(G.labels[f]+' '+s.exprs[f]);
+  const used=usedSliders(s.exprs);if(used.length)lines.push(used.map(k=>k+' = '+s[k]).join('; '));
+  if(G.knob)lines.push(G.knob.label+' = '+s.knob);if(G.iter)lines.push(G.iter.label+' = '+s.iterations);
+  if(G.modes)lines.push(G.modes.find(m=>m[0]===s.mode)[1]+(s.genre==='escape'&&s.mode==='julia'?', c = '+s.juliaRe+' + ('+s.juliaIm+')i':''));
+  if(s.genre!=='automaton')lines.push('Centre ('+s.view.x+', '+s.view.y+'), span '+s.view.span);
+  lines.push('Fingerprint '+fingerprint(s)+(s.preset==='unlisted'?', seed '+s.seed+', one of about 10^'+exponent(s)+' equations':''));
+  if(s.image&&usesImg(s.exprs))lines.push('Reads the image “'+s.image.name+'” ('+s.image.w+' × '+s.image.h+')');
+  if(s.cite)lines.push('Source: '+s.cite);
+  lines.push(CREDIT.line);
+  return lines.join('\n')+'\n';
+}
+function standaloneHTML(){const json=JSON.stringify(state).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');return pristineHTML.replace(/(<script id="boot-state" type="application\/json">)[\s\S]*?(<\/script>)/,(_m,a,b)=>a+json+b);}
+async function copyEquation(){const t=equationText();try{if(!navigator.clipboard)throw Error('no clipboard');await navigator.clipboard.writeText(t);toast('Equation copied.');}catch(e){$('copyText').value=t;$('copyDialog').showModal();$('copyText').focus();$('copyText').select();}}
+const SHELF_KEY='clover-equation-lab-shelf-v2';
+function persistShelf(){try{localStorage.setItem(SHELF_KEY,JSON.stringify(saved));return true;}catch(e){return false;}}
+function drawShelf(){
+  const shelf=$('shelf');shelf.replaceChildren();$('shelfCount').textContent=saved.length+' / 16';
+  if(!saved.length){const d=document.createElement('div');d.className='empty-shelf';d.textContent='Found something good? Keep it here, then download a copy to take it anywhere.';shelf.appendChild(d);return;}
+  saved.forEach((entry,index)=>{
+    const card=document.createElement('div');card.className='saved';const b=document.createElement('button');b.className='restore';b.title='Restore '+entry.state.name;
+    if(entry.thumb){const img=document.createElement('img');img.src=entry.thumb;img.alt='';b.appendChild(img);}
+    const label=document.createElement('span');label.className='saved-label';label.textContent=entry.state.name;b.appendChild(label);
+    b.onclick=()=>{try{commit(clone(entry.state));}catch(e){toast(e.message);}};
+    const del=document.createElement('button');del.className='delete';del.textContent='×';del.setAttribute('aria-label','Remove '+entry.state.name);del.onclick=()=>{saved.splice(index,1);persistShelf();drawShelf();};
+    card.append(b,del);shelf.appendChild(card);
+  });
+}
+function keepEquation(){
+  if(!renderComplete)return;if(saved.length>=16){toast('The shelf holds 16. Download or remove one to make room.');return;}
+  if(saved.some(e=>JSON.stringify(e.state)===JSON.stringify(state))){toast('This equation and view are already kept.');return;}
+  const t=document.createElement('canvas');t.width=160;t.height=120;const tc=t.getContext('2d');tc.imageSmoothingEnabled=false;tc.drawImage(cv,0,0,160,120);
+  saved.unshift({state:clone(state),thumb:t.toDataURL('image/png')});const ok=persistShelf();drawShelf();toast(ok?'Kept in this browser.':'Kept for this session. Download a copy to keep it after closing.');
+}
+for(const key of [SHELF_KEY,'clover-equation-lab-shelf-v1']){
+  try{const raw=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(raw))for(const e of raw){if(saved.length>=16)break;try{saved.push({state:validateState(e.state),thumb:typeof e.thumb==='string'&&e.thumb.length<180000&&/^data:image\/png;base64,[a-z0-9+/=]+$/i.test(e.thumb)?e.thumb:''});}catch(_){}}}catch(_){}
+}
+
+/* Wiring. */
+$('generate').onclick=()=>generate(true);$('replay').onclick=()=>generate(false);$('mutate').onclick=mutate;
+$('seed').addEventListener('keydown',e=>{if(e.key==='Enter')generate(false);});
+document.querySelectorAll('[data-pick]').forEach(el=>el.onclick=()=>{state.pick=el.dataset.pick;generate(true,el.dataset.pick);});
+$('preset').onchange=()=>setPreset($('preset').value);
+$('apply').onclick=applyEquation;
+for(const k of ['a','b','p','q']){
+  $(k).oninput=()=>{generationToken++;state[k]=+$(k).value;$(k+'Value').value=state[k];$('equationDescription').textContent=describe();queueChange();};
+  $(k+'Value').onchange=()=>{const v=Number($(k+'Value').value);if($(k+'Value').value===''||!Number.isFinite(v)||v<-10||v>10){$(k+'Value').value=state[k];toast('Use a value between −10 and 10.');return;}generationToken++;state[k]=v;$(k).value=clampNum(v,-3,3);$('equationDescription').textContent=describe();queueChange();};
+}
+$('iterations').oninput=()=>{generationToken++;state.iterations=+$('iterations').value;$('iterValue').value=state.iterations;queueChange();};
+$('colorCycle').oninput=()=>{generationToken++;state.colorCycle=+$('colorCycle').value;$('colorValue').value=state.colorCycle;queueChange();};
+for(const id of ['knob','quality','juliaRe','juliaIm'])$(id).onchange=()=>{try{if($(id).value==='')throw Error('Enter a value.');commit({...clone(state),[id]:Number($(id).value)});}catch(e){$(id).value=state[id];toast(e.message);}};
+document.querySelectorAll('[data-palette]').forEach(el=>el.onclick=()=>commit({...clone(state),palette:el.dataset.palette}));
+$('undo').onclick=()=>{if(historyIndex<1)return;generationToken++;cancelRender();state=clone(history[--historyIndex]);syncUI();renderNow();};
+$('redo').onclick=()=>{if(historyIndex>=history.length-1)return;generationToken++;cancelRender();state=clone(history[++historyIndex]);syncUI();renderNow();};
+$('stop').onclick=()=>{cancelRender();renderComplete=false;$('renderStatus').textContent='Stopped';$('renderStatus').dataset.busy='false';$('stop').hidden=true;$('renderAgain').hidden=false;};
+$('renderAgain').onclick=renderNow;$('keep').onclick=keepEquation;
+$('png').onclick=()=>{if(renderComplete)cv.toBlob(async b=>{if(!b){toast('PNG export failed.');return;}try{download(await creditedPNG(b),safeName()+'.png','image/png');}catch(e){download(b,safeName()+'.png','image/png');}},'image/png');};
+$('copy').onclick=copyEquation;$('closeCopy').onclick=()=>$('copyDialog').close();
+$('exportJson').onclick=()=>download(JSON.stringify({format:'clover-equation',version:3,credit:CREDIT.line,state},null,2),safeName()+'.json','application/json');
+$('exportHtml').onclick=()=>download(standaloneHTML(),safeName()+'.html','text/html;charset=utf-8');
+$('exportC').onclick=()=>{try{download(cSource(),safeName()+'.c','text/x-c;charset=utf-8');}catch(e){toast(e.message);}};
+$('import').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=e=>{const file=e.target.files[0];e.target.value='';if(file)routeFile(file);};
+$('sourceDetails').ontoggle=updateSource;
+/* no href, and the handler stops the event dead: a fragment link inside a
+   sandboxed iframe resolves against the TOP document, which is how this
+   walked the parent frame away from the lab. It opens the panel, nothing more. */
+$('helpLink').onclick=e=>{if(e&&e.preventDefault)e.preventDefault();$('guide').open=true;$('guide').scrollIntoView({behavior:'smooth',block:'start'});};
+$('helpLink').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('helpLink').onclick(e);}};
+
+/* Mouse, touch and keyboard navigation share one coordinate transform. */
+const isStatic=()=>state.genre==='automaton';
+function pointAt(px,py,view=state.view){const r=cv.getBoundingClientRect();return {x:view.x+(px/r.width-.5)*view.span,y:view.y+(.5-py/r.height)*view.span*cv.height/cv.width};}
+function localPoint(e){const r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
+function zoom(factor,px,py,base=state.view){
+  if(isStatic())return;
+  const r=cv.getBoundingClientRect(),x=px===undefined?r.width/2:px,y=py===undefined?r.height/2:py,anchor=pointAt(x,y,base),[lo,hi]=spanLimits(state.genre),span=clampNum(base.span*factor,lo,hi);
+  if(span===state.view.span&&factor<1){toast('Maximum zoom for this genre.');return;}
+  state.view=limitView({x:anchor.x-(x/r.width-.5)*span,y:anchor.y-(.5-y/r.height)*span*cv.height/cv.width,span},state.genre);
+  generationToken++;updateViewHUD();queueChange();
+}
+$('zoomIn').onclick=()=>zoom(.5);$('zoomOut').onclick=()=>zoom(2);$('reset').onclick=()=>commit({...clone(state),view:clone(state.home)});
+cv.addEventListener('wheel',e=>{if(isStatic())return;e.preventDefault();const p=localPoint(e);zoom(Math.exp(clampNum(e.deltaY,-500,500)*.002),p.x,p.y);},{passive:false});
+cv.addEventListener('dblclick',e=>{e.preventDefault();const p=localPoint(e);zoom(.5,p.x,p.y);});
+let pointers=new Map(),gesture=null,lastTap=0;
+function beginGesture(){const pts=[...pointers.values()];if(!pts.length){gesture=null;return;}gesture={view:clone(state.view),points:pts.map(p=>({...p})),moved:false,pinched:pts.length>1,time:performance.now()};}
+function readout(x,y){const r=GENRES[state.genre].read,f=v=>Number(v.toFixed(5));if(r==='complex')return 'z = '+f(x)+(y<0?' − ':' + ')+Math.abs(f(y))+'i';if(r==='cell')return 'cell '+Math.floor(x)+', '+Math.floor(y);if(r==='plane')return 'x '+f(x)+', y '+f(y);return '';}
+cv.addEventListener('pointerdown',e=>{if(isStatic()||(e.button!==0&&e.pointerType==='mouse'))return;cv.focus({preventScroll:true});cv.setPointerCapture(e.pointerId);pointers.set(e.pointerId,localPoint(e));beginGesture();});
+cv.addEventListener('pointermove',e=>{
+  const p=localPoint(e),c=pointAt(p.x,p.y);$('pointerReadout').textContent=readout(c.x,c.y);
+  if(!pointers.has(e.pointerId)||!gesture)return;pointers.set(e.pointerId,p);
+  const pts=[...pointers.values()],r=cv.getBoundingClientRect(),g=gesture,[lo,hi]=spanLimits(state.genre);
+  if(pts.length>=2&&g.points.length>=2){
+    const st=g.points,d0=Math.hypot(st[0].x-st[1].x,st[0].y-st[1].y),d1=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+    const m0={x:(st[0].x+st[1].x)/2,y:(st[0].y+st[1].y)/2},m1={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+    const anchor=pointAt(m0.x,m0.y,g.view),span=clampNum(g.view.span*Math.max(d0,1)/Math.max(d1,1),lo,hi);
+    state.view=limitView({x:anchor.x-(m1.x/r.width-.5)*span,y:anchor.y-(.5-m1.y/r.height)*span*cv.height/cv.width,span},state.genre);g.moved=true;
+  }else if(pts.length===1){
+    const dx=pts[0].x-g.points[0].x,dy=pts[0].y-g.points[0].y;if(Math.abs(dx)+Math.abs(dy)<3&&!g.moved)return;g.moved=true;
+    state.view=limitView({x:g.view.x-dx/r.width*g.view.span,y:g.view.y+dy/r.height*g.view.span*cv.height/cv.width,span:g.view.span},state.genre);
+  }
+  if(g.moved){generationToken++;updateViewHUD();queueChange();}
+});
+function endPointer(e){
+  if(!pointers.has(e.pointerId))return;
+  const pinched=gesture&&gesture.pinched,moved=gesture&&gesture.moved;
+  if(e.type==='pointerup'&&e.pointerType==='touch'&&gesture&&!moved&&!pinched&&performance.now()-gesture.time<300){const now=performance.now();if(now-lastTap<330){const p=localPoint(e);zoom(.5,p.x,p.y);lastTap=0;}else lastTap=now;}
+  pointers.delete(e.pointerId);beginGesture();if(gesture&&pinched){gesture.pinched=true;gesture.moved=true;}
+}
+cv.addEventListener('pointerup',endPointer);cv.addEventListener('pointercancel',endPointer);cv.addEventListener('lostpointercapture',endPointer);
+cv.addEventListener('keydown',e=>{
+  if(isStatic()||!['+','=','-','_','0','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();
+  if(e.key==='+'||e.key==='=')zoom(.5);else if(e.key==='-'||e.key==='_')zoom(2);else if(e.key==='0')$('reset').click();
+  else{const v=clone(state.view),st=v.span*.12;if(e.key==='ArrowLeft')v.x-=st;if(e.key==='ArrowRight')v.x+=st;if(e.key==='ArrowUp')v.y+=st*.75;if(e.key==='ArrowDown')v.y-=st*.75;state.view=limitView(v,state.genre);generationToken++;updateViewHUD();queueChange();}
+});
+/* Images: accepted by file picker, drag and drop, or paste. */
+const thumbCache=new Map();
+function imageThumb(im){
+  if(thumbCache.has(im.hash))return thumbCache.get(im.hash);
+  const c=document.createElement('canvas');c.width=im.w;c.height=im.h;const x=c.getContext('2d'),d=x.createImageData(im.w,im.h),bin=atob(im.data);
+  for(let i=0;i<im.w*im.h;i++){const v=bin.charCodeAt(i);d.data[i*4]=v;d.data[i*4+1]=v;d.data[i*4+2]=v;d.data[i*4+3]=255;}
+  x.putImageData(d,0,0);const url=c.toDataURL('image/png');thumbCache.set(im.hash,url);return url;
+}
+function syncImagePanel(){
+  const im=state.image,uses=Object.values(state.exprs).some(e=>/\bimg\s*\(/.test(e));
+  $('imgThumb').hidden=!im;if(im)$('imgThumb').src=imageThumb(im);
+  $('imgInfo').textContent=im?'“'+im.name+'”, '+im.w+' × '+im.h+' cells':'Drop, paste or choose an image.';
+  for(const id of ['mintImage','imgColours','removeImage'])$(id).disabled=!im;
+  $('imgNote').textContent=uses&&!im?'This equation reads img(), but no image is loaded, so img() gives 0.':uses?'This equation is reading the image.':im?'Mint from image weaves it into a new equation. You can also write img(x, y) yourself.':'Equations read images with img(x, y). Coordinates wrap every whole unit, so an image tiles forever.';
+  const sw=document.querySelector('[data-palette="image"]');sw.hidden=!state.imagePalette;
+  if(state.imagePalette)sw.style.background='linear-gradient(90deg,'+state.imagePalette.slice(0,6).map(c=>'rgb('+c.join(',')+')').join(',')+')';
+  $('genomeNote').textContent=biocodex?biocodex.length.toLocaleString()+' genomes loaded for this session. Each one grows a different supershape.':'Load a BIOCODEX export (.gz or .json) to grow supershapes from nucleic-acid genomes.';
+  $('mintGenome').hidden=!biocodex;
+}
+function extractPalette(ctx,w,h){
+  const d=ctx.getImageData(0,0,w,h).data,px=[];
+  for(let i=0;i<d.length;i+=4)px.push([d[i],d[i+1],d[i+2],.2126*d[i]+.7152*d[i+1]+.0722*d[i+2]]);
+  if(px.length<5)return null;
+  px.sort((a,b)=>a[3]-b[3]);
+  const q=[];
+  for(let k=0;k<5;k++){const a=Math.floor(k*px.length/5),b=Math.max(a+1,Math.floor((k+1)*px.length/5));let r=0,g=0,bl=0;for(let i=a;i<b;i++){r+=px[i][0];g+=px[i][1];bl+=px[i][2];}const n=b-a;r/=n;g/=n;bl/=n;const m=(r+g+bl)/3;q.push([r,g,bl].map(v=>Math.round(clampNum(m+(v-m)*1.35,0,255))));}
+  const dark=q[0].map(v=>Math.round(v*.35));
+  return [dark,q[1],q[2],q[3],q[4],q[2],dark];
+}
+async function loadImageFile(file){
+  try{
+    if(!file||!/^image\//.test(file.type))throw Error('choose an image file');
+    if(file.size>40e6)throw Error('choose an image under 40 MB');
+    const bmp=await createImageBitmap(file);
+    const scale=Math.min(1,128/Math.max(bmp.width,bmp.height)),w=Math.max(1,Math.round(bmp.width*scale)),h=Math.max(1,Math.round(bmp.height*scale));
+    const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});
+    x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.fillStyle='#000';x.fillRect(0,0,w,h);x.drawImage(bmp,0,0,w,h);if(bmp.close)bmp.close();
+    const d=x.getImageData(0,0,w,h).data;let bin='';
+    for(let i=0;i<w*h;i++)bin+=String.fromCharCode(Math.round(.2126*d[i*4]+.7152*d[i*4+1]+.0722*d[i*4+2]));
+    const pal=extractPalette(x,w,h),name=(file.name||'pasted image').replace(/\.[a-z0-9]+$/i,'').slice(0,80)||'image';
+    commit({...clone(state),image:{name,w,h,data:btoa(bin)},imagePalette:pal||state.imagePalette});
+    toast('Image added. Mint from image, or write img(x, y) in an equation.');
+  }catch(e){toast('Could not use that image: '+e.message);}
+}
+
+/* BIOCODEX genomes: each entry's superformula genome grows a supershape. Kept for this session only. */
+let biocodex=null;
+function useBiocodex(d){
+  if(!d||d.fw!=='BIOCODEX'||!Array.isArray(d.entries))throw Error('this is not a BIOCODEX library');
+  const list=[];
+  for(const e of d.entries){const g=e&&e.formGenome;if(g&&[g.m,g.n1,g.n2,g.n3].every(Number.isFinite)&&g.n1>0&&g.m>=0&&g.m<=64)list.push({m:Math.round(g.m),n1:g.n1,n2:g.n2,n3:g.n3,accession:String(e.accession||e.id||'unnamed').slice(0,40),kind:String(e.kind||'').slice(0,12),definition:String(e.definition||'').slice(0,120),cite:String(e.cite||'').slice(0,120)});}
+  if(!list.length)throw Error('no superformula genomes found');
+  biocodex=list;syncImagePanel();toast(list.length.toLocaleString()+' genomes loaded.');
+}
+async function loadBiocodex(file){
+  try{
+    const head=new Uint8Array(await file.slice(0,2).arrayBuffer());let text;
+    if(head[0]===0x1f&&head[1]===0x8b){
+      if(typeof DecompressionStream==='undefined')throw Error('this browser cannot unzip .gz files, so unzip it first');
+      $('genomeNote').textContent='Unpacking genomes…';
+      text=await new Response(file.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    }else text=await file.text();
+    useBiocodex(JSON.parse(text));
+  }catch(e){syncImagePanel();toast('Could not load genomes: '+e.message);}
+}
+
+/* The Weddle glossary: a running record of every equation minted, mutated, written or opened here. */
+const GLOSS_KEY='clover-equation-lab-glossary-v1',IMG_KEY='clover-equation-lab-images-v1',GLOSS_MAX=3000;
+let glossary=[],imageStore={};
+try{const g=JSON.parse(localStorage.getItem(GLOSS_KEY)||'[]');if(Array.isArray(g))glossary=g.filter(e=>e&&typeof e.fp==='string'&&own(GENRES,e.genre)&&e.exprs&&typeof e.exprs==='object').slice(0,GLOSS_MAX);}catch(_){}
+try{const m=JSON.parse(localStorage.getItem(IMG_KEY)||'{}');if(m&&typeof m==='object'&&!Array.isArray(m))imageStore=m;}catch(_){}
+function persistGlossary(){for(let t=0;t<5;t++){try{localStorage.setItem(GLOSS_KEY,JSON.stringify(glossary));return true;}catch(e){if(glossary.length<20)return false;glossary.length=Math.floor(glossary.length*.8);}}return false;}
+function storeImage(im){try{imageStore[im.hash]={name:im.name,w:im.w,h:im.h,data:im.data,t:Date.now()};for(const k of Object.keys(imageStore).sort((a,b)=>imageStore[b].t-imageStore[a].t).slice(24))delete imageStore[k];localStorage.setItem(IMG_KEY,JSON.stringify(imageStore));}catch(_){}}
+function logGlossary(s,how){
+  const fp=fingerprint(s),now=new Date().toISOString();let e=glossary.find(x=>x.fp===fp);
+  if(e){e.last=now;e.count=(e.count||1)+1;glossary.splice(glossary.indexOf(e),1);}
+  else e={fp,name:s.name,genre:s.genre,exprs:clone(s.exprs),a:s.a,b:s.b,p:s.p,q:s.q,knob:s.knob,mode:s.mode,juliaRe:s.juliaRe,juliaIm:s.juliaIm,iterations:s.iterations,view:clone(s.view),home:clone(s.home),bits:s.bits,seed:s.seed,preset:s.preset,note:s.note,minted:s.minted,cite:s.cite||'',first:now,last:now,count:1,how,img:s.image&&usesImg(s.exprs)?s.image.hash:null,imgName:s.image&&usesImg(s.exprs)?s.image.name:'',credit:CREDIT.owner};
+  glossary.unshift(e);if(glossary.length>GLOSS_MAX)glossary.length=GLOSS_MAX;
+  if(s.image&&e.img)storeImage(s.image);
+  persistGlossary();drawGlossary();
+}
+const glossStatus=e=>e.preset==='unlisted'?'1 in 10^'+Math.max(1,Math.floor(e.bits||0)):own(CLASSICS,e.preset)?'classic':'hand-tuned';
+function drawGlossary(){
+  const list=$('glossList'),qt=$('glossSearch').value.trim().toLowerCase(),gf=$('glossGenre').value;
+  const hits=glossary.filter(e=>(!gf||e.genre===gf)&&(!qt||(e.name+' '+GENRES[e.genre].long+' '+Object.values(e.exprs).join(' ')+' '+e.fp+' '+(e.seed||'')+' '+(e.cite||'')+' '+(e.imgName||'')).toLowerCase().includes(qt)));
+  $('glossCount').textContent=glossary.length.toLocaleString()+(glossary.length===1?' equation':' equations');
+  list.replaceChildren();
+  if(!hits.length){const d=document.createElement('p');d.className='empty-shelf';d.textContent=glossary.length?'Nothing matches that search.':'Every equation you mint, mutate, write or open is added here.';list.appendChild(d);return;}
+  for(const e of hits.slice(0,150)){
+    const G=GENRES[e.genre],b=document.createElement('button'),n=document.createElement('div'),code=document.createElement('code'),m=document.createElement('div');
+    b.className='gloss-row';b.title='Open '+e.name;n.className='gname';n.textContent=e.name;
+    code.textContent=core.LANG[e.genre].fields.map(f=>G.labels[f]+' '+e.exprs[f]).join('\n');
+    m.className='gmeta';m.textContent=[G.long,glossStatus(e),'fingerprint '+e.fp,'first seen '+String(e.first).slice(0,10),e.count>1?'opened '+e.count+' times':'',e.imgName?'reads “'+e.imgName+'”':'',e.cite?String(e.cite).split(' — ')[0]:''].filter(Boolean).join(', ');if(m.textContent)m.append(', ');m.append(ooNode(),' '+(e.credit||CREDIT.owner));
+    b.append(n,code,m);b.onclick=()=>restoreGloss(e);list.appendChild(b);
+  }
+  if(hits.length>150){const d=document.createElement('p');d.className='note';d.textContent='Showing 150 of '+hits.length.toLocaleString()+'. Search to narrow it down.';list.appendChild(d);}
+}
+function restoreGloss(e){
+  const here=state.image&&state.image.hash===e.img,stored=e.img&&imageStore[e.img];
+  if(e.img&&!here&&!stored){toast('This entry reads the image “'+(e.imgName||'unknown')+'”, which is no longer stored. Add that image again, then open the entry.');return;}
+  const image=e.img?(here?state.image:{name:stored.name,w:stored.w,h:stored.h,data:stored.data}):state.image;
+  try{commit({...clone(state),genre:e.genre,exprs:clone(e.exprs),a:e.a,b:e.b,p:e.p,q:e.q,knob:e.knob,mode:e.mode,juliaRe:e.juliaRe,juliaIm:e.juliaIm,iterations:e.iterations,view:e.view,home:e.home,bits:e.bits,seed:e.seed,preset:e.preset,note:e.note,minted:e.minted,cite:e.cite,name:e.name,image});$('fractal').scrollIntoView({block:'center'});}
+  catch(err){toast('Could not open that entry: '+err.message);}
+}
+function glossaryText(){
+  const L=['Weddle Glossary','Clover Equation Lab, '+glossary.length+' equations, exported '+new Date().toISOString().slice(0,10),CREDIT.line,''];
+  glossary.forEach((e,i)=>{
+    const G=GENRES[e.genre];L.push((i+1)+'. '+e.name+' ('+G.long+')');
+    for(const f of core.LANG[e.genre].fields)L.push('   '+G.labels[f]+' '+e.exprs[f]);
+    const used=usedSliders(e.exprs);if(used.length)L.push('   '+used.map(k=>k+' = '+e[k]).join('; '));
+    if(G.knob)L.push('   '+G.knob.label+' = '+e.knob);
+    if(e.imgName)L.push('   Reads the image “'+e.imgName+'”');
+    if(e.cite)L.push('   Source: '+e.cite);
+    L.push('   '+glossStatus(e)+', fingerprint '+e.fp+', seed '+(e.seed||'none')+', first seen '+String(e.first).slice(0,10)+', '+(e.credit||CREDIT.owner));L.push('');
+  });
+  return L.join('\n');
+}
+const OPS=[['sf(θ, m, n1, n2, n3)','(|cos(mθ/4)|^n2 + |sin(mθ/4)|^n3)^(−1/n1). The Gielis superformula behind Shape Atlas creatures and BIOCODEX genomes.'],['img(x, y)','Brightness of the loaded image, 0 to 1, repeating every whole unit. Complex genres write img(z).'],
+  ['gauss(x)','e^(−x²)'],['absr(x)','√|x|'],['sq(x), cube(x)','x², x³'],['lat(x)','x − round(x), distance to the nearest lattice point'],['weier(x)','cos x + cos 3x / 2 + cos 9x / 4 + cos 27x / 8, a truncated Weierstrass function'],['ripple(x)','sin x / (1 + 0.4|x|)'],['lnab(x)','ln(1 + |x|)'],['flo(x)','⌊2x⌋ / 2'],['sig(x)','the sign of x'],
+  ['quark(x)','∛(sin 3x)'],['charm(x)','sin x + sin(2.618x) / 2.618'],['strange(x)','sin(1.618x) + cos(0.618x) / 2'],['gluon(x)','tanh(3 sin x) · cos x'],['spinor(x)','sin(x / 2)'],['pion(x)','cos x · e^(−|x|/π)'],['octet(x)','cos x + cos 8x / 8'],
+  ['collapse(x)','sign(sin x) · sin² x, a Born-rule square that keeps its sign'],['tunnel(x)','e^(−|x|) · sign(sin 3x), a barrier leak'],['qubit(x)','2 cos²(x/2) − 1'],['lorentz(x)','2 / √(1 + x²) − 1'],['comet(x)','e^(−x²/4) · sin 5x'],['clover(x)','sin x · cos² 2x, four lobes'],['mobius(x)','x / (1 + |x|)'],
+  ['fm(a, b)','sin(a + 1.7 sin b), frequency modulation'],['fxmod(a, b)','a wrapped into a centred window |b| + 0.7 wide'],['powa(a, b)','sign(a) · (|a| + 10⁻⁶)^b with b held between −3 and 3'],['collide(a, b)','tanh(a − b) · cos(a + b)'],['annihil(a, b)','sin(ab) · e^(−|a + b|/4)'],['yukawa(a, b)','e^(−|a − b|) · cos(ab)'],['superpos(a, b)','(sin a + sin b) / √2'],['entangle(a, b)','cos(a − b)'],['braket(a, b)','cos(a − b) · e^(−(a − b)²/8), an overlap'],['dilate(a, b)','a / √(1 + b²), time dilation'],
+  ['mod(a, b)','a − b⌊a/b⌋'],['fract(x)','x − ⌊x⌋'],['and, or, xor','bitwise on whole numbers'],['hypot(a, b)','√(a² + b²)']];
+function drawOps(){const dl=$('glossOps');dl.replaceChildren();for(const [t,d] of OPS){const a=document.createElement('dt'),b=document.createElement('dd');a.textContent=t;b.textContent=d;dl.append(a,b);}}
+
+/* PNG downloads carry the credit and the equation in iTXt chunks. */
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(b){let c=0xffffffff;for(let i=0;i<b.length;i++)c=CRC_T[(c^b[i])&255]^(c>>>8);return (c^0xffffffff)>>>0;}
+function itxt(key,text){const enc=new TextEncoder(),k=enc.encode(key),t=enc.encode(text),data=new Uint8Array(k.length+5+t.length);data.set(k,0);data.set(t,k.length+5);const ch=new Uint8Array(12+data.length),dv=new DataView(ch.buffer);dv.setUint32(0,data.length);ch.set([105,84,88,116],4);ch.set(data,8);dv.setUint32(8+data.length,crc32(ch.subarray(4,8+data.length)));return ch;}
+async function creditedPNG(blob){const buf=new Uint8Array(await blob.arrayBuffer()),cut=33;return new Blob([buf.subarray(0,cut),itxt('Title',state.name),itxt('Author',CREDIT.owner),itxt('Copyright',CREDIT.line),itxt('Description',equationText()),itxt('Software','Clover Equation Lab'),buf.subarray(cut)],{type:'image/png'});}
+
+async function importJsonFile(file){
+  try{
+    if(file.size>60e6)throw Error('that file is too large');
+    const data=JSON.parse(await file.text());
+    if(data&&data.fw==='BIOCODEX'){useBiocodex(data);return;}
+    if(data&&data.format==='clover-equation-glossary'&&Array.isArray(data.entries)){
+      let added=0;for(const e of data.entries)if(e&&typeof e.fp==='string'&&own(GENRES,e.genre)&&e.exprs&&typeof e.exprs==='object'&&!glossary.some(x=>x.fp===e.fp)){glossary.push(e);added++;}
+      if(glossary.length>GLOSS_MAX)glossary.length=GLOSS_MAX;persistGlossary();drawGlossary();toast(added+' glossary entries added.');return;
+    }
+    if(!data||data.format!=='clover-equation'||![1,2,3].includes(data.version))throw Error('choose a Clover Equation Lab JSON file');
+    commit(validateState(data.state));logGlossary(state,'imported');toast('Equation imported.');
+  }catch(err){toast('Could not import: '+err.message);}
+}
+function routeFile(f){
+  if(/^image\//.test(f.type))loadImageFile(f);
+  else if(/\.(gz|fweddle)$/i.test(f.name))loadBiocodex(f);
+  else if(/\.json$/i.test(f.name)||f.type==='application/json')importJsonFile(f);
+  else toast('Drop an image, a lab JSON file, or a BIOCODEX library.');
+}
+$('addImage').onclick=()=>$('imageInput').click();
+$('imageInput').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)loadImageFile(f);};
+$('mintImage').onclick=()=>generate(true,state.pick,{forceImg:true});
+$('imgColours').onclick=()=>{if(state.imagePalette)commit({...clone(state),palette:'image'});};
+$('removeImage').onclick=()=>commit({...clone(state),image:null,palette:state.palette==='image'?'mint':state.palette,imagePalette:state.palette==='image'?null:state.imagePalette});
+$('loadGenomes').onclick=()=>$('genomeInput').click();
+$('genomeInput').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)loadBiocodex(f);};
+$('mintGenome').onclick=()=>generate(true,'surface',{genome:true});
+document.addEventListener('dragover',e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files')){e.preventDefault();$('drop').classList.add('over');}});
+document.addEventListener('dragleave',e=>{if(!e.relatedTarget)$('drop').classList.remove('over');});
+document.addEventListener('drop',e=>{$('drop').classList.remove('over');const f=e.dataTransfer&&e.dataTransfer.files[0];if(!f)return;e.preventDefault();routeFile(f);});
+document.addEventListener('paste',e=>{const it=[...((e.clipboardData&&e.clipboardData.items)||[])].find(i=>i.type.startsWith('image/'));if(it){e.preventDefault();loadImageFile(it.getAsFile());}});
+(function(){const sel=$('glossGenre'),all=document.createElement('option');all.value='';all.textContent='All genres';sel.appendChild(all);for(const g of ORDER){const o=document.createElement('option');o.value=g;o.textContent=GENRES[g].long;sel.appendChild(o);}})();
+$('glossSearch').oninput=drawGlossary;$('glossGenre').onchange=drawGlossary;
+$('tabEq').onclick=()=>{$('tabEq').setAttribute('aria-pressed','true');$('tabOps').setAttribute('aria-pressed','false');$('glossEq').hidden=false;$('glossOps').hidden=true;};
+$('tabOps').onclick=()=>{$('tabOps').setAttribute('aria-pressed','true');$('tabEq').setAttribute('aria-pressed','false');$('glossEq').hidden=true;$('glossOps').hidden=false;};
+$('glossTxt').onclick=()=>download(glossaryText(),'weddle-glossary.txt','text/plain;charset=utf-8');
+$('glossJson').onclick=()=>download(JSON.stringify({format:'clover-equation-glossary',version:1,credit:CREDIT.line,entries:glossary},null,1),'weddle-glossary.json','application/json');
+window.addEventListener('pagehide',cancelRender);
+syncUI();drawShelf();drawOps();if(!glossary.length)logGlossary(state,'opened');else drawGlossary();renderNow();
+
+</script>
+</body>
+</html>
