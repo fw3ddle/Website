@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>PSYCHEDELIC DESCENT</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;touch-action:manipulation}
+body{overflow:hidden;background:#000;font-family:'Courier New',monospace;color:#0f0;
+  user-select:none;-webkit-user-select:none;touch-action:none;position:fixed;width:100%;height:100%}
+#gameCanvas{display:block;width:100vw;height:100vh;touch-action:none}
+#ui{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);
+  border:2px solid #0f0;padding:10px 15px;text-align:center;max-width:95%;width:auto;
+  pointer-events:none;font-size:12px;line-height:1.5;text-shadow:0 0 10px rgba(0,255,0,0.3);
+  border-radius:8px;z-index:10}
+#levelDisplay{position:fixed;top:10px;right:10px;background:rgba(0,0,0,0.8);border:1px solid #0f0;
+  padding:6px 12px;font-size:16px;color:#0f0;text-shadow:0 0 20px rgba(0,255,0,0.5);
+  border-radius:4px;z-index:10;font-weight:bold;letter-spacing:2px}
+#title{position:fixed;top:10px;left:10px;font-size:10px;color:#0f0;opacity:0.4;z-index:10;pointer-events:none}
+#controls{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);display:grid;
+  grid-template-columns:repeat(4,1fr);gap:8px;padding:0 10px;width:100%;max-width:420px;
+  z-index:10;pointer-events:none}
+#controls button{pointer-events:auto;background:rgba(0,255,0,0.1);border:1px solid #0f0;color:#0f0;
+  padding:12px 4px;font-family:'Courier New',monospace;font-size:11px;font-weight:bold;cursor:pointer;
+  transition:transform 0.1s,background 0.1s;border-radius:6px;text-shadow:0 0 10px rgba(0,255,0,0.3);
+  touch-action:manipulation;min-height:48px;letter-spacing:1px}
+#controls button:active{background:rgba(0,255,0,0.3);transform:scale(0.95);box-shadow:0 0 30px rgba(0,255,0,0.4)}
+#soundBtn{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:10;
+  background:rgba(0,255,0,0.08);border:1px solid #0f0;color:#0f0;padding:5px 14px;
+  font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;border-radius:4px;cursor:pointer}
+#memories{position:fixed;top:50px;left:10px;font-size:10px;color:#0f0;opacity:0.55;max-width:160px;
+  max-height:40vh;overflow:hidden;z-index:10;pointer-events:none}
+.memory{margin:2px 0;border-left:1px solid #0f0;padding-left:6px;opacity:0.35;font-size:9px;line-height:1.3}
+.memory.recent{opacity:0.85;color:#9f9}
+#stats{font-size:10px;opacity:0.7;margin-top:4px}
+.whisper{color:#9f9;opacity:0.6;font-size:11px;font-style:italic;min-height:16px}
+#downloadPrompt{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.95);
+  border:2px solid #0f0;padding:30px;text-align:center;z-index:100;border-radius:12px;max-width:90%;color:#0f0}
+#downloadPrompt h2{margin-bottom:15px;font-size:18px;letter-spacing:2px}
+#downloadPrompt p{margin-bottom:20px;font-size:14px;opacity:0.8}
+#downloadPrompt button{background:#0f0;color:#000;border:none;padding:12px 30px;
+  font-family:'Courier New',monospace;font-size:16px;font-weight:bold;cursor:pointer;border-radius:6px;margin:5px}
+#downloadPrompt button:active{transform:scale(0.95)}
+.hidden{display:none!important}
+@keyframes flicker{0%{opacity:1}50%{opacity:0.75}100%{opacity:1}}
+.flicker{animation:flicker 0.12s infinite}
+@media (prefers-reduced-motion: reduce){.flicker{animation:none}}
+@media (max-width:600px){
+  #ui{font-size:10px;padding:8px 12px;bottom:5px}
+  #controls{bottom:74px;gap:5px}
+  #controls button{font-size:9px;padding:10px 2px;min-height:42px}
+  #levelDisplay{font-size:14px;padding:4px 10px}
+  #memories{max-width:120px;font-size:8px;top:45px}
+}
+</style>
+</head>
+<body>
+<div id="downloadPrompt">
+  <h2>🌀 PSYCHEDELIC DESCENT 🌀</h2>
+  <p>Install this experience on your phone for offline play.</p>
+  <button onclick="installApp()">📲 INSTALL</button>
+  <button onclick="closePrompt()">▶ PLAY NOW</button>
+  <p style="font-size:11px;margin-top:15px;opacity:0.5;">iOS: Share → Add to Home Screen<br>Android: Menu → Add to Home Screen</p>
+</div>
+
+<div id="title">PSYCHEDELIC DESCENT</div>
+<div id="levelDisplay">LEVEL 0</div>
+<button id="soundBtn" onclick="toggleSound()">SOUND: OFF</button>
+<div id="memories"></div>
+
+<div id="controls">
+  <button onclick="playerAction('consume')">🍄 CONSUME</button>
+  <button onclick="playerAction('meditate')">🧘 MEDITATE</button>
+  <button onclick="playerAction('trust')">🤝 TRUST</button>
+  <button onclick="playerAction('listen')">👂 LISTEN</button>
+</div>
+
+<div id="ui">
+  <div id="description">Welcome to the simulation. The threshold awaits...</div>
+  <div id="whisper" class="whisper">A subtle hum beneath perception...</div>
+  <div id="stats">DOSAGE: 0% | FOCUS: 50%</div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+'use strict';
+
+// ============ INSTALLATION HANDLER ============
+function installApp(){
+  if(window.navigator && window.navigator.share){
+    window.navigator.share({
+      title:'Psychedelic Descent',
+      text:'Experience the 7 levels of consciousness',
+      url:window.location.href
+    }).catch(function(){});
+  }
+  var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  var isAndroid=/Android/.test(navigator.userAgent);
+  var msg='To install:\n';
+  if(isIOS){ msg+='Tap Share → Add to Home Screen'; }
+  else if(isAndroid){ msg+='Tap Menu → Add to Home Screen'; }
+  else{ msg+='Bookmark this page for offline use'; }
+  alert(msg);
+  closePrompt();
+}
+function closePrompt(){
+  document.getElementById('downloadPrompt').classList.add('hidden');
+}
+if(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)){
+  closePrompt();
+}
+
+// ============ CANVAS ============
+var canvas=document.getElementById('gameCanvas');
+var ctx=canvas.getContext('2d');
+var DPR=1;
+function resize(){
+  // Cap pixel ratio at 1.5 — full retina resolution tanks fill-rate on phones
+  DPR=Math.min(window.devicePixelRatio||1,1.5);
+  canvas.width=Math.floor(window.innerWidth*DPR);
+  canvas.height=Math.floor(window.innerHeight*DPR);
+}
+resize();
+window.addEventListener('resize',resize);
+window.addEventListener('orientationchange',function(){setTimeout(resize,300);});
+
+// ============ GAME STATE ============
+var gameState={
+  level:0,
+  dosage:0,
+  focus:50,
+  timer:0,
+  sceneTime:0,
+  colorShift:0,
+  warpIntensity:0,
+  entityWhispers:'A subtle hum beneath perception...',
+  memories:[],
+  memDirty:true,
+  voidPhase:0
+};
+
+// ============ WORLD (PS1-style low-poly terrain) ============
+var world={vertices:[],baseY:[],triangles:[],colors:[]};
+function generateWorld(){
+  var size=26, res=12;
+  var step=size/res;
+  var cols=res+1;
+  for(var i=0;i<=res;i++){
+    for(var j=0;j<=res;j++){
+      var x=-size/2+j*step;
+      var z=-size/2+i*step;
+      var y=Math.sin(x*0.35)*Math.cos(z*0.35)*2;
+      world.vertices.push([x,y,z]);
+      world.baseY.push(y);
+    }
+  }
+  for(var r=0;r<res;r++){
+    for(var c=0;c<res;c++){
+      var idx=r*cols+c;
+      world.triangles.push([idx,idx+1,idx+cols]);
+      world.triangles.push([idx+1,idx+cols+1,idx+cols]);
+    }
+  }
+  for(var v=0;v<world.vertices.length;v++){
+    world.colors.push([
+      Math.random()*0.5+0.5,
+      Math.random()*0.5+0.5,
+      Math.random()*0.5+0.5
+    ]);
+  }
+}
+generateWorld();
+
+var camera={x:0,y:2.6,z:10,rotX:-0.12,rotY:0,fov:500};
+
+// ============ EFFECT POOLS (persistent — no random re-roll per frame) ============
+var geoms=[];
+for(var gi=0;gi<24;gi++){
+  geoms.push({
+    x:Math.random(), y:Math.random(),
+    vx:(Math.random()-0.5)*0.0006, vy:(Math.random()-0.5)*0.0006,
+    size:20+Math.random()*60,
+    rot:Math.random()*Math.PI*2,
+    spin:(Math.random()-0.5)*0.02,
+    hue:Math.random()*360,
+    kind:gi%4
+  });
+}
+var entities=[];
+for(var ei=0;ei<6;ei++){
+  entities.push({
+    angle:Math.random()*Math.PI*2,
+    speed:0.002+Math.random()*0.004,
+    radius:0.15+Math.random()*0.3,
+    size:30+Math.random()*70,
+    hue:ei*60,
+    phase:Math.random()*Math.PI*2
+  });
+}
+var BAND_COUNT=26;
+var bandPhase=[];
+for(var bi=0;bi<BAND_COUNT;bi++){ bandPhase.push(Math.random()*Math.PI*2); }
+
+// ============ RENDERER ============
+function render(){
+  var w=canvas.width, h=canvas.height;
+  var level=gameState.level;
+  var t=gameState.sceneTime;
+
+  // Motion trails at higher levels instead of expensive shadow glow
+  if(level>=2){
+    ctx.fillStyle='rgba(0,0,0,'+(0.45-Math.min(level,6)*0.04)+')';
+  }else{
+    ctx.fillStyle='#000';
+  }
+  ctx.fillRect(0,0,w,h);
+
+  ctx.save();
+  var warp=gameState.warpIntensity;
+  if(warp>0.01){
+    var jitter=warp*10*DPR;
+    ctx.translate((Math.random()-0.5)*jitter,(Math.random()-0.5)*jitter);
+  }
+
+  drawWorld(w,h,level,t);
+  if(level>=2){ drawGeometry(w,h,level,t); }
+  if(level>=3){ drawSynesthesia(w,h,level,t); }
+  if(level>=5){ drawEntities(w,h,t); }
+  if(level>=6){ drawVoid(w,h,t); }
+
+  ctx.restore();
+}
+
+function drawWorld(w,h,level,t){
+  var verts=world.vertices;
+  var baseY=world.baseY;
+  var tris=world.triangles;
+  var colors=world.colors;
+  var fov=camera.fov*DPR;
+  var cx=w/2, cy=h/2;
+  var rotY=camera.rotY+t*0.0015*(1+level*0.4);
+  var rotX=camera.rotX+Math.sin(t*0.01)*0.06;
+  var cosY=Math.cos(rotY), sinY=Math.sin(rotY);
+  var cosX=Math.cos(rotX), sinX=Math.sin(rotX);
+  var breathe=level*0.35;
+
+  var projected=new Array(verts.length);
+  for(var i=0;i<verts.length;i++){
+    var v=verts[i];
+    var x=v[0]-camera.x;
+    var y=baseY[i]+(breathe>0?Math.sin(t*0.03+v[0]*0.7+v[2]*0.5)*breathe:0)-camera.y;
+    var z=v[2]-camera.z;
+    var rx=x*cosY-z*sinY;
+    var rz=x*sinY+z*cosY;
+    var ry=y*cosX-rz*sinX;
+    var rz2=y*sinX+rz*cosX;
+    if(rz2>0.5){
+      var s=fov/rz2;
+      projected[i]={x:rx*s+cx,y:-ry*s+cy,z:rz2};
+    }else{
+      projected[i]=null;
+    }
+  }
+
+  // Painter's algorithm: far triangles first
+  var order=[];
+  for(var ti=0;ti<tris.length;ti++){
+    var tr=tris[ti];
+    var p0=projected[tr[0]], p1=projected[tr[1]], p2=projected[tr[2]];
+    if(!p0||!p1||!p2) continue;
+    order.push({tri:tr,z:p0.z+p1.z+p2.z});
+  }
+  order.sort(function(a,b){return b.z-a.z;});
+
+  var hueShift=level*0.2+t*0.005;
+  var vjit=level*0.6*DPR;
+  ctx.lineWidth=0.5*DPR;
+  for(var oi=0;oi<order.length;oi++){
+    var tri=order[oi].tri;
+    var q0=projected[tri[0]], q1=projected[tri[1]], q2=projected[tri[2]];
+    var c0=colors[tri[0]], c1=colors[tri[1]], c2=colors[tri[2]];
+    var r=(c0[0]+c1[0]+c2[0])/3;
+    var g=(c0[1]+c1[1]+c2[1])/3;
+    var b=(c0[2]+c1[2]+c2[2])/3;
+    if(level>=1){
+      r=(r+Math.sin(hueShift)*0.3+0.5)%1;
+      g=(g+Math.sin(hueShift+2.094)*0.3+0.5)%1;
+      b=(b+Math.sin(hueShift+4.188)*0.3+0.5)%1;
+    }else{
+      // Sober world: dim green wireframe terrain
+      r*=0.1; g*=0.55; b*=0.15;
+    }
+    ctx.fillStyle='rgb('+((r*255)|0)+','+((g*255)|0)+','+((b*255)|0)+')';
+    ctx.strokeStyle='rgb('+((r*180)|0)+','+((g*200)|0)+','+((b*180)|0)+')';
+    ctx.beginPath();
+    ctx.moveTo(q0.x+(Math.random()-0.5)*vjit,q0.y+(Math.random()-0.5)*vjit);
+    ctx.lineTo(q1.x+(Math.random()-0.5)*vjit,q1.y+(Math.random()-0.5)*vjit);
+    ctx.lineTo(q2.x+(Math.random()-0.5)*vjit,q2.y+(Math.random()-0.5)*vjit);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+function drawGeometry(w,h,level,t){
+  var count=Math.min(geoms.length,6+level*3);
+  for(var i=0;i<count;i++){
+    var g=geoms[i];
+    var x=g.x*w, y=g.y*h;
+    var alpha=0.08+level*0.04+Math.sin(t*0.01+i)*0.06;
+    if(alpha<=0.01) continue;
+    var hue=(g.hue+t*0.5)%360;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(g.rot);
+    ctx.strokeStyle='hsla('+hue+',100%,55%,'+alpha.toFixed(3)+')';
+    ctx.lineWidth=(1+level*0.4)*DPR;
+    var size=g.size*(1+level*0.25)*DPR;
+    ctx.beginPath();
+    if(g.kind===0){
+      ctx.arc(0,0,size/2,0,Math.PI*2);
+    }else{
+      var sides=g.kind===1?3:g.kind===2?5:6;
+      var star=(g.kind===2);
+      var pts=star?sides*2:sides;
+      for(var j=0;j<pts;j++){
+        var rad=star&&(j%2===1)?size/4:size/2;
+        var ang=(j/pts)*Math.PI*2-Math.PI/2;
+        var px=Math.cos(ang)*rad, py=Math.sin(ang)*rad;
+        if(j===0){ ctx.moveTo(px,py); }else{ ctx.lineTo(px,py); }
+      }
+      ctx.closePath();
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawSynesthesia(w,h,level,t){
+  var bw=w/BAND_COUNT;
+  for(var i=0;i<BAND_COUNT;i++){
+    var x=i*bw;
+    var bh=(30+Math.abs(Math.sin(t*0.02+bandPhase[i]))*110*(1+level*0.25))*DPR;
+    var hue=(i*13+t*0.5)%360;
+    ctx.fillStyle='hsla('+hue+',100%,60%,0.22)';
+    ctx.fillRect(x,h/2-bh/2,bw,bh);
+  }
+}
+
+function drawEntities(w,h,t){
+  var cx=w/2, cy=h/2;
+  for(var i=0;i<entities.length;i++){
+    var e=entities[i];
+    var x=cx+Math.cos(e.angle)*e.radius*w;
+    var y=cy+Math.sin(e.angle*1.3+e.phase)*e.radius*h;
+    var size=e.size*(1+Math.sin(t*0.02+e.phase)*0.2)*DPR;
+    var hue=(e.hue+t*0.5)%360;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(t*0.01*(i+1));
+    var grad=ctx.createRadialGradient(0,0,0,0,0,size);
+    grad.addColorStop(0,'hsla('+hue+',100%,70%,0.55)');
+    grad.addColorStop(0.3,'hsla('+((hue+60)%360)+',100%,50%,0.35)');
+    grad.addColorStop(1,'hsla('+((hue+120)%360)+',100%,30%,0)');
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.arc(0,0,size,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle='hsla('+((hue+180)%360)+',100%,80%,0.5)';
+    ctx.lineWidth=2*DPR;
+    ctx.beginPath();
+    for(var j=0;j<8;j++){
+      var ang=(j/8)*Math.PI*2+t*0.01;
+      var r=size*0.6;
+      ctx.moveTo(Math.cos(ang)*r,Math.sin(ang)*r);
+      ctx.lineTo(Math.cos(ang+0.5)*r*0.8,Math.sin(ang+0.5)*r*0.8);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawVoid(w,h,t){
+  var cx=w/2, cy=h/2;
+  var radius=Math.max(w,h)*(0.9+Math.sin(t*0.01)*0.5);
+  var grad=ctx.createRadialGradient(
+    cx+Math.sin(t*0.02)*50*DPR,
+    cy+Math.cos(t*0.015)*50*DPR,
+    0, cx, cy, radius
+  );
+  grad.addColorStop(0,'rgba(255,255,255,0.1)');
+  grad.addColorStop(0.3,'rgba(100,0,200,0.2)');
+  grad.addColorStop(0.7,'rgba(0,0,100,0.5)');
+  grad.addColorStop(1,'rgba(0,0,0,0.9)');
+  ctx.fillStyle=grad;
+  ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='rgba(255,255,255,'+(0.1+Math.abs(Math.sin(t*0.02))*0.2)+')';
+  ctx.font=(24*DPR)+'px Courier New';
+  ctx.fillText('∞',cx-12*DPR,cy+8*DPR);
+}
+
+// ============ DESCRIPTIONS ============
+var DESCRIPTIONS=[
+  'The world appears ordinary, yet you sense subtle geometry dancing at the edge of perception. Colors vibrate with an inner light.',
+  'Reality takes on a dewy freshness. Walls breathe gently, colors bleed into each other like watercolors.',
+  'Your vision pulses with organic fractals. The carpet reveals itself as a mandala, trails follow your hands like liquid light.',
+  'The fabric of existence tears beautifully. Synesthesia paints soundscapes, time becomes a spiral, the world melts into sacred geometry.',
+  'Your ego shatters like crystal. You are everywhere and nowhere. Entities whisper through the geometric lattice.',
+  'Hyperspace unfolds infinitely. Autonomous beings communicate through telepathic imagery. The mundane has become myth.',
+  'CONSCIOUSNESS DISSOLVES INTO THE VOID. You are the void. The void is you. Only radiant silence remains...'
+];
+function getDescription(level){
+  return DESCRIPTIONS[Math.min(level,6)];
+}
+
+// ============ PLAYER ACTIONS ============
+function playerAction(action){
+  if(gameState.level>=6){
+    // In the void, only meditation can pull you back — no more soft-lock
+    if(action==='meditate'){
+      gameState.focus=Math.min(100,gameState.focus+18);
+      gameState.dosage=Math.max(0,gameState.dosage-8);
+      addMemory('You claw back a single thread of self from the radiant silence...');
+    }else{
+      addMemory('You cannot act. The void consumes all... (only meditation reaches here)');
+    }
+    return;
+  }
+  if(action==='consume'){
+    gameState.dosage=Math.min(100,gameState.dosage+10+Math.random()*20);
+    addMemory('You ingest something suspicious. It tastes of starlight and forgotten dreams...');
+  }else if(action==='meditate'){
+    gameState.focus=Math.min(100,gameState.focus+(5+Math.random()*10)*2);
+    addMemory('You center yourself within the chaos. The geometric storm begins to organize...');
+  }else if(action==='trust'){
+    gameState.dosage=Math.min(100,gameState.dosage+25);
+    gameState.focus=Math.max(0,gameState.focus-10);
+    addMemory('Your trusted guide offers their hand. Reality synchronizes...');
+  }else if(action==='listen'){
+    gameState.dosage=Math.min(100,gameState.dosage+35);
+    gameState.focus=Math.max(0,gameState.focus-20);
+    addMemory('They whisper sacred geometry. The universe folds in on itself...');
+  }
+  audioPulse();
+}
+
+function addMemory(text){
+  gameState.memories.push(text);
+  if(gameState.memories.length>20){ gameState.memories.shift(); }
+  gameState.memDirty=true;
+}
+
+// ============ WHISPERS ============
+var WHISPERS=[
+  'The loom weaves your destiny...',
+  'You are the thread of existence...',
+  'Infinite reflections in the cosmic mirror...',
+  'The serpent consumes its own tail...',
+  'Time is a flat circle of light...',
+  'You have always been here...',
+  'The void speaks your true name...',
+  'Geometry is the language of creation...'
+];
+
+// ============ UPDATE (delta-time based, framerate independent) ============
+var LEVEL_NAMES=['Baseline','Subperceptual','Subtle','Mild','Moderate','Strong','Extreme'];
+function update(dt){
+  gameState.timer+=dt;
+  gameState.sceneTime+=dt;
+
+  var effective=gameState.dosage*(1-gameState.focus*0.005);
+  var newLevel=0;
+  if(effective<1){ newLevel=0; }
+  else if(effective<15){ newLevel=1; }
+  else if(effective<35){ newLevel=2; }
+  else if(effective<60){ newLevel=3; }
+  else if(effective<80){ newLevel=4; }
+  else if(effective<95){ newLevel=5; }
+  else{ newLevel=6; }
+
+  if(newLevel!==gameState.level){
+    gameState.level=newLevel;
+    gameState.colorShift=newLevel*0.15;
+    gameState.warpIntensity=newLevel*0.15;
+    if(newLevel>0){
+      addMemory('You descend to Level '+newLevel+': '+LEVEL_NAMES[newLevel]+'...');
+    }else{
+      addMemory('You surface. The ordinary world reassembles itself around you.');
+    }
+    setAudioLevel(newLevel);
+  }
+
+  if(gameState.dosage>0){
+    gameState.dosage=Math.max(0,gameState.dosage-0.05*dt);
+  }
+  if(gameState.level<3){
+    gameState.focus=Math.min(100,gameState.focus+0.02*dt);
+  }
+  if(gameState.level>=4 && Math.random()<0.02*dt){
+    gameState.entityWhispers=WHISPERS[Math.floor(Math.random()*WHISPERS.length)];
+  }
+  if(gameState.level>=6){
+    gameState.voidPhase+=dt;
+    if(gameState.voidPhase>=30){
+      gameState.voidPhase=0;
+      addMemory('*** CONSCIOUSNESS FADES INTO THE PRIMAL VOID ***');
+      gameState.dosage=Math.max(0,gameState.dosage-2);
+    }
+  }
+
+  // Drift the geometric veil (persistent shapes, smooth motion)
+  for(var i=0;i<geoms.length;i++){
+    var g=geoms[i];
+    g.x=(g.x+g.vx*dt+1)%1;
+    g.y=(g.y+g.vy*dt+1)%1;
+    g.rot+=g.spin*dt;
+  }
+  for(var e=0;e<entities.length;e++){
+    entities[e].angle+=entities[e].speed*dt;
+  }
+}
+
+// ============ UI (cached elements, update only on change) ============
+var els={
+  level:document.getElementById('levelDisplay'),
+  desc:document.getElementById('description'),
+  whisper:document.getElementById('whisper'),
+  stats:document.getElementById('stats'),
+  memories:document.getElementById('memories'),
+  ui:document.getElementById('ui')
+};
+var uiCache={level:-1,stats:'',whisper:''};
+var uiAccum=0;
+function updateUI(dt){
+  uiAccum+=dt;
+  if(uiAccum<8) return; // ~130ms between DOM checks
+  uiAccum=0;
+
+  if(uiCache.level!==gameState.level){
+    uiCache.level=gameState.level;
+    els.level.textContent='LEVEL '+gameState.level;
+    els.desc.textContent=getDescription(gameState.level);
+    if(gameState.level>=4){ els.ui.classList.add('flicker'); }
+    else{ els.ui.classList.remove('flicker'); }
+    els.whisper.className='whisper'+(gameState.level>=6?' void':gameState.level>=4?' intense':'');
+  }
+  var stats='DOSAGE: '+Math.round(gameState.dosage)+'% | FOCUS: '+Math.round(gameState.focus)+'%';
+  if(stats!==uiCache.stats){
+    uiCache.stats=stats;
+    els.stats.textContent=stats;
+  }
+  if(gameState.entityWhispers!==uiCache.whisper){
+    uiCache.whisper=gameState.entityWhispers;
+    els.whisper.textContent=gameState.entityWhispers;
+  }
+  if(gameState.memDirty){
+    gameState.memDirty=false;
+    var recent=gameState.memories.slice(-5);
+    var html='';
+    for(var i=0;i<recent.length;i++){
+      html+='<div class="memory'+(i===recent.length-1?' recent':'')+'">'+recent[i]+'</div>';
+    }
+    els.memories.innerHTML=html;
+  }
+}
+
+// ============ AUDIO (optional psytrance drone, off by default) ============
+var audio={ctx:null,osc1:null,osc2:null,filter:null,gain:null,lfo:null,lfoGain:null,on:false};
+function initAudio(){
+  if(audio.ctx) return true;
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC) return false;
+    audio.ctx=new AC();
+    audio.gain=audio.ctx.createGain();
+    audio.gain.gain.value=0;
+    audio.filter=audio.ctx.createBiquadFilter();
+    audio.filter.type='lowpass';
+    audio.filter.frequency.value=300;
+    audio.filter.Q.value=6;
+    audio.osc1=audio.ctx.createOscillator();
+    audio.osc1.type='sawtooth';
+    audio.osc1.frequency.value=55;
+    audio.osc2=audio.ctx.createOscillator();
+    audio.osc2.type='sawtooth';
+    audio.osc2.frequency.value=55.6;
+    audio.lfo=audio.ctx.createOscillator();
+    audio.lfo.frequency.value=0.12;
+    audio.lfoGain=audio.ctx.createGain();
+    audio.lfoGain.gain.value=120;
+    audio.lfo.connect(audio.lfoGain);
+    audio.lfoGain.connect(audio.filter.frequency);
+    audio.osc1.connect(audio.filter);
+    audio.osc2.connect(audio.filter);
+    audio.filter.connect(audio.gain);
+    audio.gain.connect(audio.ctx.destination);
+    audio.osc1.start();
+    audio.osc2.start();
+    audio.lfo.start();
+    return true;
+  }catch(e){
+    audio.ctx=null;
+    return false;
+  }
+}
+function toggleSound(){
+  var btn=document.getElementById('soundBtn');
+  if(!audio.on){
+    if(!initAudio()){ btn.textContent='SOUND: N/A'; return; }
+    if(audio.ctx.state==='suspended'){ audio.ctx.resume(); }
+    audio.gain.gain.setTargetAtTime(0.08,audio.ctx.currentTime,0.5);
+    audio.on=true;
+    btn.textContent='SOUND: ON';
+    setAudioLevel(gameState.level);
+  }else{
+    audio.gain.gain.setTargetAtTime(0,audio.ctx.currentTime,0.3);
+    audio.on=false;
+    btn.textContent='SOUND: OFF';
+  }
+}
+function setAudioLevel(level){
+  if(!audio.ctx||!audio.on) return;
+  var now=audio.ctx.currentTime;
+  audio.filter.frequency.setTargetAtTime(250+level*350,now,1.2);
+  audio.osc2.frequency.setTargetAtTime(55+level*0.9,now,1.2);
+  audio.lfo.frequency.setTargetAtTime(0.12+level*0.25,now,1.2);
+  audio.lfoGain.gain.setTargetAtTime(120+level*180,now,1.2);
+}
+function audioPulse(){
+  if(!audio.ctx||!audio.on) return;
+  var now=audio.ctx.currentTime;
+  audio.gain.gain.cancelScheduledValues(now);
+  audio.gain.gain.setValueAtTime(audio.gain.gain.value,now);
+  audio.gain.gain.linearRampToValueAtTime(0.16,now+0.05);
+  audio.gain.gain.setTargetAtTime(0.08,now+0.05,0.4);
+}
+
+// ============ AUTO-PLAY SCENARIO ============
+var scenarioStep=0;
+var scenarioInterval=null;
+function runScenario(){
+  scenarioStep++;
+  if(scenarioStep===5){
+    addMemory("Your guide smiles knowingly. 'Drink,' they say, 'and see what you are.'");
+    playerAction('trust');
+  }else if(scenarioStep===10){
+    addMemory('The world begins to breathe deeply...');
+    playerAction('consume');
+  }else if(scenarioStep===18){
+    addMemory('Your guide takes your hand. The veil is thinning...');
+    playerAction('trust');
+  }else if(scenarioStep===25){
+    addMemory('The geometry becomes overwhelming. You hear the machine elves...');
+    playerAction('listen');
+  }else if(scenarioStep===35){
+    addMemory('Ego dissolution complete. You are the cosmic current...');
+    playerAction('meditate');
+  }else if(scenarioStep===45){
+    addMemory('The void whispers your true name...');
+  }else if(scenarioStep>50){
+    clearInterval(scenarioInterval);
+    scenarioInterval=null;
+  }
+}
+
+// ============ GAME LOOP ============
+var lastFrame=0;
+function gameLoop(now){
+  if(!lastFrame){ lastFrame=now; }
+  // dt in 60fps-frame units, clamped so tab-switches don't cause a physics jump
+  var dt=Math.min((now-lastFrame)/16.667,4);
+  lastFrame=now;
+  update(dt);
+  render();
+  updateUI(dt);
+  requestAnimationFrame(gameLoop);
+}
+
+// ============ INPUT ============
+document.addEventListener('keydown',function(e){
+  if(e.key==='1'){ playerAction('consume'); }
+  else if(e.key==='2'){ playerAction('meditate'); }
+  else if(e.key==='3'){ playerAction('trust'); }
+  else if(e.key==='4'){ playerAction('listen'); }
+});
+
+// ============ START ============
+function init(){
+  addMemory('You stand at the threshold of the ordinary...');
+  addMemory('Your trusted friend appears with a knowing smile...');
+  scenarioInterval=setInterval(runScenario,3000);
+  requestAnimationFrame(gameLoop);
+}
+init();
+
+console.log('PSYCHEDELIC DESCENT — rebuilt');
+console.log('Controls: [1] Consume [2] Meditate [3] Trust [4] Listen');
+</script>
+</body>
+</html>

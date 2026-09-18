@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Alien Bag Wallet</title>
+<style>
+:root{--bg:#070914;--panel:#101527;--panel2:#151d34;--line:#273556;--text:#eef6ff;--dim:#91a4c7;--mint:#75f0b5;--gold:#ffd86b;--red:#ff7d91;--blue:#79b8ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 75% 10%,#162b3c 0,#090c18 35%,#050711 80%);color:var(--text);font:14px system-ui,Segoe UI,sans-serif;min-height:100vh}
+button,input,select{font:inherit}.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}.side{padding:24px 16px;border-right:1px solid var(--line);background:#080b16cc;backdrop-filter:blur(16px)}
+.brand{font-weight:800;font-size:20px;letter-spacing:.04em}.brand b{color:var(--mint)}.tag{color:var(--dim);font-size:11px;margin:4px 0 24px}.nav button{display:block;width:100%;padding:11px 12px;margin:5px 0;border:0;border-radius:9px;background:transparent;color:var(--dim);text-align:left;cursor:pointer}.nav button.on,.nav button:hover{background:var(--panel2);color:var(--text)}
+.main{padding:28px;max-width:1450px;width:100%;margin:auto}.top{display:flex;gap:14px;justify-content:space-between;align-items:center;flex-wrap:wrap}.title h1{margin:0;font-size:26px}.title p{margin:5px 0;color:var(--dim)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:var(--panel);color:var(--text);padding:9px 13px;border-radius:9px;cursor:pointer}.btn.primary{background:var(--mint);color:#052217;border-color:transparent;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}.card{background:#0e1424d9;border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 12px 40px #0004}.stat .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.1em}.stat .v{font-size:24px;margin-top:5px;font-weight:700}
+.warn{border-color:#665527;background:#19170fd9}.warn .v{color:var(--gold)}.toolbar{display:flex;gap:8px;margin:0 0 12px}.toolbar input,.toolbar select{background:#0c1221;border:1px solid var(--line);color:var(--text);padding:9px;border-radius:8px}
+.toolbar input{flex:1}.assets{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}.asset{position:relative}.asset h3{margin:0 0 5px;font-size:16px}.asset .amount{font-size:22px;font-weight:750;margin:12px 0 3px}.muted{color:var(--dim)}.badge{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 7px;font-size:10px;margin:5px 4px 0 0}.real{color:var(--mint);border-color:#2d7658}.fake{color:var(--gold);border-color:#6b5a29}.unknown{color:var(--blue);border-color:#365a7d}.test{color:var(--red);border-color:#6f3441}
+.asset footer{display:flex;justify-content:space-between;gap:8px;margin-top:15px;padding-top:10px;border-top:1px solid var(--line);font-size:11px;color:var(--dim)}.empty{text-align:center;padding:70px 20px;color:var(--dim)}
+.modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:20px}.modal.show{display:flex}.dialog{width:min(650px,100%);max-height:85vh;overflow:auto;background:#0c1221;border:1px solid var(--line);border-radius:16px;padding:20px}
+.dialog h2{margin-top:0}.field{margin:11px 0}.field label{display:block;color:var(--dim);font-size:11px;margin-bottom:5px}.field input,.field select,.field textarea{width:100%;background:#070b15;border:1px solid var(--line);color:var(--text);padding:10px;border-radius:8px}.field textarea{height:90px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.note{font-size:11px;line-height:1.5;color:var(--dim);border-left:3px solid var(--gold);padding-left:10px}.hidden{display:none!important}
+@media(max-width:800px){.app{grid-template-columns:1fr}.side{display:none}.main{padding:18px}.stats{grid-template-columns:1fr 1fr}} 
+
+.dimension{position:absolute;right:12px;top:12px;font-size:10px;color:var(--blue);letter-spacing:.08em}
+.bridge{border:1px dashed #3e5d88;background:#0a1020;padding:12px;border-radius:10px;margin-top:12px}
+.bridge-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.bridge-node{padding:9px;border:1px solid var(--line);background:#090e1a;border-radius:8px;font-size:11px}
+.bridge-node b{display:block;color:var(--mint);margin-bottom:3px}
+.trace{font:11px ui-monospace,monospace;white-space:pre-wrap;color:var(--dim);max-height:180px;overflow:auto;background:#070a12;padding:10px;border:1px solid var(--line);border-radius:8px}
+@media(max-width:800px){.bridge-grid{grid-template-columns:1fr}}
+
+.statebar{display:flex;gap:4px;flex-wrap:wrap;margin-top:9px}
+.statepill{font-size:9px;padding:3px 6px;border:1px solid var(--line);border-radius:999px;color:var(--dim)}
+.statepill.active{color:var(--mint);border-color:#39795f;background:#0c241b}
+.statepill.blocked{opacity:.38}
+.evidence{margin-top:8px;font-size:10px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side"><div class="brand">🍀 <b>ALIEN</b> WALLET</div><div class="tag">every bag gets a shelf</div>
+<div class="nav"><button class="on">◈ Portfolio</button><button id="navImport">⇩ Import bags</button><button id="navAdd">＋ New asset</button><button id="navExport">⇧ Export vault</button></div>
+<p class="note" style="margin-top:28px">Organizer, not a bank. “Verified” is metadata you provide or import; this app never claims an asset is real, spendable, or owned.</p></aside>
+<main class="main">
+<div class="top"><div class="title"><h1>Universal Bag Vault</h1><p>Currencies, experimental assets, shards, points, and things nobody has named yet.</p></div>
+<div class="actions"><button class="btn" id="exportBtn">Export</button><button class="btn primary" id="importBtn">Import bag</button></div></div>
+<section class="stats">
+<div class="card stat"><div class="k">Objects</div><div class="v" id="sObjects">0</div></div>
+<div class="card stat"><div class="k">Currencies</div><div class="v" id="sCurrencies">0</div></div>
+<div class="card stat"><div class="k">Sources</div><div class="v" id="sSources">0</div></div>
+<div class="card stat warn"><div class="k">Unverified / fictional</div><div class="v" id="sUnverified">0</div></div>
+</section>
+<section class="card" style="margin-bottom:12px">
+<div class="top"><div><b>⟐ Dimensional Bridge</b><div class="muted">Translate arbitrary bag units through mathematical transforms without pretending the translation is a market exchange.</div></div>
+<button class="btn" id="bridgeRandom">Randomize bridge</button></div>
+<div class="bridge">
+<div class="bridge-grid">
+<div class="bridge-node"><b>Origin plane</b><select id="originPlane"><option>local</option><option>synthetic</option><option>observed</option><option>external</option><option>unknown</option></select></div>
+<div class="bridge-node"><b>Transform</b><select id="bridgeOp"></select></div>
+<div class="bridge-node"><b>Destination plane</b><input id="destPlane" value="adjacent-1" maxlength="32"></div>
+</div>
+<div class="row" style="margin-top:10px"><input id="bridgeInput" type="number" step="any" value="1" placeholder="input magnitude"><button class="btn primary" id="runBridge">Run transform</button></div>
+<div id="bridgeTrace" class="trace" style="margin-top:10px">Bridge idle.</div>
+</div></section>
+<div class="toolbar"><input id="search" placeholder="Search assets, symbols, addresses, provenance…"><select id="filter"><option value="">All classes</option><option>verified</option><option>unverified</option><option>test</option></select><button class="btn" id="addBtn">＋</button></div>
+<div id="assets" class="assets"></div>
+<input id="file" type="file" accept=".json,.fweddle,.bag,.txt,application/json" multiple hidden>
+</main></div>
+
+<div class="modal" id="modal"><div class="dialog"><h2>Add arbitrary asset</h2>
+<div class="row"><div class="field"><label>Name</label><input id="aName" placeholder="Moon Shard"></div><div class="field"><label>Symbol / unit</label><input id="aSymbol" placeholder="MOON"></div></div>
+<div class="row"><div class="field"><label>Amount / description</label><input id="aAmount" placeholder="1 or unknown"></div><div class="field"><label>Classification</label><select id="aClass"><option>unverified</option><option>test</option><option>verified</option></select></div></div>
+<div class="row"><div class="field"><label>Address / identifier (optional)</label><input id="aAddr"></div>
+<div class="field"><label>Dimensional namespace</label><input id="aDimension" value="local" placeholder="local, observed, unknown…"></div></div>
+<div class="field"><label>Provenance / notes</label><textarea id="aNotes"></textarea></div>
+<p class="note">This classification is a label only. Adding “USD”, an address, or choosing “verified” does not create money or prove ownership.</p>
+<div class="actions" style="justify-content:flex-end"><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="save">Save asset</button></div></div></div>
+
+
+<div class="modal" id="convertModal"><div class="dialog"><h2>Convert asset</h2>
+<p class="note">Conversions inside this vault are accounting records unless an external, verified conversion provider actually performs the exchange. This tool never invents a market price.</p>
+<div class="field"><label>From</label><input id="cFrom" disabled></div>
+<div class="row"><div class="field"><label>Amount to convert</label><input id="cAmount" type="number" step="any" min="0"></div>
+<div class="field"><label>Destination symbol</label><input id="cSymbol" placeholder="USD, EUR, SHARD…"></div></div>
+<div class="row"><div class="field"><label>Rate: 1 source unit = destination units</label><input id="cRate" type="number" step="any" min="0" placeholder="Enter verified/manual rate"></div>
+<div class="field"><label>Rate source</label><input id="cRateSource" placeholder="manual, institution, exchange…"></div></div>
+<div class="row"><div class="field"><label>Conversion logic</label><select id="cLogic"><option value="rate">Declared rate</option><option value="bridge">Dimensional transform</option></select></div>
+<div class="field"><label>Destination dimension</label><input id="cDimension" value="local"></div></div>
+<div class="field"><label>Preview</label><input id="cPreview" disabled></div>
+<div class="actions" style="justify-content:flex-end"><button class="btn" id="cCancel">Cancel</button><button class="btn primary" id="cSave">Record conversion</button></div>
+</div></div>
+
+
+<div class="modal" id="verifyModal"><div class="dialog"><h2>Value-state verification</h2>
+<p class="note">FOUND ≠ RECEIVED ≠ OWNED ≠ SPENDABLE ≠ SETTLED. Advance only when you have evidence from outside this wallet. A discovered identifier, private key, account number, or shard is not proof that it belongs to you.</p>
+<div class="field"><label>Asset</label><input id="vAsset" disabled></div>
+<div class="field"><label>Current state</label><input id="vCurrent" disabled></div>
+<div class="field"><label>Requested state</label><select id="vNext"><option>FOUND</option><option>RECEIVED</option><option>OWNED</option><option>SPENDABLE</option><option>SETTLED</option></select></div>
+<div class="field"><label>External evidence / institution / transaction reference</label><textarea id="vEvidence" placeholder="Record what independently establishes this state. Do not paste passwords, private keys, or login credentials."></textarea></div>
+<div class="field"><label>Evidence source type</label><select id="vSource"><option>external institution</option><option>payment network</option><option>issuer</option><option>signed sender statement</option><option>manual note</option></select></div>
+<div class="actions" style="justify-content:flex-end"><button class="btn" id="vCancel">Cancel</button><button class="btn primary" id="vSave">Record verification</button></div>
+</div></div>
+
+<script>
+const KEY='alien.wallet.v1';
+
+const DIM_OPS={
+ identity:x=>x,
+ gauss:x=>Math.exp(-x*x),
+ lat:x=>x-Math.round(x),
+ weier:x=>Math.cos(x)+Math.cos(3*x)/2+Math.cos(9*x)/4+Math.cos(27*x)/8,
+ ripple:x=>Math.sin(x)/(1+Math.abs(x)*.4),
+ quark:x=>Math.cbrt(Math.sin(3*x)),
+ charm:x=>Math.sin(x)+Math.sin(2.618*x)/2.618,
+ strange:x=>Math.sin(x*1.6180339)+Math.cos(x*.6180339)/2,
+ gluon:x=>Math.tanh(3*Math.sin(x))*Math.cos(x),
+ spinor:x=>Math.sin(x/2),
+ collapse:x=>{const z=Math.sin(x);return Math.sign(z)*z*z},
+ tunnel:x=>Math.exp(-Math.abs(x))*Math.sign(Math.sin(3*x)),
+ qubit:x=>{const c=Math.cos(x/2);return c*c*2-1},
+ lorentz:x=>2/Math.sqrt(1+x*x)-1,
+ comet:x=>Math.exp(-x*x/4)*Math.sin(5*x),
+ clover:x=>Math.sin(x)*Math.pow(Math.cos(2*x),2),
+ mobius:x=>x/(1+Math.abs(x))
+};
+const BRIDGE_NAMES=Object.keys(DIM_OPS);
+$('#bridgeOp').innerHTML=BRIDGE_NAMES.map(x=>'<option>'+x+'</option>').join('');
+function bridgeRun(x,op,origin,dest){
+ const fn=DIM_OPS[op]||DIM_OPS.identity, y=fn(x);
+ const finite=Number.isFinite(y), stamp=new Date().toISOString();
+ return {input:x,output:finite?y:null,operator:op,origin,destination:dest,finite,stamp,
+  interpretation:'mathematical transform only; no external exchange or settlement implied'};
+}
+$('#runBridge').onclick=()=>{
+ const x=parseFloat($('#bridgeInput').value),op=$('#bridgeOp').value,o=$('#originPlane').value,d=$('#destPlane').value.trim()||'unknown';
+ if(!Number.isFinite(x))return alert('Enter a finite input magnitude.');
+ const r=bridgeRun(x,op,o,d);
+ $('#bridgeTrace').textContent=JSON.stringify(r,null,2);
+};
+$('#bridgeRandom').onclick=()=>{
+ $('#bridgeOp').value=BRIDGE_NAMES[Math.floor(Math.random()*BRIDGE_NAMES.length)];
+ $('#destPlane').value='adjacent-'+(1+Math.floor(Math.random()*999));
+ $('#runBridge').click();
+};
+
+let vault=JSON.parse(localStorage.getItem(KEY)||'{"v":1,"kind":"alien-wallet/1","assets":[]}');
+const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function persist(){localStorage.setItem(KEY,JSON.stringify(vault));render()}
+vault.assets=(vault.assets||[]).map(a=>({...a,class:a.class==='fictional'?'unverified':normalizeClass(a.class)}));
+function normalizeClass(x){x=String(x||'unverified').toLowerCase(); return ['verified','unverified','test'].includes(x)?x:'unverified'}
+function fromFXP(item,source){
+ const m=String(item.match||item.label||'').match(/\b(USD|EUR|GBP|JPY|BTC|ETH|[A-Z]{2,10})\b/);
+ return {id:item.id||crypto.randomUUID(),name:item.kind||'FXplore specimen',symbol:m?m[1]:'SHARD',amount:item.amount||item.value||'described',class:(item.spendable===false||item.sources?.some?.(x=>x.via==='test'))?'test':'unverified',address:item.keys?.addr||item.addr||'',notes:item.note||item.match||item.label||'',source,raw:item,dimension:item.dimension||item.timeline||'observed',valueState:'FOUND',stateEvidence:'',raw:item,imported:new Date().toISOString()};
+}
+function ingest(obj,name='import'){
+ let added=0;
+ if(obj?.kind==='fxp-bag/1' && Array.isArray(obj.items)){obj.items.forEach(i=>{vault.assets.push(fromFXP(i,name));added++})}
+ else if(obj?.kind==='alien-wallet/1' && Array.isArray(obj.assets)){obj.assets.forEach(a=>{vault.assets.push({...a,id:a.id||crypto.randomUUID(),class:normalizeClass(a.class),source:a.source||name});added++})}
+ else if(Array.isArray(obj)){obj.forEach(i=>{vault.assets.push(fromFXP(i,name));added++})}
+ else if(obj&&typeof obj==='object'){vault.assets.push(fromFXP(obj,name));added++}
+ return added;
+}
+function render(){
+ const q=$('#search').value.toLowerCase(), f=$('#filter').value;
+ const list=vault.assets.filter(a=>(!f||a.class===f)&&JSON.stringify(a).toLowerCase().includes(q));
+ $('#assets').innerHTML=list.length?list.map(a=>`<article class="card asset">
+ <span class="dimension">⟐ ${esc(a.dimension||"local")}</span><h3>${esc(a.name)}</h3><span class="badge ${a.class==='verified'?'real':a.class==='test'?'test':'unknown'}">${esc(a.class)}</span>
+ <span class="badge">${esc(a.symbol||'UNIT')}</span><div class="amount">${esc(a.amount??'unknown')} <span class="muted">${esc(a.symbol||'')}</span></div>
+ <div class="muted">${esc(a.address||a.notes||'No external identifier')}</div>
+ <div class="statebar">${['FOUND','RECEIVED','OWNED','SPENDABLE','SETTLED'].map((st,i)=>`<span class="statepill ${(a.valueState||'FOUND')===st?'active':''}">${st}</span>`).join('')}</div>
+ <div class="evidence">${esc(a.stateEvidence||'No external verification attached.')}</div>
+ <footer><span>${esc(a.source||'manual')}</span><span><button class="btn" onclick="openVerify('${esc(a.id)}')">verify</button> <button class="btn" onclick="openConvert('${esc(a.id)}')">convert</button> <button class="btn" onclick="removeAsset('${esc(a.id)}')">remove</button></span></footer></article>`).join(''):`<div class="card empty">No bags on this shelf yet.<br>Import an FXplore bag or create any asset manually.</div>`;
+ $('#sObjects').textContent=vault.assets.length;
+ $('#sCurrencies').textContent=new Set(vault.assets.map(a=>a.symbol).filter(Boolean)).size;
+ $('#sSources').textContent=new Set(vault.assets.map(a=>a.source).filter(Boolean)).size;
+ $('#sUnverified').textContent=vault.assets.filter(a=>a.class!=='verified').length;
+}
+window.removeAsset=id=>{vault.assets=vault.assets.filter(a=>a.id!==id);persist()}
+
+const VALUE_STATES=['FOUND','RECEIVED','OWNED','SPENDABLE','SETTLED'];
+let verifyingId=null;
+window.openVerify=id=>{
+ const a=vault.assets.find(x=>x.id===id); if(!a)return;
+ verifyingId=id; const cur=a.valueState||'FOUND';
+ $('#vAsset').value=(a.name||'asset')+' · '+(a.amount??'unknown')+' '+(a.symbol||'UNIT');
+ $('#vCurrent').value=cur; $('#vNext').value=cur; $('#vEvidence').value=a.stateEvidence||'';
+ $('#verifyModal').classList.add('show');
+};
+$('#vCancel').onclick=()=>$('#verifyModal').classList.remove('show');
+$('#vSave').onclick=()=>{
+ const a=vault.assets.find(x=>x.id===verifyingId); if(!a)return;
+ const cur=a.valueState||'FOUND', next=$('#vNext').value, evidence=$('#vEvidence').value.trim(), source=$('#vSource').value;
+ const ci=VALUE_STATES.indexOf(cur), ni=VALUE_STATES.indexOf(next);
+ if(ni>ci+1)return alert('Verify one state at a time. The chain cannot skip evidence.');
+ if(ni>ci && !evidence)return alert('Add external evidence before advancing the state.');
+ if(ni>=2 && source==='manual note')return alert('OWNED, SPENDABLE, and SETTLED require an external source type, not only a manual note.');
+ const evt={from:cur,to:next,evidence,source,at:new Date().toISOString()};
+ a.valueState=next; a.stateEvidence=evidence; a.verificationHistory=a.verificationHistory||[]; a.verificationHistory.push(evt);
+ if(next==='SETTLED')a.class='verified';
+ $('#verifyModal').classList.remove('show'); persist();
+};
+
+
+let convertingId=null;
+window.openConvert=id=>{
+ const a=vault.assets.find(x=>x.id===id); if(!a)return;
+ convertingId=id; $('#cFrom').value=(a.amount??'unknown')+' '+(a.symbol||'UNIT');
+ const n=parseFloat(a.amount); $('#cAmount').value=Number.isFinite(n)?n:'';
+ $('#cSymbol').value=''; $('#cRate').value=''; $('#cRateSource').value=''; $('#cPreview').value='Enter a rate';
+ $('#convertModal').classList.add('show');
+}
+function conversionPreview(){
+ const amt=parseFloat($('#cAmount').value), rate=parseFloat($('#cRate').value), sym=$('#cSymbol').value.trim()||'DEST';
+ if($('#cLogic').value==='bridge'){
+   const op=$('#bridgeOp').value, r=Number.isFinite(amt)?bridgeRun(amt,op,'asset',$('#cDimension').value||'unknown'):null;
+   $('#cPreview').value=r&&r.finite?(r.output+' '+sym+' via '+op):'Enter a valid amount';
+ }else $('#cPreview').value=(Number.isFinite(amt)&&Number.isFinite(rate))?(amt*rate)+' '+sym:'Enter a valid amount and rate';
+}
+$('#cAmount').oninput=conversionPreview; $('#cRate').oninput=conversionPreview; $('#cSymbol').oninput=conversionPreview; $('#cLogic').onchange=conversionPreview; $('#cDimension').oninput=conversionPreview;
+$('#cCancel').onclick=()=>$('#convertModal').classList.remove('show');
+$('#cSave').onclick=()=>{
+ const src=vault.assets.find(x=>x.id===convertingId), amt=parseFloat($('#cAmount').value), rate=parseFloat($('#cRate').value), sym=$('#cSymbol').value.trim().toUpperCase(), logic=$('#cLogic').value;
+ if(!src||!Number.isFinite(amt)||amt<=0||!sym)return alert('Enter a valid amount and destination symbol.');
+ if(logic==='rate'&&(!Number.isFinite(rate)||rate<0))return alert('Enter a valid rate.');
+ const br=logic==='bridge'?bridgeRun(amt,$('#bridgeOp').value,src.dimension||'local',$('#cDimension').value||'unknown'):null;
+ const out=logic==='bridge'?br.output:amt*rate, cid=crypto.randomUUID(), when=new Date().toISOString();
+ if(!Number.isFinite(out))return alert('That bridge transform did not produce a finite result.');
+ vault.assets.push({id:cid,name:sym+' conversion',symbol:sym,amount:String(out),class:'unverified',address:'',notes:logic==='bridge'?'Dimensional transform from '+amt+' '+(src.symbol||'UNIT')+' using '+br.operator+'. This is mathematical translation, not market value.':'Conversion record from '+amt+' '+(src.symbol||'UNIT')+' at rate '+rate+'. Rate source: '+($('#cRateSource').value.trim()||'manual/unverified'),source:'conversion',valueState:'FOUND',stateEvidence:'Internal conversion record only.',dimension:$('#cDimension').value.trim()||'local',imported:when,conversion:{fromAsset:src.id,fromAmount:amt,fromSymbol:src.symbol||'UNIT',logic,bridge:br,rate:logic==='rate'?rate:null,rateSource:$('#cRateSource').value.trim()||'manual/unverified',recordedAt:when,externalSettlement:false}});
+ $('#convertModal').classList.remove('show'); persist();
+}
+
+async function importFiles(files){for(const file of files){try{const text=await file.text();ingest(JSON.parse(text),file.name)}catch(e){alert('Could not parse '+file.name+' as a bag/JSON file.')}}persist()}
+function exportVault(){
+ const diagnostics={
+  unverified:vault.assets.filter(a=>a.class!=='verified').length,
+  missingExternalIdentifier:vault.assets.filter(a=>!a.address).length,
+  dimensional:vault.assets.filter(a=>(a.dimension||'local')!=='local').length,
+  bridgeConversions:vault.assets.filter(a=>a.conversion?.logic==='bridge').length,
+  valueStates:Object.fromEntries(['FOUND','RECEIVED','OWNED','SPENDABLE','SETTLED'].map(st=>[st,vault.assets.filter(a=>(a.valueState||'FOUND')===st).length])),
+  rule:'FOUND, RECEIVED, OWNED, SPENDABLE and SETTLED are separate evidence states. Dimensional transforms never advance them automatically.'
+ };
+ const blob=new Blob([JSON.stringify({...vault,diagnostics,exported:new Date().toISOString()},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='alien-wallet-vault.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+function openModal(){ $('#modal').classList.add('show') }
+$('#importBtn').onclick=$('#navImport').onclick=()=>$('#file').click(); $('#file').onchange=e=>importFiles(e.target.files);
+$('#exportBtn').onclick=$('#navExport').onclick=exportVault; $('#addBtn').onclick=$('#navAdd').onclick=openModal;
+$('#cancel').onclick=()=>$('#modal').classList.remove('show');
+$('#save').onclick=()=>{const name=$('#aName').value.trim();if(!name)return alert('Give the asset a name.');vault.assets.push({id:crypto.randomUUID(),name,symbol:$('#aSymbol').value.trim()||'UNIT',amount:$('#aAmount').value.trim()||'unknown',class:normalizeClass($('#aClass').value),address:$('#aAddr').value.trim(),dimension:$('#aDimension').value.trim()||'local',notes:$('#aNotes').value.trim(),source:'manual',valueState:'FOUND',stateEvidence:'',imported:new Date().toISOString()});$('#modal').classList.remove('show');persist()}
+$('#search').oninput=render;$('#filter').onchange=render;render();
+</script>
+</body></html>
