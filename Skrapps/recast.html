@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ꟻ RECAST</title>
+<meta name="description" content="ꟻ RECAST — core converter: drop an HTML file, get native app projects for Linux, Windows, macOS, iOS, Android, PWA, Tauri and the terminal. One file, no dependencies.">
+<style>
+:root{--bg:#0b0d10;--bg2:#14181d;--bg3:#1d232a;--fg:#e6e9ec;--dim:#8a94a0;--ac:#f2b23a;--ac2:#39d3c5;--bd:#2a323b;--mono:ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+@media(prefers-color-scheme:light){:root{--bg:#f6f7f8;--bg2:#fff;--bg3:#eceff2;--fg:#15191e;--dim:#5c6670;--ac:#b4700c;--ac2:#0d8f84;--bd:#d7dde3}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans);min-height:100vh;padding:24px 16px 60px}
+h1{font:700 30px var(--mono);letter-spacing:.08em;color:var(--ac)}
+h1 small{font:12px var(--mono);color:var(--dim);letter-spacing:.1em;margin-left:10px}
+.wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:16px}
+.card h2{font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+#drop{border:2px dashed var(--bd);border-radius:12px;padding:28px 16px;text-align:center;color:var(--dim);cursor:pointer;transition:.2s}
+#drop.over,#drop:hover{border-color:var(--ac);color:var(--fg)}
+#drop b{color:var(--ac2)}
+label.f{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0}
+input[type=text],input[type=number],select{background:var(--bg3);border:1px solid var(--bd);color:var(--fg);border-radius:7px;padding:6px 9px;font:13px var(--mono);width:58%}
+.targets{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+.t{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--bd);border-radius:9px;cursor:pointer;background:var(--bg3)}
+.t:has(input:checked){border-color:var(--ac2)}
+.t b{display:block;font-size:13px}.t span{font-size:11.5px;color:var(--dim)}
+.t input{margin-top:3px}
+button.go{width:100%;margin-top:12px;background:var(--ac);color:#000;border:0;border-radius:9px;padding:12px;font:700 15px var(--mono);letter-spacing:.06em;cursor:pointer}
+button.go:disabled{opacity:.35;cursor:default}
+#tree{font:12px var(--mono);white-space:pre;overflow:auto;max-height:380px;color:var(--dim)}
+#tree i{color:var(--ac2);font-style:normal}
+#files{font:12px var(--mono);color:var(--dim);margin-top:8px}
+#files div{display:flex;justify-content:space-between;padding:2px 0}
+.note{font-size:12px;color:var(--dim);margin-top:8px}
+code{font:12px var(--mono);color:var(--ac2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div style="grid-column:1/-1"><h1>ꟻ RECAST <small>CORE CONVERTER · HTML → NATIVE</small></h1>
+  <div class="note">Drop a single-file HTML app (plus any css/js/images it references) and get ready-to-build native projects. Each shell is a few KB of source that hands your page to the web engine the OS already ships — no bundled Chromium, no node_modules.</div></div>
+ <div class="card">
+  <h2>1 · Input</h2>
+  <div id="drop">Drop <b>index.html</b> (+ assets, + optional <b>icon.png</b>) here<br>or click to pick files</div>
+  <input id="pick" type="file" multiple hidden>
+  <div id="files"></div>
+  <label class="f" style="margin-top:8px"><span>Inline referenced assets into the HTML</span><input id="inline" type="checkbox" checked></label>
+ </div>
+ <div class="card">
+  <h2>2 · App</h2>
+  <label class="f">Name<input id="name" type="text" value="My App"></label>
+  <label class="f">Bundle id<input id="id" type="text" value="com.fweddle.myapp"></label>
+  <label class="f">Version<input id="ver" type="text" value="1.0.0"></label>
+  <label class="f">Window (w × h)<span style="width:58%;display:flex;gap:6px"><input id="w" type="number" value="1024" style="width:50%"><input id="h" type="number" value="720" style="width:50%"></span></label>
+  <label class="f">Author / vendor<input id="vendor" type="text" value="ꟻ fweddle.com"></label>
+ </div>
+ <div class="card" style="grid-column:1/-1">
+  <h2>3 · Targets</h2>
+  <div class="targets" id="targets"></div>
+  <button class="go" id="go" disabled>RECAST →</button>
+  <div class="note" id="status"></div>
+ </div>
+ <div class="card" style="grid-column:1/-1"><h2>Output</h2><div id="tree">(drop a file)</div></div>
+</div>
+<script>
+/* ============ tiny store-only ZIP writer (CRC-32, UTF-8 names) ============ */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c;}return b=>{let c=-1;for(let i=0;i<b.length;i++)c=t[(c^b[i])&255]^(c>>>8);return(c^-1)>>>0;};})();
+function zip(files){ // files: [{name, data:Uint8Array|string, exec?:bool}]
+ const enc=new TextEncoder(),parts=[],cd=[];let off=0;const d=new Date(),dt=((d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1)),dd=(((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate());
+ for(const f of files){const name=enc.encode(f.name),data=typeof f.data==='string'?enc.encode(f.data):f.data,crc=CRC(data);
+  const lh=new DataView(new ArrayBuffer(30));lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint16(6,0x800,true);lh.setUint16(8,0,true);lh.setUint16(10,dt,true);lh.setUint16(12,dd,true);lh.setUint32(14,crc,true);lh.setUint32(18,data.length,true);lh.setUint32(22,data.length,true);lh.setUint16(26,name.length,true);lh.setUint16(28,0,true);
+  const ch=new DataView(new ArrayBuffer(46));ch.setUint32(0,0x02014b50,true);ch.setUint16(4,0x031e,true);ch.setUint16(6,20,true);ch.setUint16(8,0x800,true);ch.setUint16(10,0,true);ch.setUint16(12,dt,true);ch.setUint16(14,dd,true);ch.setUint32(16,crc,true);ch.setUint32(20,data.length,true);ch.setUint32(24,data.length,true);ch.setUint16(28,name.length,true);ch.setUint16(30,0,true);ch.setUint16(32,0,true);ch.setUint16(34,0,true);ch.setUint16(36,0,true);ch.setUint32(38,((f.exec?0o100755:0o100644)<<16)>>>0,true);ch.setUint32(42,off,true);
+  parts.push(new Uint8Array(lh.buffer),name,data);cd.push(new Uint8Array(ch.buffer),name);off+=30+name.length+data.length;}
+ const cdLen=cd.reduce((a,b)=>a+b.length,0),e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cdLen,true);e.setUint32(16,off,true);
+ return new Blob([...parts,...cd,new Uint8Array(e.buffer)],{type:'application/zip'});
+}
+/* ============ helpers ============ */
+const $=s=>document.querySelector(s);const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const b64=u8=>{let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);};
+const cArray=(u8,name)=>{let o=`unsigned char ${name}[]={`;for(let i=0;i<u8.length;i++)o+=(i%24?'':'\n')+u8[i]+',';return o+`\n};\nunsigned int ${name}_len=${u8.length};\n`;};
+const MIME={css:'text/css',js:'text/javascript',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',svg:'image/svg+xml',webp:'image/webp',woff:'font/woff',woff2:'font/woff2',ttf:'font/ttf',otf:'font/otf',json:'application/json',mp3:'audio/mpeg',ogg:'audio/ogg',wav:'audio/wav',mp4:'video/mp4',webm:'video/webm',ico:'image/x-icon'};
+const slug=s=>s.normalize('NFKD').replace(/[^\w]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase()||'app';
+const ident=s=>slug(s).replace(/-/g,'_').replace(/^(\d)/,'_$1');
+const xml=s=>esc(s);const jsq=s=>JSON.stringify(s);const cq=s=>JSON.stringify(s); /* C/C++/Swift string literal (same escapes) */
+const dec=new TextDecoder();
+let input={html:null,htmlName:'index.html',assets:{},icon:null};
+
+/* ============ asset inlining ============ */
+function inlineAssets(html,assets){
+ const find=p=>{p=p.replace(/^\.?\//,'').split(/[?#]/)[0];return assets[p]||assets[p.split('/').pop()]||null;};
+ const dataUri=(a,p)=>`data:${MIME[p.split('.').pop().toLowerCase()]||'application/octet-stream'};base64,${b64(a)}`;
+ html=html.replace(/<link\b[^>]*rel=["']?stylesheet["']?[^>]*href=["']?([^"' >]+)["']?[^>]*>/gi,(m,p)=>{const a=find(p);return a?`<style>${dec.decode(a).replace(/url\((['"]?)([^)'"]+)\1\)/g,(mm,q,u)=>{const x=find(u);return x?`url(${dataUri(x,u)})`:mm;})}</style>`:m;});
+ html=html.replace(/<script\b([^>]*)\bsrc=["']?([^"' >]+)["']?([^>]*)><\/script>/gi,(m,a1,p,a2)=>{const a=find(p);return a?`<script${a1.replace(/\s+$/,'')}${a2}>${dec.decode(a).replace(/<\/script/gi,'<\\/script')}<\/script>`:m;});
+ html=html.replace(/\b(src|href|poster)=["']?([^"' >]+\.(png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|mp3|ogg|wav|mp4|webm|json))["']?/gi,(m,at,p)=>{const a=find(p);return a?`${at}="${dataUri(a,p)}"`:m;});
+ html=html.replace(/url\((['"]?)([^)'"]+\.(png|jpe?g|gif|svg|webp|woff2?|ttf|otf))\1\)/gi,(m,q,p)=>{const a=find(p);return a?`url(${dataUri(a,p)})`:m;});
+ return html;
+}
+/* bridge injected into every shell: window.recast = {open(url), save(name,text), title(s), quit(), native} */
+const BRIDGE=`(function(){var post=window.RecastNative&&RecastNative.post?function(j){RecastNative.post(JSON.stringify(j))}:window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.recast?function(j){webkit.messageHandlers.recast.postMessage(JSON.stringify(j))}:window.chrome&&chrome.webview?function(j){chrome.webview.postMessage(JSON.stringify(j))}:null;
+window.recast={native:!!post,open:function(u){post?post({t:'open',url:u}):window.open(u,'_blank')},save:function(n,s){if(post)post({t:'save',name:n,data:String(s)});else{var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s]));a.download=n;a.click()}},title:function(s){document.title=s;if(post)post({t:'title',title:s})},quit:function(){if(post)post({t:'quit'});else window.close()}};
+document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href]');if(!a||!post)return;var u=a.getAttribute('href');if(/^https?:/i.test(u)&&(a.target==='_blank'||new URL(u,location.href).origin!==location.origin)){e.preventDefault();window.recast.open(u)}},true);})();`;
+const withBridge=html=>/<head[^>]*>/i.test(html)?html.replace(/<head[^>]*>/i,m=>m+`<script>${BRIDGE}<\/script>`):`<script>${BRIDGE}<\/script>`+html;
+
+/* ============ targets ============ */
+const T={};
+T.linux={name:'Linux',desc:'C + WebKitGTK · ~40 KB binary · .desktop file',gen:(a,h)=>[
+ {name:'linux/app.c',data:`/* ${a.name} — Linux shell (GTK3 + WebKitGTK). Generated by ꟻ RECAST. build: ./build.sh */
+#include <gtk/gtk.h>
+#include <webkit2/webkit2.h>
+#include <string.h>
+#include <stdlib.h>
+#include "app_html.h"
+static char *jstr(const char *j,const char *k){char key[64];snprintf(key,sizeof key,"\\"%s\\":",k);const char *p=strstr(j,key);if(!p)return NULL;p+=strlen(key);if(*p!='"')return NULL;p++;GString *s=g_string_new(NULL);for(;*p&&*p!='"';p++){if(*p=='\\\\'&&p[1]){p++;if(*p=='n')g_string_append_c(s,'\\n');else if(*p=='u'&&strlen(p)>=5){g_string_append_unichar(s,strtoul((char[]){p[1],p[2],p[3],p[4],0},NULL,16));p+=4;}else g_string_append_c(s,*p);}else g_string_append_c(s,*p);}return g_string_free(s,FALSE);}
+static void on_msg(WebKitUserContentManager *m,WebKitJavascriptResult *r,gpointer win){
+  char *j=jsc_value_to_string(webkit_javascript_result_get_js_value(r));char *t=jstr(j,"t");
+  if(t&&!strcmp(t,"open")){char *u=jstr(j,"url");if(u)gtk_show_uri_on_window(GTK_WINDOW(win),u,GDK_CURRENT_TIME,NULL);g_free(u);}
+  else if(t&&!strcmp(t,"title")){char *s=jstr(j,"title");if(s)gtk_window_set_title(GTK_WINDOW(win),s);g_free(s);}
+  else if(t&&!strcmp(t,"quit"))gtk_main_quit();
+  else if(t&&!strcmp(t,"save")){char *n=jstr(j,"name"),*d=jstr(j,"data");GtkWidget *dlg=gtk_file_chooser_dialog_new("Save",GTK_WINDOW(win),GTK_FILE_CHOOSER_ACTION_SAVE,"_Cancel",GTK_RESPONSE_CANCEL,"_Save",GTK_RESPONSE_ACCEPT,NULL);
+    gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dlg),n?n:"file.txt");if(gtk_dialog_run(GTK_DIALOG(dlg))==GTK_RESPONSE_ACCEPT){char *f=gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dlg));g_file_set_contents(f,d?d:"",-1,NULL);g_free(f);}gtk_widget_destroy(dlg);g_free(n);g_free(d);}
+  g_free(t);g_free(j);
+}
+int main(int argc,char **argv){
+  gtk_init(&argc,&argv);
+  GtkWidget *win=gtk_window_new(GTK_WINDOW_TOPLEVEL);gtk_window_set_title(GTK_WINDOW(win),${cq(a.name)});gtk_window_set_default_size(GTK_WINDOW(win),${a.w},${a.h});
+  g_signal_connect(win,"destroy",G_CALLBACK(gtk_main_quit),NULL);
+  WebKitUserContentManager *ucm=webkit_user_content_manager_new();
+  g_signal_connect(ucm,"script-message-received::recast",G_CALLBACK(on_msg),win);
+  webkit_user_content_manager_register_script_message_handler(ucm,"recast");
+  GtkWidget *wv=webkit_web_view_new_with_user_content_manager(ucm);
+  WebKitSettings *s=webkit_web_view_get_settings(WEBKIT_WEB_VIEW(wv));webkit_settings_set_enable_developer_extras(s,TRUE);webkit_settings_set_allow_file_access_from_file_urls(s,TRUE);
+  gtk_container_add(GTK_CONTAINER(win),wv);
+  char *html=g_strndup((const char*)app_html,app_html_len);webkit_web_view_load_html(WEBKIT_WEB_VIEW(wv),html,"file:///${slug(a.name)}/");g_free(html);
+  gtk_widget_show_all(win);gtk_main();return 0;
+}
+`},
+ {name:'linux/app_html.h',data:cArray(h,'app_html')},
+ {name:'linux/build.sh',exec:true,data:`#!/bin/sh
+# Debian/Ubuntu: sudo apt install build-essential libwebkit2gtk-4.1-dev   Fedora: sudo dnf install gcc webkit2gtk4.1-devel   Arch: sudo pacman -S webkit2gtk-4.1
+set -e; cd "$(dirname "$0")"
+PKG=$(pkg-config --exists webkit2gtk-4.1 && echo webkit2gtk-4.1 || echo webkit2gtk-4.0)
+cc -Os -s -o ${slug(a.name)} app.c $(pkg-config --cflags --libs $PKG) -Wl,--gc-sections
+echo "built ./${slug(a.name)}"; ls -la ${slug(a.name)}
+# optional: install
+# install -Dm755 ${slug(a.name)} ~/.local/bin/${slug(a.name)} && install -Dm644 ${slug(a.name)}.desktop ~/.local/share/applications/${slug(a.name)}.desktop
+`},
+ {name:`linux/${slug(a.name)}.desktop`,data:`[Desktop Entry]\nType=Application\nName=${a.name}\nExec=${slug(a.name)}\nIcon=${slug(a.name)}\nCategories=Utility;\nTerminal=false\n`}]};
+T.windows={name:'Windows',desc:'C++ + WebView2 (Edge engine) · ~150 KB exe',gen:(a,h)=>[
+ {name:'windows/app.cpp',data:`// ${a.name} — Windows shell (WebView2). Generated by ꟻ RECAST. build: build.bat (MSVC x64 Native Tools prompt)
+#define UNICODE
+#include <windows.h>
+#include <shellapi.h>
+#include <wrl.h>
+#include <wil/com.h>
+#include "WebView2.h"
+#include <string>
+#include <fstream>
+#include "app_html.h"
+using namespace Microsoft::WRL;
+static HWND hwnd; static wil::com_ptr<ICoreWebView2Controller> ctl; static wil::com_ptr<ICoreWebView2> wv;
+static std::wstring jstr(const std::wstring& j,const wchar_t* k){std::wstring key=L"\\"";key+=k;key+=L"\\":";size_t p=j.find(key);if(p==std::wstring::npos)return L"";p+=key.size();if(j[p]!=L'"')return L"";p++;std::wstring o;for(;p<j.size()&&j[p]!=L'"';p++){if(j[p]==L'\\\\'&&p+1<j.size()){p++;if(j[p]==L'n')o+=L'\\n';else if(j[p]==L'u'&&p+4<j.size()){o+=(wchar_t)wcstoul(j.substr(p+1,4).c_str(),nullptr,16);p+=4;}else o+=j[p];}else o+=j[p];}return o;}
+static void onMsg(const std::wstring& j){std::wstring t=jstr(j,L"t");
+  if(t==L"open")ShellExecute(nullptr,L"open",jstr(j,L"url").c_str(),nullptr,nullptr,SW_SHOWNORMAL);
+  else if(t==L"title")SetWindowText(hwnd,jstr(j,L"title").c_str());
+  else if(t==L"quit")PostQuitMessage(0);
+  else if(t==L"save"){wchar_t f[MAX_PATH]={0};wcsncpy_s(f,jstr(j,L"name").c_str(),MAX_PATH-1);OPENFILENAME o{sizeof o};o.hwndOwner=hwnd;o.lpstrFile=f;o.nMaxFile=MAX_PATH;o.Flags=OFN_OVERWRITEPROMPT;
+    if(GetSaveFileName(&o)){std::wstring d=jstr(j,L"data");int n=WideCharToMultiByte(CP_UTF8,0,d.c_str(),-1,nullptr,0,nullptr,nullptr);std::string u(n,0);WideCharToMultiByte(CP_UTF8,0,d.c_str(),-1,&u[0],n,nullptr,nullptr);std::ofstream(f,std::ios::binary)<<u.c_str();}}
+}
+static LRESULT CALLBACK WndProc(HWND h,UINT m,WPARAM w,LPARAM l){if(m==WM_SIZE&&ctl){RECT r;GetClientRect(h,&r);ctl->put_Bounds(r);return 0;}if(m==WM_DESTROY){PostQuitMessage(0);return 0;}return DefWindowProc(h,m,w,l);}
+int WINAPI wWinMain(HINSTANCE hi,HINSTANCE,PWSTR,int show){
+  SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+  WNDCLASS wc{};wc.lpfnWndProc=WndProc;wc.hInstance=hi;wc.lpszClassName=L"RecastApp";wc.hCursor=LoadCursor(nullptr,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);RegisterClass(&wc);
+  hwnd=CreateWindowEx(0,L"RecastApp",L${cq(a.name)},WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,${a.w},${a.h},nullptr,nullptr,hi,nullptr);ShowWindow(hwnd,show);
+  CreateCoreWebView2EnvironmentWithOptions(nullptr,nullptr,nullptr,Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([](HRESULT,ICoreWebView2Environment* env)->HRESULT{
+    env->CreateCoreWebView2Controller(hwnd,Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>([](HRESULT,ICoreWebView2Controller* c)->HRESULT{
+      ctl=c;c->get_CoreWebView2(&wv);RECT r;GetClientRect(hwnd,&r);c->put_Bounds(r);
+      wv->add_WebMessageReceived(Callback<ICoreWebView2WebMessageReceivedEventHandler>([](ICoreWebView2*,ICoreWebView2WebMessageReceivedEventArgs* a){wil::unique_cotaskmem_string s;a->TryGetWebMessageAsString(&s);if(s)onMsg(s.get());return S_OK;}).Get(),nullptr);
+      int n=MultiByteToWideChar(CP_UTF8,0,(const char*)app_html,app_html_len,nullptr,0);std::wstring html(n,0);MultiByteToWideChar(CP_UTF8,0,(const char*)app_html,app_html_len,&html[0],n);
+      wv->NavigateToString(html.c_str());return S_OK;}).Get());return S_OK;}).Get());
+  MSG msg;while(GetMessage(&msg,nullptr,0,0)){TranslateMessage(&msg);DispatchMessage(&msg);}return 0;
+}
+`},
+ {name:'windows/app_html.h',data:cArray(h,'app_html')},
+ {name:'windows/build.bat',data:`@echo off\r\nrem nuget install Microsoft.Web.WebView2 ^&^& nuget install Microsoft.Windows.ImplementationLibrary, then set the two folders:\r\nset WV2=Microsoft.Web.WebView2.1.0.2903.40\r\nset WIL=Microsoft.Windows.ImplementationLibrary.1.0.240803.1\r\ncl /nologo /O1 /EHsc /std:c++17 /DUNICODE /I"%WV2%\\build\\native\\include" /I"%WIL%\\include" app.cpp /link /SUBSYSTEM:WINDOWS "%WV2%\\build\\native\\x64\\WebView2LoaderStatic.lib" user32.lib gdi32.lib ole32.lib shell32.lib comdlg32.lib advapi32.lib version.lib shlwapi.lib /OUT:${slug(a.name)}.exe\r\n`}]};
+T.apple={name:'macOS + iOS',desc:'Swift + WKWebView · one file for both',gen:(a,h)=>[
+ {name:'apple/App.swift',data:`// ${a.name} — Apple shell (macOS + iOS). Generated by ꟻ RECAST.
+// macOS: ./build.sh → ${a.name}.app     iOS: new empty Xcode app, add App.swift + index.html, remove storyboard/main interface.
+import WebKit
+#if canImport(UIKit)
+import UIKit
+#else
+import Cocoa
+#endif
+final class Host: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+  let wv: WKWebView
+  init(frame: CGRect) {
+    let cfg = WKWebViewConfiguration(); let ucc = WKUserContentController(); cfg.userContentController = ucc
+    #if canImport(UIKit)
+    cfg.allowsInlineMediaPlayback = true
+    #endif
+    wv = WKWebView(frame: frame, configuration: cfg); super.init(); ucc.add(self, name: "recast"); wv.navigationDelegate = self
+    let url = Bundle.main.url(forResource: "index", withExtension: "html") ?? URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent().appendingPathComponent("index.html")
+    wv.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+  }
+  func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage) {
+    guard let s = m.body as? String, let d = s.data(using: .utf8), let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { return }
+    switch j["t"] as? String ?? "" {
+    case "open": if let u = URL(string: j["url"] as? String ?? "") {
+      #if canImport(UIKit)
+      UIApplication.shared.open(u)
+      #else
+      NSWorkspace.shared.open(u)
+      #endif }
+    case "quit":
+      #if !canImport(UIKit)
+      NSApp.terminate(nil)
+      #endif
+    case "save":
+      #if !canImport(UIKit)
+      let p = NSSavePanel(); p.nameFieldStringValue = j["name"] as? String ?? "file.txt"
+      if p.runModal() == .OK, let u = p.url { try? (j["data"] as? String ?? "").write(to: u, atomically: true, encoding: .utf8) }
+      #else
+      let u = FileManager.default.temporaryDirectory.appendingPathComponent(j["name"] as? String ?? "file.txt")
+      try? (j["data"] as? String ?? "").write(to: u, atomically: true, encoding: .utf8)
+      let av = UIActivityViewController(activityItems: [u], applicationActivities: nil); UIApplication.shared.windows.first?.rootViewController?.present(av, animated: true)
+      #endif
+    case "title":
+      #if !canImport(UIKit)
+      wv.window?.title = j["title"] as? String ?? ""
+      #endif
+    default: break
+    }
+  }
+}
+#if canImport(UIKit)
+class VC: UIViewController { var host: Host?
+  override func viewDidLoad() { super.viewDidLoad(); host = Host(frame: view.bounds); host!.wv.autoresizingMask = [.flexibleWidth, .flexibleHeight]; view.addSubview(host!.wv) } }
+@main class AppDelegate: UIResponder, UIApplicationDelegate { var window: UIWindow?
+  func application(_ a: UIApplication, didFinishLaunchingWithOptions o: [UIApplication.LaunchOptionsKey: Any]?) -> Bool { window = UIWindow(frame: UIScreen.main.bounds); window?.rootViewController = VC(); window?.makeKeyAndVisible(); return true } }
+#else
+let app = NSApplication.shared; app.setActivationPolicy(.regular)
+let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: ${a.w}, height: ${a.h}), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+win.title = ${cq(a.name)}; win.center()
+let host = Host(frame: win.contentView!.bounds); host.wv.autoresizingMask = [.width, .height]; win.contentView!.addSubview(host.wv)
+let menu = NSMenu(); let mi = NSMenuItem(); menu.addItem(mi); let sub = NSMenu()
+sub.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"); mi.submenu = sub
+let ed = NSMenuItem(title: "Edit", action: nil, keyEquivalent: ""); let es = NSMenu(title: "Edit")
+for (t, s, k) in [("Cut", #selector(NSText.cut(_:)), "x"), ("Copy", #selector(NSText.copy(_:)), "c"), ("Paste", #selector(NSText.paste(_:)), "v"), ("Select All", #selector(NSText.selectAll(_:)), "a")] { es.addItem(withTitle: t, action: s, keyEquivalent: k) }
+ed.submenu = es; menu.addItem(ed); app.mainMenu = menu
+win.makeKeyAndOrderFront(nil); app.activate(ignoringOtherApps: true); app.run()
+#endif
+`},
+ {name:'apple/index.html',data:h},
+ {name:'apple/Info.plist',data:`<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict>\n<key>CFBundleName</key><string>${xml(a.name)}</string>\n<key>CFBundleDisplayName</key><string>${xml(a.name)}</string>\n<key>CFBundleIdentifier</key><string>${xml(a.id)}</string>\n<key>CFBundleVersion</key><string>${xml(a.ver)}</string>\n<key>CFBundleShortVersionString</key><string>${xml(a.ver)}</string>\n<key>CFBundleExecutable</key><string>${slug(a.name)}</string>\n<key>CFBundlePackageType</key><string>APPL</string>\n<key>NSHighResolutionCapable</key><true/>\n<key>LSMinimumSystemVersion</key><string>11.0</string>\n<key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><true/></dict>\n</dict></plist>\n`},
+ {name:'apple/build.sh',exec:true,data:`#!/bin/sh\n# macOS: builds ${a.name}.app (needs Xcode command line tools)\nset -e; cd "$(dirname "$0")"\nAPP="${a.name}.app"; rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"\nswiftc -O -o "$APP/Contents/MacOS/${slug(a.name)}" App.swift\ncp index.html "$APP/Contents/Resources/"; cp Info.plist "$APP/Contents/"\n[ -f icon.icns ] && cp icon.icns "$APP/Contents/Resources/" && /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string icon" "$APP/Contents/Info.plist" || true\necho "built $APP"; du -sh "$APP"\n`}]};
+T.android={name:'Android',desc:'Kotlin + WebView · Gradle project · ~100 KB APK',gen:(a,h)=>{const pkg=a.id.replace(/[^\w.]/g,'').toLowerCase(),dir='android/app/src/main/java/'+pkg.replace(/\./g,'/');return [
+ {name:dir+'/MainActivity.kt',data:`// ${a.name} — Android shell. Generated by ꟻ RECAST. build: ./gradlew assembleRelease
+package ${pkg}
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.webkit.*
+import org.json.JSONObject
+class MainActivity : Activity() {
+  private lateinit var wv: WebView
+  private var pendingSave: Pair<String, String>? = null
+  @SuppressLint("SetJavaScriptEnabled", "AddJavascriptInterface")
+  override fun onCreate(s: Bundle?) {
+    super.onCreate(s)
+    wv = WebView(this)
+    wv.settings.apply { javaScriptEnabled = true; domStorageEnabled = true; allowFileAccess = true; mediaPlaybackRequiresUserGesture = false; useWideViewPort = true; loadWithOverviewMode = true }
+    wv.addJavascriptInterface(Bridge(), "RecastNative")
+    wv.webChromeClient = WebChromeClient()
+    wv.webViewClient = object : WebViewClient() {
+      override fun shouldOverrideUrlLoading(w: WebView, r: WebResourceRequest): Boolean {
+        val u = r.url.toString(); if (u.startsWith("file:")) return false
+        startActivity(Intent(Intent.ACTION_VIEW, r.url)); return true
+      }
+    }
+    setContentView(wv)
+    if (s == null) wv.loadUrl("file:///android_asset/index.html") else wv.restoreState(s)
+  }
+  override fun onSaveInstanceState(o: Bundle) { super.onSaveInstanceState(o); wv.saveState(o) }
+  override fun onBackPressed() { if (wv.canGoBack()) wv.goBack() else super.onBackPressed() }
+  override fun onActivityResult(req: Int, res: Int, data: Intent?) {
+    super.onActivityResult(req, res, data)
+    if (req == 7 && res == RESULT_OK) data?.data?.let { u -> pendingSave?.let { p -> contentResolver.openOutputStream(u)?.use { it.write(p.second.toByteArray()) } } }
+  }
+  inner class Bridge {
+    @JavascriptInterface fun post(json: String) = runOnUiThread {
+      val j = try { JSONObject(json) } catch (_: Exception) { return@runOnUiThread }
+      when (j.optString("t")) {
+        "open" -> try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(j.optString("url")))) } catch (_: Exception) {}
+        "title" -> title = j.optString("title")
+        "quit" -> finish()
+        "save" -> { pendingSave = Pair(j.optString("name"), j.optString("data"))
+          startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*").putExtra(Intent.EXTRA_TITLE, j.optString("name")), 7) }
+      }
+    }
+  }
+}
+`},
+ {name:'android/app/src/main/assets/index.html',data:h},
+ {name:'android/app/src/main/AndroidManifest.xml',data:`<?xml version="1.0" encoding="utf-8"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n  <uses-permission android:name="android.permission.INTERNET"/>\n  <application android:label="${xml(a.name)}"${input.icon?' android:icon="@mipmap/ic_launcher"':''} android:allowBackup="true" android:hardwareAccelerated="true" android:usesCleartextTraffic="true" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">\n    <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|uiMode" android:windowSoftInputMode="adjustResize">\n      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>\n    </activity>\n  </application>\n</manifest>\n`},
+ {name:'android/app/build.gradle.kts',data:`plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }\nandroid {\n  namespace = "${pkg}"; compileSdk = 35\n  defaultConfig { applicationId = "${pkg}"; minSdk = 24; targetSdk = 35; versionCode = 1; versionName = "${a.ver}" }\n  buildTypes { release { isMinifyEnabled = true; isShrinkResources = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt")) } }\n  kotlinOptions { jvmTarget = "17" }\n}\n`},
+ {name:'android/build.gradle.kts',data:`plugins { id("com.android.application") version "8.7.0" apply false; id("org.jetbrains.kotlin.android") version "2.0.20" apply false }\n`},
+ {name:'android/settings.gradle.kts',data:`pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }\ndependencyResolutionManagement { repositories { google(); mavenCentral() } }\nrootProject.name = "${slug(a.name)}"; include(":app")\n`},
+ {name:'android/gradle.properties',data:'android.useAndroidX=false\norg.gradle.jvmargs=-Xmx2g\n'},
+ ...(input.icon?[{name:'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',data:input.icon}]:[{name:'android/ICON.txt',data:'Add a 192×192 PNG at app/src/main/res/mipmap-xxxhdpi/ic_launcher.png (or drop icon.png into RECAST).\n'}])
+];}};
+T.pwa={name:'PWA (web)',desc:'manifest + service worker · installable, offline',gen:(a,h)=>[
+ {name:'pwa/index.html',data:h.replace(/<head[^>]*>/i,m=>m+`<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0b0d10"><script>if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js'))<\/script>`)},
+ {name:'pwa/manifest.json',data:JSON.stringify({name:a.name,short_name:a.name.slice(0,12),start_url:'./index.html',display:'standalone',background_color:'#0b0d10',theme_color:'#0b0d10',icons:input.icon?[{src:'icon.png',sizes:'512x512',type:'image/png'}]:[]},null,1)},
+ {name:'pwa/sw.js',data:`const C='${slug(a.name)}-${a.ver}';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['./index.html','./manifest.json'${input.icon?",'./icon.png'":''}]))));\nself.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x))))));\nself.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));\n`},
+ ...(input.icon?[{name:'pwa/icon.png',data:input.icon}]:[])]};
+T.tauri={name:'Tauri 2',desc:'Rust shell · for when you want signing, updater, plugins',gen:(a,h)=>[
+ {name:'tauri/src-tauri/Cargo.toml',data:`[package]\nname = "${slug(a.name)}"\nversion = "${a.ver}"\nedition = "2021"\n\n[build-dependencies]\ntauri-build = { version = "2", features = [] }\n\n[dependencies]\ntauri = { version = "2", features = [] }\n`},
+ {name:'tauri/src-tauri/build.rs',data:'fn main() { tauri_build::build() }\n'},
+ {name:'tauri/src-tauri/src/main.rs',data:`#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]\nfn main() { tauri::Builder::default().run(tauri::generate_context!()).expect("error while running ${slug(a.name)}"); }\n`},
+ {name:'tauri/src-tauri/tauri.conf.json',data:JSON.stringify({productName:a.name,version:a.ver,identifier:a.id,build:{frontendDist:'../dist'},app:{windows:[{title:a.name,width:a.w,height:a.h}],security:{csp:null}},bundle:{active:true,targets:'all',icon:input.icon?['icons/icon.png']:[]}},null,1)},
+ {name:'tauri/dist/index.html',data:h},
+ {name:'tauri/README.txt',data:`cargo install tauri-cli --version "^2"  then:  cd tauri && cargo tauri dev   /   cargo tauri build\n${input.icon?'Icon: cargo tauri icon src-tauri/icons/icon.png\n':''}`},
+ ...(input.icon?[{name:'tauri/src-tauri/icons/icon.png',data:input.icon}]:[])]};
+T.tty={name:'Terminal / console',desc:'Python text-mode renderer (line-mode core from ꟻ NEXUS)',gen:(a,h)=>[
+ {name:`tty/${slug(a.name)}.py`,exec:true,data:`#!/usr/bin/env python3\n# ${a.name} — text-mode build. Renders the embedded HTML with the ꟻ NEXUS line-mode core (links numbered [n]).\n# Zero dependencies. Runs on anything with Python 3: Linux, macOS, Windows, BSD, Termux, iSH, game-console homebrew shells.\nimport re, html as H, textwrap, shutil, base64, sys, webbrowser\nHTML = base64.b64decode(${jsq(b64(new TextEncoder().encode(h)))}).decode('utf-8')\nTAG = re.compile(r'<\\/?([a-zA-Z][a-zA-Z0-9]*)([^>]*)>|([^<]+)')\ndef attr(a, n):\n    m = re.search(r'\\b' + n + r'\\s*=\\s*("([^"]*)"|\\'([^\\']*)\\'|([^\\s>]+))', a, re.I); return H.unescape(m.group(2) or m.group(3) or m.group(4) or '') if m else ''\ndef line_mode(src, width=80):\n    src = re.sub(r'<!--.*?-->', '', src, flags=re.S); src = re.sub(r'<!doctype[^>]*>', '', src, flags=re.I); src = re.sub(r'<(script|style|noscript|svg|template)\\b.*?</\\1>', '', src, flags=re.S | re.I)\n    out, buf, links, title, pre, skip = [], [], [], '', False, 0\n    def flush():\n        if buf: t = ''.join(buf); out.append(t if pre else re.sub(r'\\s+', ' ', t)); buf.clear()\n    def nl(n):\n        flush(); s = ''.join(out).rstrip(' \\t'); out.clear(); out.append(s); have = len(s) - len(s.rstrip('\\n')); out.append('\\n' * max(0, n - have))\n    for m in TAG.finditer(src):\n        if m.group(3):\n            if not skip: buf.append(H.unescape(m.group(3)))\n            continue\n        close, tag, attrs = m.group(0)[1] == '/', m.group(1).lower(), m.group(2) or ''\n        if tag == 'title':\n            if not close:\n                em = re.compile(r'</title>', re.I).search(src, m.end()); title = H.unescape(src[m.end():em.start()]).strip() if em else ''\n            continue\n        if tag == 'head': skip += -1 if close else 1; continue\n        if skip: continue\n        if re.fullmatch(r'h[1-6]', tag):\n            if close:\n                flush(); s = ''.join(out); i = s.rfind('\\n') + 1; t = s[i:].strip(); out.clear(); out.append(s[:i] + t + '\\n' + ('=' if tag == 'h1' else '-') * min(width, len(t)) + '\\n\\n')\n            else: nl(2)\n        elif tag in ('p','div','section','article','blockquote','table','tr','dl','ul','ol','header','footer','nav','main','figure'): nl(2 if close else 1)\n        elif tag in ('td','th'):\n            if not close: buf.append('\\t')\n        elif tag in ('br','dt','dd'): nl(1)\n        elif tag == 'li':\n            if not close: nl(1); buf.append('  \\u2022 ')\n        elif tag == 'hr': nl(1); out.append('\\u2500' * 40); nl(1)\n        elif tag == 'pre': nl(1); pre = not close\n        elif tag == 'img': alt = attr(attrs, 'alt'); buf.append('[%s]' % alt if alt else '')\n        elif tag in ('button','option'):\n            if not close: buf.append('[')\n            else: buf.append(']')\n        elif tag == 'a' and not close:\n            href = attr(attrs, 'href')\n            if href and not re.match(r'(javascript|data):', href, re.I): links.append(href)\n        elif tag == 'a' and close:\n            if links and not (buf and buf[-1].endswith(']')): buf.append('[%d]' % len(links))\n    nl(1); return title, re.sub(r'\\n{3,}', '\\n\\n', ''.join(out)).strip(), links\ndef main():\n    cols = shutil.get_terminal_size((80, 24)).columns; title, text, links = line_mode(HTML, cols)\n    print(title); print('\\u2550' * min(cols, max(8, len(title))))\n    for para in text.split('\\n'): print('\\n'.join(textwrap.wrap(para, cols)) if para.strip() and not para.startswith(('  ', '\\t')) else para)\n    if '-o' in sys.argv: return\n    while links:\n        try: c = input('\\n[%d links \\u00b7 number to open \\u00b7 l list \\u00b7 q quit] > ' % len(links)).strip()\n        except (EOFError, KeyboardInterrupt): return\n        if c == 'q': return\n        if c == 'l':\n            for i, l in enumerate(links): print('[%d] %s' % (i + 1, l))\n        elif c.isdigit() and 0 < int(c) <= len(links): print(links[int(c) - 1]); webbrowser.open(links[int(c) - 1])\nif __name__ == '__main__': main()\n`}]};
+T.launch={name:'Launchers (no build)',desc:'.bat / .sh / .command — open as a window in any installed Chromium/Edge',gen:(a,h)=>[
+ {name:'launchers/index.html',data:h},
+ {name:`launchers/${slug(a.name)}.bat`,data:`@echo off\r\nrem ${a.name} — opens index.html as an app window using Edge (always present on Windows 10/11) or Chrome.\r\nset HERE=%~dp0\r\nfor %%B in ("%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe" "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe" "%LocalAppData%\\Google\\Chrome\\Application\\chrome.exe" "%ProgramFiles%\\BraveSoftware\\Brave-Browser\\Application\\brave.exe") do if exist %%B (start "" %%B --app="file:///%HERE%index.html" --window-size=${a.w},${a.h} --user-data-dir="%LocalAppData%\\${slug(a.name)}" & exit /b)\r\nstart "" "%HERE%index.html"\r\n`},
+ {name:`launchers/${slug(a.name)}.sh`,exec:true,data:`#!/bin/sh\n# ${a.name} — app window via any Chromium-family browser on Linux (falls back to xdg-open)\nHERE="$(cd "$(dirname "$0")" && pwd)"\nfor B in chromium chromium-browser google-chrome google-chrome-stable brave-browser microsoft-edge; do\n  command -v $B >/dev/null && exec $B --app="file://$HERE/index.html" --window-size=${a.w},${a.h} --user-data-dir="$HOME/.config/${slug(a.name)}"; done\nxdg-open "$HERE/index.html"\n`},
+ {name:`launchers/${slug(a.name)}.command`,exec:true,data:`#!/bin/sh\n# ${a.name} — macOS: double-click to open as an app window in Chrome/Edge/Brave, else default browser\nHERE="$(cd "$(dirname "$0")" && pwd)"\nfor B in "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" "/Applications/Chromium.app/Contents/MacOS/Chromium"; do\n  [ -x "$B" ] && exec "$B" --app="file://$HERE/index.html" --window-size=${a.w},${a.h} --user-data-dir="$HOME/Library/Application Support/${slug(a.name)}"; done\nopen "$HERE/index.html"\n`}]};
+
+/* ============ UI ============ */
+const tg=$('#targets');for(const [k,t] of Object.entries(T)){tg.insertAdjacentHTML('beforeend',`<label class="t"><input type="checkbox" data-k="${k}" ${k==='tauri'?'':'checked'}><div><b>${t.name}</b><span>${t.desc}</span></div></label>`);}
+function status(s){$('#status').textContent=s;}
+async function takeFiles(list){
+ for(const f of list){const u8=new Uint8Array(await f.arrayBuffer());const n=f.name;
+  if(/\.html?$/i.test(n)&&(!input.html||/^index\.html?$/i.test(n))){input.html=dec.decode(u8);input.htmlName=n;const t=input.html.match(/<title>([^<]*)<\/title>/i);if(t&&$('#name').value==='My App'){$('#name').value=t[1].trim().slice(0,40);$('#id').value='com.fweddle.'+ident(t[1]).replace(/_/g,'');}}
+  else if(/^icon\.png$/i.test(n))input.icon=u8;
+  else input.assets[n]=u8;}
+ const fl=$('#files');fl.innerHTML='';if(input.html)fl.insertAdjacentHTML('beforeend',`<div><span>⬢ ${esc(input.htmlName)}</span><span>${(input.html.length/1024).toFixed(1)} KB</span></div>`);
+ for(const [n,a] of Object.entries(input.assets))fl.insertAdjacentHTML('beforeend',`<div><span>· ${esc(n)}</span><span>${(a.length/1024).toFixed(1)} KB</span></div>`);
+ if(input.icon)fl.insertAdjacentHTML('beforeend',`<div><span>◉ icon.png</span><span>${(input.icon.length/1024).toFixed(1)} KB</span></div>`);
+ $('#go').disabled=!input.html;if(input.html)preview();
+}
+function appInfo(){return {name:$('#name').value.trim()||'App',id:$('#id').value.trim()||'com.example.app',ver:$('#ver').value.trim()||'1.0.0',w:+$('#w').value||1024,h:+$('#h').value||720,vendor:$('#vendor').value};}
+function build(){
+ const a=appInfo();let html=input.html;if($('#inline').checked)html=inlineAssets(html,input.assets);html=withBridge(html);
+ const h8=new TextEncoder().encode(html);const files=[];const chosen=[...document.querySelectorAll('#targets input:checked')].map(i=>i.dataset.k);
+ for(const k of chosen)files.push(...T[k].gen(a,k==='linux'||k==='windows'?h8:html));
+ files.push({name:'README.md',data:`# ${a.name} — recast by ꟻ RECAST\n\nVersion ${a.ver} · id ${a.id} · ${a.vendor}\n\nEvery folder is an independent project wrapping the same \`index.html\` (${(h8.length/1024).toFixed(1)} KB, assets ${$('#inline').checked?'inlined':'external'}).\nThe page gets a \`window.recast\` bridge: \`recast.open(url)\`, \`recast.save(name,text)\`, \`recast.title(s)\`, \`recast.quit()\`, \`recast.native\`.\n\n${chosen.map(k=>`- **${T[k].name}** → \`${k}/\` — ${T[k].desc}`).join('\n')}\n\nBuild notes live at the top of each entry file. Shell sizes are measured without the web engine, which the OS already provides (WebKitGTK, WebView2/Edge, WebKit, Android System WebView).\n`});
+ return {a,files};
+}
+function preview(){const {files}=build();let total=0;$('#tree').innerHTML=files.map(f=>{const n=typeof f.data==='string'?new TextEncoder().encode(f.data).length:f.data.length;total+=n;return `${f.name.padEnd(64)}<i>${(n/1024).toFixed(1).padStart(8)} KB</i>`;}).join('\n')+`\n\n${files.length} files · ${(total/1024).toFixed(1)} KB total`;}
+$('#go').onclick=()=>{const {a,files}=build();const blob=zip(files);const u=URL.createObjectURL(blob);const el=Object.assign(document.createElement('a'),{href:u,download:`${slug(a.name)}-recast.zip`});el.click();status(`${slug(a.name)}-recast.zip · ${files.length} files · ${(blob.size/1024).toFixed(1)} KB`);};
+$('#drop').onclick=()=>$('#pick').click();$('#pick').onchange=e=>takeFiles(e.target.files);
+['dragenter','dragover'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.add('over');}));
+['dragleave','drop'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.remove('over');}));
+$('#drop').addEventListener('drop',e=>takeFiles(e.dataTransfer.files));
+document.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{if(input.html)preview();}));
+window.RECAST={build,zip,T,takeFiles,input}; // scriptable: RECAST.input.html=...; RECAST.build()
+</script>
+</body>
+</html>
