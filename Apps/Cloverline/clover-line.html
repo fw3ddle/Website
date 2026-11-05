@@ -1,0 +1,1215 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Clover Line</title>
+<meta name="description" content="A little railway across a quiet America. Ideas by Daisy and Felix.">
+<style>html,body{margin:0;height:100%;background:#0b0d14;overflow:hidden}#cl-root{position:fixed;inset:0}</style>
+<div id="cl-root"></div>
+<script>
+/* ꟻ PIXELCORE · a tiny engine for pixel-art games that live in one HTML file
+   by Felix "Fweddle" Weddle · fweddle.com · v1.0
+   No dependencies. Everything draws into a low-resolution canvas that is scaled up with crisp pixels.
+
+   QUICK START
+     const G = PX.create({ parent: document.body, width: 640, height: 360 });
+     PX.run(G, { update(dt) {...}, draw(ctx) {...} });
+
+   MODULES (all on the global PX)
+     PX.create / PX.run ........ screen, fit-to-window scaling, fixed-step loop
+     PX.color helpers .......... hex, rgb, mix, shade, Bayer dithering
+     PX.Surface ................ an offscreen canvas you can paint pixels into (px, rect, line, circle, dither, gradient)
+     PX.sprite ................. cached procedural sprites: PX.sprite(key, w, h, paint)
+     PX.font / PX.text ......... two built-in pixel fonts (3×5 "tiny", 5×7 "small"), outlines and shadows
+     PX.panel .................. nine-slice style dialog boxes and buttons drawn in pixels
+     PX.Parallax ............... wrapping scenery strips that scroll at different speeds
+     PX.Clock / PX.Sky ......... day-night clock, dithered skies, sun, moon (with an optional ring), stars, clouds
+     PX.Light .................. ambient color by time of day, point lights, cones, glow pass
+     PX.Particles .............. smoke, rain, snow, sparks, fireflies, leaves
+     PX.Input .................. keys, pointer and touch in game-pixel coordinates, tap regions
+     PX.Sound .................. a small chiptune synth: tone, noise, chug, chime, little looping songs
+     PX.store .................. safe localStorage
+     PX.Net .................... multiplayer: claude.ai room capability when present, BroadcastChannel tabs otherwise
+*/
+(function(G){'use strict';
+const PX={version:'1.0'};
+// ---------------------------------------------------------------- math & color
+const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,t)=>a+(b-a)*t,smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+function hash(n){n=Math.sin(n*127.1+311.7)*43758.5453;return n-Math.floor(n)}
+function hash2(x,y,s){return hash(x*157.31+y*311.7+(s||0)*74.7)}
+function rng(seed){let s=(seed>>>0)||1;return ()=>{s^=s<<13;s>>>=0;s^=s>>17;s^=s<<5;s>>>=0;return s/4294967296}}
+function vnoise(x,s){const i=Math.floor(x),f=x-i,u=f*f*(3-2*f);return hash(i+(s||0)*57.3)*(1-u)+hash(i+1+(s||0)*57.3)*u}
+function fbm(x,s,o){let a=0,w=.5,f=1,t=0;for(let i=0;i<(o||4);i++){a+=vnoise(x*f,(s||0)+i*13)*w;t+=w;w*=.5;f*=2.03}return a/t}
+const HC={};
+function rgb(h){if(Array.isArray(h))return h;let c=HC[h];if(c)return c;let s=h.replace('#','');if(s.length===3)s=s.split('').map(x=>x+x).join('');c=[parseInt(s.slice(0,2),16),parseInt(s.slice(2,4),16),parseInt(s.slice(4,6),16)];HC[h]=c;return c}
+const hex=c=>'#'+c.map(v=>clamp(Math.round(v),0,255).toString(16).padStart(2,'0')).join('');
+const mix=(a,b,t)=>{a=rgb(a);b=rgb(b);return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]};
+const shade=(c,k)=>rgb(c).map(v=>clamp(v*k,0,255));
+const css=(c,a)=>{c=rgb(c);return a==null?`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`:`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`};
+const BAYER=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>(v+.5)/16);
+const bayer=(x,y)=>BAYER[(y&3)*4+(x&3)];
+Object.assign(PX,{clamp,lerp,smooth,hash,hash2,rng,vnoise,fbm,rgb,hex,mix,shade,css,bayer,BAYER});
+// ---------------------------------------------------------------- surfaces
+// A Surface is a canvas you paint into. Pixel ops batch through an ImageData buffer: call begin(), paint, end().
+class Surface{
+ constructor(w,h){this.w=w;this.h=h;this.cv=document.createElement('canvas');this.cv.width=w;this.cv.height=h;this.ctx=this.cv.getContext('2d');this.ctx.imageSmoothingEnabled=false;this.img=null;this.buf=null}
+ begin(clear){this.img=clear?this.ctx.createImageData(this.w,this.h):this.ctx.getImageData(0,0,this.w,this.h);this.buf=new Uint32Array(this.img.data.buffer);return this}
+ end(){this.ctx.putImageData(this.img,0,0);this.img=null;this.buf=null;return this}
+ static pack(c,a){c=rgb(c);return ((a==null?255:a)<<24)|((c[2]&255)<<16)|((c[1]&255)<<8)|(c[0]&255)}
+ px(x,y,c,a){x|=0;y|=0;if(x<0||y<0||x>=this.w||y>=this.h)return;this.buf[y*this.w+x]=typeof c==='number'?c:Surface.pack(c,a)}
+ get(x,y){x|=0;y|=0;if(x<0||y<0||x>=this.w||y>=this.h)return 0;return this.buf[y*this.w+x]}
+ rect(x,y,w,h,c,a){const p=typeof c==='number'?c:Surface.pack(c,a);x=Math.round(x);y=Math.round(y);const x0=Math.max(0,x),y0=Math.max(0,y),x1=Math.min(this.w,x+Math.round(w)),y1=Math.min(this.h,y+Math.round(h));for(let j=y0;j<y1;j++){const o=j*this.w;for(let i=x0;i<x1;i++)this.buf[o+i]=p}}
+ // dithered blend: t=0 all a, t=1 all b
+ dither(x,y,w,h,a,b,t){const pa=typeof a==='number'?a:Surface.pack(a),pb=typeof b==='number'?b:Surface.pack(b);x|=0;y|=0;const x0=Math.max(0,x),y0=Math.max(0,y),x1=Math.min(this.w,x+w),y1=Math.min(this.h,y+h);for(let j=y0;j<y1;j++){const o=j*this.w;for(let i=x0;i<x1;i++)this.buf[o+i]=BAYER[(j&3)*4+(i&3)]<t?pb:pa}}
+ // vertical gradient through color stops [[t,color],...], dithered between neighbors
+ vgrad(x,y,w,h,stops,steps){steps=steps||24;for(let s=0;s<steps;s++){const t0=s/steps,t1=(s+1)/steps;const c0=gradAt(stops,t0),c1=gradAt(stops,t1);const y0=y+Math.floor(t0*h),y1=y+Math.floor(t1*h);this.dither(x,y0,w,y1-y0,c0,c1,.5)}}
+ line(x0,y0,x1,y1,c,a){const p=typeof c==='number'?c:Surface.pack(c,a);x0|=0;y0|=0;x1|=0;y1|=0;const dx=Math.abs(x1-x0),dy=-Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let e=dx+dy;for(let n=0;n<4000;n++){if(x0>=0&&y0>=0&&x0<this.w&&y0<this.h)this.buf[y0*this.w+x0]=p;if(x0===x1&&y0===y1)break;const e2=2*e;if(e2>=dy){e+=dy;x0+=sx}if(e2<=dx){e+=dx;y0+=sy}}}
+ circle(cx,cy,r,c,a){for(let y=-r;y<=r;y++){const w=Math.floor(Math.sqrt(r*r-y*y)+.35);this.rect(cx-w,cy+y,w*2+1,1,c,a)}}
+ ellipse(cx,cy,rx,ry,c,a){for(let y=-ry;y<=ry;y++){const w=Math.floor(rx*Math.sqrt(Math.max(0,1-(y*y)/(ry*ry)))+.35);this.rect(cx-w,cy+y,w*2+1,1,c,a)}}
+ // a lumpy organic blob shaded top-light to bottom-dark (foliage, clouds, rocks)
+ blob(cx,cy,rx,ry,light,dark,seed,rough){const r=rng(seed||1);const pl=Surface.pack(light),pd=Surface.pack(dark),pm=Surface.pack(mix(light,dark,.5));rough=rough==null?.25:rough;const n=[];for(let i=0;i<16;i++)n.push(1-rough*.5+r()*rough);
+  for(let y=-ry;y<=ry;y++)for(let x=-rx;x<=rx;x++){const a=Math.atan2(y/ry,x/rx);const k=n[Math.floor(((a/(Math.PI*2))+1)*16)%16];const d=Math.hypot(x/rx,y/ry);if(d>k)continue;const t=(y/ry)*.6+(x/rx)*-.15+d*.3;const X=cx+x,Y=cy+y;this.px(X,Y,t<-.15?pl:t<.3?(bayer(X,Y)<(t+.15)/.45?pm:pl):(bayer(X,Y)<(t-.3)/.5?pd:pm))}}
+ outline(c){const w=this.w,h=this.h,b=this.buf,p=typeof c==='number'?c:Surface.pack(c);const src=b.slice();for(let y=0;y<h;y++)for(let x=0;x<w;x++){if(src[y*w+x]>>>24)continue;if(x>0&&src[y*w+x-1]>>>24||x<w-1&&src[y*w+x+1]>>>24||y>0&&src[(y-1)*w+x]>>>24||y<h-1&&src[(y+1)*w+x]>>>24)b[y*w+x]=p}}
+ clear(){this.ctx.clearRect(0,0,this.w,this.h);return this}
+}
+function gradAt(stops,t){if(t<=stops[0][0])return rgb(stops[0][1]);for(let i=0;i<stops.length-1;i++){const a=stops[i],b=stops[i+1];if(t<=b[0])return mix(a[1],b[1],(t-a[0])/(b[0]-a[0]))}return rgb(stops[stops.length-1][1])}
+PX.Surface=Surface;PX.gradAt=gradAt;
+// ---------------------------------------------------------------- sprites
+const SPR=new Map();
+// PX.sprite('tree:oak:3', 40, 48, s => { s.blob(...) }) builds once and returns the canvas
+PX.sprite=function(key,w,h,paint){let c=SPR.get(key);if(c)return c;const s=new Surface(w,h);s.begin(true);paint(s);s.end();SPR.set(key,s.cv);if(SPR.size>4000){const k=SPR.keys().next().value;SPR.delete(k)}return s.cv};
+PX.spriteCanvas=function(key,w,h,draw){let c=SPR.get(key);if(c)return c;const s=new Surface(w,h);draw(s.ctx,s);SPR.set(key,s.cv);return s.cv};
+PX.forget=prefix=>{for(const k of [...SPR.keys()])if(!prefix||k.startsWith(prefix))SPR.delete(k)};
+// flip a canvas horizontally (cached)
+PX.flip=function(cv){if(cv._flip)return cv._flip;const s=new Surface(cv.width,cv.height);s.ctx.translate(cv.width,0);s.ctx.scale(-1,1);s.ctx.drawImage(cv,0,0);cv._flip=s.cv;return s.cv};
+// a silhouette (one color) version of a sprite, cached
+PX.tint=function(cv,color){cv._tint=cv._tint||{};if(cv._tint[color])return cv._tint[color];const s=new Surface(cv.width,cv.height);s.ctx.drawImage(cv,0,0);s.ctx.globalCompositeOperation='source-in';s.ctx.fillStyle=color;s.ctx.fillRect(0,0,cv.width,cv.height);return cv._tint[color]=s.cv};
+// ---------------------------------------------------------------- pixel fonts
+const F3={A:'010101111101101',B:'110101110101110',C:'011100100100011',D:'110101101101110',E:'111100110100111',F:'111100110100100',G:'011100101101011',H:'101101111101101',I:'111010010010111',J:'001001001101010',K:'101101110101101',L:'100100100100111',M:'101111111101101',N:'110101101101101',O:'010101101101010',P:'110101110100100',Q:'010101101110011',R:'110101110101101',S:'011100010001110',T:'111010010010010',U:'101101101101111',V:'101101101101010',W:'101101111111101',X:'101101010101101',Y:'101101010010010',Z:'111001010100111',0:'111101101101111',1:'010110010010111',2:'110001010100111',3:'110001010001110',4:'101101111001001',5:'111100110001110',6:'011100111101111',7:'111001010010010',8:'111101111101111',9:'111101111001110',' ':'000000000000000','.':'000000000000010',',':'000000000010100','!':'010010010000010','?':'110001010000010','-':'000000111000000',':':'000010000010000',"'":'010010000000000','/':'001001010100100','>':'100010001010100','<':'001010100010001','+':'000010111010000','=':'000111000111000','#':'101111101111101','%':'101001010100101','(':'010100100100010',')':'010001001001010','*':'000101010101000','$':'011110010011110','&':'010101010101011','"':'101101000000000','@':'010101111100011','[':'110100100100110',']':'011001001001011','·':'000000010000000','_':'000000000000111',';':'000010000010100','|':'010010010010010','~':'000011110000000','♥':'000101111111010','★':'010111010101000','→':'000001111001000','←':'000100111100000'};
+// 5×7 font, rows as 5-bit numbers
+const F5={A:[14,17,17,31,17,17,17],B:[30,17,17,30,17,17,30],C:[14,17,16,16,16,17,14],D:[30,17,17,17,17,17,30],E:[31,16,16,30,16,16,31],F:[31,16,16,30,16,16,16],G:[14,17,16,23,17,17,15],H:[17,17,17,31,17,17,17],I:[14,4,4,4,4,4,14],J:[7,2,2,2,2,18,12],K:[17,18,20,24,20,18,17],L:[16,16,16,16,16,16,31],M:[17,27,21,21,17,17,17],N:[17,17,25,21,19,17,17],O:[14,17,17,17,17,17,14],P:[30,17,17,30,16,16,16],Q:[14,17,17,17,21,18,13],R:[30,17,17,30,20,18,17],S:[15,16,16,14,1,1,30],T:[31,4,4,4,4,4,4],U:[17,17,17,17,17,17,14],V:[17,17,17,17,17,10,4],W:[17,17,17,21,21,21,10],X:[17,17,10,4,10,17,17],Y:[17,17,10,4,4,4,4],Z:[31,1,2,4,8,16,31],
+ a:[0,0,14,1,15,17,15],b:[16,16,22,25,17,17,30],c:[0,0,14,16,16,17,14],d:[1,1,13,19,17,17,15],e:[0,0,14,17,31,16,14],f:[6,9,8,28,8,8,8],g:[0,15,17,17,15,1,14],h:[16,16,22,25,17,17,17],i:[4,0,12,4,4,4,14],j:[2,0,6,2,2,18,12],k:[16,16,18,20,24,20,18],l:[12,4,4,4,4,4,14],m:[0,0,26,21,21,17,17],n:[0,0,22,25,17,17,17],o:[0,0,14,17,17,17,14],p:[0,0,30,17,30,16,16],q:[0,0,13,19,15,1,1],r:[0,0,22,25,16,16,16],s:[0,0,14,16,14,1,30],t:[8,8,28,8,8,9,6],u:[0,0,17,17,17,19,13],v:[0,0,17,17,17,10,4],w:[0,0,17,17,21,21,10],x:[0,0,17,10,4,10,17],y:[0,0,17,17,15,1,14],z:[0,0,31,2,4,8,31],
+ 0:[14,17,19,21,25,17,14],1:[4,12,4,4,4,4,14],2:[14,17,1,2,4,8,31],3:[31,2,4,2,1,17,14],4:[2,6,10,18,31,2,2],5:[31,16,30,1,1,17,14],6:[6,8,16,30,17,17,14],7:[31,1,2,4,8,8,8],8:[14,17,17,14,17,17,14],9:[14,17,17,15,1,2,12],
+ ' ':[0,0,0,0,0,0,0],'.':[0,0,0,0,0,12,12],',':[0,0,0,0,12,4,8],'!':[4,4,4,4,4,0,4],'?':[14,17,1,2,4,0,4],'-':[0,0,0,31,0,0,0],':':[0,12,12,0,12,12,0],"'":[4,4,8,0,0,0,0],'"':[10,10,0,0,0,0,0],'/':[1,1,2,4,8,16,16],'(':[2,4,8,8,8,4,2],')':[8,4,2,2,2,4,8],'+':[0,4,4,31,4,4,0],'=':[0,0,31,0,31,0,0],'%':[24,25,2,4,8,19,3],'#':[10,10,31,10,31,10,10],'$':[4,15,20,14,5,30,4],'&':[12,18,20,8,21,18,13],'*':[0,4,21,14,21,4,0],'<':[2,4,8,16,8,4,2],'>':[8,4,2,1,2,4,8],'@':[14,17,23,21,23,16,15],'·':[0,0,0,12,12,0,0],'♥':[0,10,31,31,14,4,0],'★':[4,4,31,14,14,27,17],'→':[0,4,2,31,2,4,0],'←':[0,4,8,31,8,4,0],'↑':[4,14,21,4,4,4,4],'↓':[4,4,4,4,21,14,4],'°':[12,18,12,0,0,0,0],'[':[14,8,8,8,8,8,14],']':[14,2,2,2,2,2,14],'_':[0,0,0,0,0,0,31],';':[0,12,12,0,12,4,8],'|':[4,4,4,4,4,4,4],'~':[0,0,8,21,2,0,0],'✎':[1,2,4,8,16,16,24]};
+PX.FONTS={tiny:{w:3,h:5,adv:4,get:ch=>{const g=F3[ch.toUpperCase()]||F3['?'];return (x,y)=>g[y*3+x]==='1'}},small:{w:5,h:7,adv:6,get:ch=>{const g=F5[ch]||F5[ch.toUpperCase()]||F5['?'];return (x,y)=>(g[y]>>(4-x))&1}}};
+const GLY=new Map();
+function glyphCanvas(font,ch,color){const k=font+ch+color;let c=GLY.get(k);if(c)return c;const F=PX.FONTS[font];const f=F.get(ch);const s=new Surface(F.w,F.h);s.begin(true);const p=Surface.pack(color);for(let y=0;y<F.h;y++)for(let x=0;x<F.w;x++)if(f(x,y))s.buf[y*F.w+x]=p;s.end();GLY.set(k,s.cv);return s.cv}
+PX.textWidth=(str,font,scale)=>[...PX.clean(str)].length*PX.FONTS[font||'small'].adv*(scale||1)-(scale||1);
+// PX.text(ctx, "Hello", x, y, {font:'small', color:'#fff', scale:1, align:'left'|'center'|'right', outline:'#000', shadow:'#000'})
+PX.clean=s=>String(s).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,'').replace(/^\s+/,'');
+PX.text=function(ctx,str,x,y,o){o=o||{};const font=o.font||'small',sc=o.scale||1,F=PX.FONTS[font];str=PX.clean(str);let w=PX.textWidth(str,font,sc);if(o.align==='center')x-=Math.floor(w/2);else if(o.align==='right')x-=w;x=Math.round(x);y=Math.round(y);
+  const pass=(c,dx,dy)=>{let cx=x+dx;for(const ch of str){if(ch!==' ')ctx.drawImage(glyphCanvas(font,ch,c),cx,y+dy,F.w*sc,F.h*sc);cx+=F.adv*sc}};
+  if(o.outline){for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,1],[-1,1],[1,-1]])pass(o.outline,dx*sc,dy*sc)}else if(o.shadow)pass(o.shadow,sc,sc);pass(o.color||'#ffffff',0,0);return w};
+// word wrap into lines that fit maxW pixels
+PX.wrap=function(str,maxW,font,scale){const words=PX.clean(str).split(/\s+/);const lines=[];let ln='';for(const w of words){const t=ln?ln+' '+w:w;if(PX.textWidth(t,font,scale)>maxW&&ln){lines.push(ln);ln=w}else ln=t}if(ln)lines.push(ln);return lines};
+// ---------------------------------------------------------------- panels (dialog boxes & buttons)
+// PX.panel(ctx, x,y,w,h, {fill:'#f8ead8', border:'#7a4a2a', inner:'#b07a50', radius:2})
+PX.panel=function(ctx,x,y,w,h,o){o=o||{};x|=0;y|=0;w|=0;h|=0;const b=o.border||'#5a3a24',f=o.fill||'#fbecd8',i=o.inner||'#a8784e';
+  ctx.fillStyle=css(b);ctx.fillRect(x+1,y,w-2,h);ctx.fillRect(x,y+1,w,h-2);ctx.fillStyle=css(f);ctx.fillRect(x+2,y+1,w-4,h-2);ctx.fillRect(x+1,y+2,w-2,h-4);
+  if(!o.flat){ctx.fillStyle=css(i);ctx.fillRect(x+4,y+4,w-8,1);ctx.fillRect(x+4,y+h-5,w-8,1);ctx.fillRect(x+4,y+4,1,h-8);ctx.fillRect(x+w-5,y+4,1,h-8)}
+  if(o.shadow!==false){ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(x+2,y+h,w-2,2);ctx.fillRect(x+w,y+2,2,h-2)}};
+PX.button=function(ctx,x,y,w,h,label,o){o=o||{};const pressed=o.pressed;const c=o.color||'#6ac46a',d=o.dark||'#2e6a34';ctx.fillStyle=css(d);ctx.fillRect(x+1,y+(pressed?1:0),w-2,h);ctx.fillRect(x,y+1+(pressed?1:0),w,h-2);ctx.fillStyle=css(c);ctx.fillRect(x+1,y+(pressed?2:1),w-2,h-(pressed?3:3));ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(x+2,y+(pressed?2:1),w-4,1);
+  PX.text(ctx,label,x+w/2,y+Math.floor((h-7)/2)+(pressed?1:0),{font:o.font||'small',align:'center',color:o.text||'#ffffff',shadow:'rgba(0,0,0,.45)'})};
+// ---------------------------------------------------------------- parallax
+// a layer is a wrapping strip canvas; draw(ctx, cameraX, y) tiles it with its own scroll factor
+class Parallax{constructor(cv,factor,y){this.cv=cv;this.f=factor;this.y=y||0;this.alpha=1}draw(ctx,camX,y){const w=this.cv.width;let ox=-((camX*this.f)%w+w)%w;ox=Math.round(ox);if(this.alpha<1)ctx.globalAlpha=this.alpha;for(let x=ox;x<ctx.canvas.width;x+=w)ctx.drawImage(this.cv,x,y==null?this.y:y);ctx.globalAlpha=1}}
+PX.Parallax=Parallax;
+// ---------------------------------------------------------------- clock & sky
+// PX.Clock: t in [0,1) through the day (0 = midnight, .5 = noon). speed = game days per real second.
+class Clock{constructor(t,speed){this.t=t==null?.35:t;this.day=0;this.speed=speed||1/600}tick(dt){this.t+=dt*this.speed;while(this.t>=1){this.t-=1;this.day++}}get hour(){return this.t*24}
+ // 0 at night, 1 at noon, soft at dawn and dusk
+ get daylight(){return clamp(Math.sin((this.t-.23)/.54*Math.PI)*1.35,0,1)}
+ get dusk(){const a=1-Math.min(1,Math.abs(this.t-.25)/.05),b=1-Math.min(1,Math.abs(this.t-.75)/.05);return Math.max(a,b)}
+ label(){const h=Math.floor(this.hour),m=Math.floor((this.hour-h)*60);return `${(h%12)||12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`}}
+PX.Clock=Clock;
+// sky colors through the day: [time, top, horizon]
+PX.SKYKEYS=[[0,'#0b0d26','#1c1f44'],[.19,'#121638','#2a2448'],[.235,'#2e3a7a','#d88a7a'],[.27,'#5a8ad8','#f2c49a'],[.32,'#5e9ae4','#cfe2f4'],[.5,'#5a94e6','#c4def6'],[.68,'#5e90dc','#e0d8c4'],[.73,'#4a5aa8','#f0905a'],[.765,'#2a2a6a','#a04a5a'],[.8,'#141a46','#3a2a54'],[1,'#0b0d26','#1c1f44']];
+PX.skyColors=function(t,weather){const K=PX.SKYKEYS;let i=0;while(i<K.length-2&&t>K[i+1][0])i++;const a=K[i],b=K[i+1],u=(t-a[0])/(b[0]-a[0]);let top=mix(a[1],b[1],u),hor=mix(a[2],b[2],u);
+  const W={rain:[[84,90,104],.62],storm:[[56,60,74],.72],snow:[[190,198,212],.6],fog:[[200,206,214],.72],dust:[[196,150,100],.6],signal:[[70,30,110],.45]}[weather];if(W){const l=Math.max(.25,PX.dayk(t));top=mix(top,shade(W[0],l),W[1]);hor=mix(hor,shade(W[0],l*1.1),W[1])}return [top,hor]};
+PX.dayk=t=>clamp(Math.sin((t-.23)/.54*Math.PI)*1.35,0,1);
+// PX.Sky renders a full-screen sky into its own surface (refreshes only when the time changes enough)
+class Sky{constructor(w,h,horizon){this.w=w;this.h=h;this.hz=horizon||Math.floor(h*.62);this.s=new Surface(w,h);this.key='';this.stars=[];const r=rng(77);for(let i=0;i<260;i++)this.stars.push([r()*w,r()*this.hz,r(),r()]);this.ring=true;this.clouds=[];for(let i=0;i<9;i++)this.clouds.push({x:r()*w*2,y:12+r()*this.hz*.45,s:.6+r()*.9,v:2+r()*5,seed:(r()*1e6)|0})}
+ draw(ctx,t,weather,o){o=o||{};const k=Math.round(t*600)+weather;if(k!==this.key){this.key=k;const [top,hor]=PX.skyColors(t,weather);const s=this.s;s.begin(true);s.vgrad(0,0,this.w,this.hz+30,[[0,top],[.75,mix(top,hor,.6)],[1,hor]],28);s.end()}
+  ctx.drawImage(this.s.cv,0,0);this.lights(ctx,t,weather,o);this.sunAndClouds(ctx,t,weather,o)}
+ // stars and the moon: call again after a light pass so they stay bright at night
+ lights(ctx,t,weather,o){o=o||{};const night=1-PX.dayk(t);
+  // stars twinkle in at night
+  if(night>.25&&weather!=='storm'&&weather!=='fog'){for(const [x,y,b,p] of this.stars){if(o.maxY!=null&&y>o.maxY)continue;const tw=.5+.5*Math.sin((o.time||0)*(1+p*3)+p*30);if(b<night*1.1-.35+tw*.15){ctx.fillStyle=b>.85?'#ffffff':b>.6?'#d8dcff':'#8a90c8';ctx.fillRect(x|0,y|0,b>.94?2:1,b>.94?2:1)}}}
+  this.moon(ctx,t,o)}
+ sunAndClouds(ctx,t,weather,o){
+  // sun
+  const sunT=(t-.22)/.56;if(sunT>0&&sunT<1&&weather!=='storm'&&weather!=='fog'){const sx=this.w*(.08+sunT*.84),sy=this.hz-Math.sin(sunT*Math.PI)*this.hz*.82+8;const r=Math.round(this.h*.045);const dusk=1-Math.sin(sunT*Math.PI);
+   ctx.drawImage(PX.sprite('sun'+r+Math.round(dusk*6),r*4,r*4,s=>{const c=mix('#ffe9a0','#ff8a3a',dusk),g=mix('#ffd060','#ff5a2a',dusk);s.circle(r*2,r*2,Math.round(r*1.55),[c[0],c[1],c[2]],60);s.circle(r*2,r*2,Math.round(r*1.25),g,140);s.circle(r*2,r*2,r,c);s.circle(r*2-2,r*2-2,Math.max(1,r-4),mix(c,'#ffffff',.4))}),Math.round(sx-r*2),Math.round(sy-r*2))}
+  this._clouds(ctx,t,weather,o)}
+ moon(ctx,t,o){o=o||{};
+  // moon, with an optional ring (the strange sky of this world)
+  const mt=((t+.5)%1-.22)/.56;if(mt>0&&mt<1){const mx=this.w*(.1+mt*.8),my=this.hz-Math.sin(mt*Math.PI)*this.hz*.8+10;const r=Math.round(this.h*.03);
+   ctx.drawImage(PX.sprite('moon'+r,r*2+2,r*2+2,s=>{s.circle(r+1,r+1,r,'#f2eedc');s.circle(r-1,r,Math.round(r*.35),'#d8d2bc');s.circle(r+3,r+3,Math.round(r*.22),'#d8d2bc');s.circle(r+2,r-3,Math.round(r*.15),'#d8d2bc')}),Math.round(mx-r-1),Math.round(my-r-1));
+   if(this.ring&&o.ring!==false){const glow=o.ringGlow||0;ctx.drawImage(PX.sprite('ring'+r+Math.round(glow*4),r*14,r*6,s=>{const cx=r*7,cy=r*3;for(let a=0;a<Math.PI*2;a+=.006){const x=cx+Math.cos(a)*r*6.3,y=cy+Math.sin(a)*r*.9-Math.cos(a)*r*1.2;if(Math.sin(a)<-.1&&Math.hypot(x-cx,y-cy)<r+1)continue;if(hash(Math.floor(a*120))<.12)continue;s.px(x,y,glow>.5?'#ffb0f0':'#efe6cc',glow>.5?255:200)}}),Math.round(mx-r*7),Math.round(my-r*3))}}
+  }
+ _clouds(ctx,t,weather,o){
+  // clouds drift
+  if(o.clouds!==false){const cl=weather==='clear'?this.clouds.slice(0,5):this.clouds;const dl=PX.dayk(t);for(const c of cl){c.x-=(o.dt||0)*c.v;if(c.x<-120)c.x+=this.w+240;const tone=weather==='storm'?'#5a5e6e':weather==='rain'?'#9a9eaa':'#ffffff';const cv=PX.sprite('cloud'+c.seed+tone,96,40,s=>{const r=rng(c.seed);const n=3+Math.floor(r()*3);for(let i=0;i<n;i++){s.blob(20+i*(56/n)+r()*8,24-r()*8,10+r()*8,7+r()*5,tone,mix(tone,'#8a90b8',.45),c.seed+i,.2)}});
+    ctx.globalAlpha=.35+dl*.65;const glow=PX.lightColor(t);ctx.drawImage(cv,Math.round(c.x),Math.round(c.y),Math.round(96*c.s),Math.round(40*c.s));ctx.globalAlpha=1}}}}
+PX.Sky=Sky;
+// ---------------------------------------------------------------- lighting
+// ambient light color through the day (multiply this over the scene)
+PX.LIGHTKEYS=[[0,'#2a3268'],[.2,'#3a3c78'],[.245,'#b07898'],[.28,'#f0c8b0'],[.33,'#ffffff'],[.67,'#ffffff'],[.72,'#ffc8a0'],[.755,'#c07888'],[.8,'#3e3c7c'],[1,'#2a3268']];
+PX.lightColor=t=>gradAt(PX.LIGHTKEYS,t);
+// PX.Light: build a light map each frame, then apply it.  L.begin(ambient); L.point(x,y,r,color,k); L.cone(...); L.apply(ctx)
+class Light{constructor(w,h){this.s=new Surface(w,h);this.w=w;this.h=h;this.list=[]}
+ begin(ambient){this.amb=rgb(ambient);this.list.length=0;const c=this.s.ctx;c.globalCompositeOperation='source-over';c.fillStyle=css(this.amb);c.fillRect(0,0,this.w,this.h);c.globalCompositeOperation='lighter';return this}
+ // a dithered pixel light disc, cached by size and color
+ sprite(r,color,k){r=Math.max(2,Math.round(r));const key='L'+r+color+Math.round(k*10);return PX.sprite(key,r*2,r*2,s=>{const c=rgb(color);for(let y=0;y<r*2;y++)for(let x=0;x<r*2;x++){const d=Math.hypot(x-r+.5,y-r+.5)/r;if(d>=1)continue;let v=(1-d)*(1-d)*k;const q=Math.floor(v*6)/6+((bayer(x,y)<(v*6%1))?1/6:0);if(q<=0)continue;s.px(x,y,[c[0]*Math.min(1,q),c[1]*Math.min(1,q),c[2]*Math.min(1,q)])}})}
+ point(x,y,r,color,k){this.s.ctx.drawImage(this.sprite(r,color||'#ffd890',k==null?1:k),Math.round(x-r),Math.round(y-r));this.list.push([x,y,r,color,k])}
+ // a beam (headlight): from (x,y) pointing dir (+1/-1), length L, spread
+ cone(x,y,dir,L,spread,color,k){const key='C'+L+spread+color+(k*10|0);const cv=PX.sprite(key,L,spread*2+2,s=>{const c=rgb(color);for(let i=0;i<L;i++){const w=1+(i/L)*spread;const v=(1-i/L)*(k||1);for(let j=-w;j<=w;j++){const e=v*(1-Math.abs(j)/w*.6);const q=Math.floor(e*5)/5+((bayer(i,j+spread)<(e*5%1))?.2:0);if(q>0)s.px(i,spread+1+j,[c[0]*q,c[1]*q,c[2]*q])}}});
+  const c=this.s.ctx;if(dir>0)c.drawImage(cv,Math.round(x),Math.round(y-spread-1));else c.drawImage(PX.flip(cv),Math.round(x-L),Math.round(y-spread-1))}
+ rect(x,y,w,h,color){const c=this.s.ctx;c.fillStyle=css(color);c.fillRect(x,y,w,h)}
+ // multiply the light map onto the scene, then add a soft glow from the bright lights
+ apply(ctx,glow){ctx.globalCompositeOperation='multiply';ctx.drawImage(this.s.cv,0,0);ctx.globalCompositeOperation='lighter';const dim=1-Math.min(1,(this.amb[0]+this.amb[1]+this.amb[2])/600);
+  if(glow!==false&&dim>.05){ctx.globalAlpha=Math.min(.55,dim*.7);for(const [x,y,r,color,k] of this.list)ctx.drawImage(this.sprite(r*.55,color||'#ffd890',(k||1)*.8),Math.round(x-r*.55),Math.round(y-r*.55));ctx.globalAlpha=1}ctx.globalCompositeOperation='source-over'}}
+PX.Light=Light;
+// ---------------------------------------------------------------- particles
+class Particles{constructor(max){this.p=[];this.max=max||800}
+ add(o){if(this.p.length>=this.max)this.p.shift();this.p.push(Object.assign({x:0,y:0,vx:0,vy:0,ax:0,ay:0,life:1,t:0,size:1,color:'#ffffff',fade:true,grow:0},o))}
+ update(dt){for(let i=this.p.length-1;i>=0;i--){const q=this.p[i];q.t+=dt;if(q.t>=q.life){this.p.splice(i,1);continue}q.vx+=q.ax*dt;q.vy+=q.ay*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.size+=q.grow*dt}}
+ draw(ctx,ox){ox=ox||0;for(const q of this.p){const a=q.fade?1-q.t/q.life:1;if(a<=0)continue;ctx.globalAlpha=Math.min(1,a*(q.alpha==null?1:q.alpha));ctx.fillStyle=q.color;const s=Math.max(1,Math.round(q.size));if(q.streak){ctx.fillRect(Math.round(q.x-ox),Math.round(q.y),1,q.streak)}else ctx.fillRect(Math.round(q.x-ox-s/2),Math.round(q.y-s/2),s,s)}ctx.globalAlpha=1}
+ clear(){this.p.length=0}}
+PX.Particles=Particles;
+// weather on screen: returns nothing, just draws (rain streaks, snow, fog bands, dust)
+PX.weather=function(ctx,w,h,kind,time,wind){wind=wind||0;if(kind==='rain'||kind==='storm'){ctx.fillStyle='rgba(180,196,224,.7)';const n=kind==='storm'?260:160;for(let i=0;i<n;i++){const x=((hash(i)*w+time*(40+wind*80)*(1+hash(i*3)))%w+w)%w,y=(hash(i*7)*h+time*420*(.8+hash(i*2)*.5))%h;ctx.fillRect(x|0,y|0,1,5+(i%3)*2)}}
+  if(kind==='snow'){ctx.fillStyle='#ffffff';for(let i=0;i<240;i++){const x=((hash(i)*w+Math.sin(time+i)*8+time*(12+wind*40))%w+w)%w,y=(hash(i*7)*h+time*30*(1+hash(i*2)))%h;ctx.fillRect(x|0,y|0,i%5?1:2,i%5?1:2)}}
+  if(kind==='fog'||kind==='dust'){const c=kind==='dust'?'#c8a070':'#dde2e8';const cv=PX.sprite('fogpat'+kind,64,64,s=>{for(let y=0;y<64;y++)for(let x=0;x<64;x++){const v=fbm(x/16+y*.07,y*.13+3,3);if(bayer(x,y)<v*.75)s.px(x,y,c)}});const off=(time*(kind==='dust'?40:8))%64;ctx.globalAlpha=kind==='dust'?.5:.55;for(let y=Math.floor(h*.25);y<h;y+=64)for(let x=-64;x<w+64;x+=64)ctx.drawImage(cv,Math.round(x-off),y);ctx.globalAlpha=1}};
+// ---------------------------------------------------------------- input
+// PX.Input tracks keys and the pointer in game pixels; regions(): tap areas you register each frame
+class Input{constructor(game){this.g=game;this.keys={};this.pressed={};this.ptr={x:-1,y:-1,down:false,tap:null,id:null};this.zones=[];this.hover=null;
+  addEventListener('keydown',e=>{if(e.target&&/INPUT|TEXTAREA/.test(e.target.tagName))return;if(!this.keys[e.key])this.pressed[e.key]=1;this.keys[e.key]=1});addEventListener('keyup',e=>{this.keys[e.key]=0});addEventListener('blur',()=>{this.keys={}});
+  const cv=game.canvas;const pos=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)/r.width*game.w,(e.clientY-r.top)/r.height*game.h]};
+  cv.addEventListener('pointerdown',e=>{const [x,y]=pos(e);Object.assign(this.ptr,{x,y,down:true,sx:x,sy:y,t:performance.now()});cv.setPointerCapture(e.pointerId);PX.Sound.unlock()});
+  cv.addEventListener('pointermove',e=>{const [x,y]=pos(e);this.ptr.x=x;this.ptr.y=y;if(this.ptr.down)this.ptr.drag=Math.hypot(x-this.ptr.sx,y-this.ptr.sy)>6});
+  const up=e=>{const [x,y]=pos(e);if(this.ptr.down&&!this.ptr.drag)this.ptr.tap={x,y};this.ptr.down=false;this.ptr.drag=false};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',()=>{this.ptr.down=false})}
+ // call zone(x,y,w,h,fn,label) while drawing; taps hit the most recently added zone on top
+ zone(x,y,w,h,fn,id){this.zones.push({x,y,w,h,fn,id})}
+ hit(x,y){for(let i=this.zones.length-1;i>=0;i--){const z=this.zones[i];if(x>=z.x&&y>=z.y&&x<z.x+z.w&&y<z.y+z.h)return z}return null}
+ frame(){const t=this.ptr.tap;this.ptr.tap=null;let used=false;if(t){const z=this.hit(t.x,t.y);if(z){z.fn(t);used=true}}this.hover=this.hit(this.ptr.x,this.ptr.y);this.zones=[];const p=this.pressed;this.pressed={};return {tap:used?null:t,pressed:p}}
+ down(k){return !!this.keys[k]}}
+PX.Input=Input;
+// ---------------------------------------------------------------- sound
+const Sound={ctx:null,on:true,vol:.5,music:null,
+ unlock(){if(this.ctx||!this.on)return;try{this.ctx=new (window.AudioContext||window.webkitAudioContext)();this.master=this.ctx.createGain();this.master.gain.value=this.vol;this.master.connect(this.ctx.destination)}catch(e){}},
+ tone(f,d,o){o=o||{};const a=this.ctx;if(!a||!this.on)return;const t=a.currentTime+(o.at||0);const os=a.createOscillator(),g=a.createGain();os.type=o.type||'square';os.frequency.setValueAtTime(f,t);if(o.slide)os.frequency.exponentialRampToValueAtTime(o.slide,t+d);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(o.vol==null?.06:o.vol,t+.005);g.gain.exponentialRampToValueAtTime(.0001,t+d);os.connect(g);g.connect(this.master);os.start(t);os.stop(t+d+.02)},
+ noise(d,o){o=o||{};const a=this.ctx;if(!a||!this.on)return;const t=a.currentTime+(o.at||0);const n=Math.floor(a.sampleRate*d);const b=a.createBuffer(1,n,a.sampleRate);const ch=b.getChannelData(0);for(let i=0;i<n;i++)ch[i]=Math.random()*2-1;const s=a.createBufferSource();s.buffer=b;const f=a.createBiquadFilter();f.type=o.filter||'lowpass';f.frequency.value=o.freq||1200;const g=a.createGain();g.gain.setValueAtTime(o.vol==null?.08:o.vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(this.master);s.start(t)},
+ chime(){[784,988,1175].forEach((f,i)=>this.tone(f,.25,{at:i*.07,type:'triangle',vol:.05}))},
+ coin(){this.tone(988,.06,{type:'square',vol:.04});this.tone(1319,.12,{at:.06,type:'square',vol:.04})},
+ click(){this.tone(1400,.02,{vol:.02})},
+ whistle(){this.tone(620,.5,{type:'triangle',vol:.06});this.tone(740,.5,{type:'triangle',vol:.05});this.tone(880,.6,{at:.05,type:'sine',vol:.03})},
+ chug(speed){this.noise(.07,{freq:500+speed*4,vol:.025+Math.min(.03,speed/3000)})},
+ thunder(){this.noise(1.8,{freq:180,vol:.25})},
+ // a looping song: notes as [semitone offset from A4 or null, beats]; returns a stop function
+ song(notes,bpm,o){o=o||{};if(!this.ctx)return ()=>{};let i=0,alive=true;const beat=60/bpm;const play=()=>{if(!alive||!this.on)return;const [n,b]=notes[i%notes.length];if(n!=null)this.tone(440*Math.pow(2,n/12),beat*b*.9,{type:o.type||'triangle',vol:o.vol||.03});if(o.bass&&i%2===0&&n!=null)this.tone(110*Math.pow(2,((n%12)+12)%12/12),beat*b,{type:'sine',vol:(o.vol||.03)*1.2});i++;setTimeout(play,beat*b*1000)};play();return ()=>{alive=false}}};
+PX.Sound=Sound;
+// ---------------------------------------------------------------- storage
+PX.store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+// ---------------------------------------------------------------- multiplayer
+// PX.Net.connect({channel:'my-game'}) → net with .on(topic,fn) .emit(topic,data) .presence(state) .peers() .onPeers(fn) .mode
+// Uses the claude.ai artifact "room" capability when the page has it, otherwise BroadcastChannel (other tabs on this device), otherwise offline.
+const Net={async connect(o){o=o||{};const me={id:Math.random().toString(36).slice(2,10)};const subs={},peerSubs=[];const peers=new Map();const net={mode:'offline',me,on(t,f){(subs[t]=subs[t]||[]).push(f);return ()=>{subs[t]=subs[t].filter(x=>x!==f)}},emit(){},presence(){},peers:()=>[...peers.values()],onPeers(f){peerSubs.push(f)}};
+  const fire=(t,m)=>{for(const f of subs[t]||[])try{f(m)}catch(e){console.error(e)}};const firePeers=()=>{for(const f of peerSubs)try{f(net.peers())}catch(e){console.error(e)}};
+  // 1 · claude.ai room
+  try{if(G.claude&&G.claude.use){const room=await Promise.race([G.claude.use('room'),new Promise(r=>setTimeout(()=>r(null),o.timeout||6000))]);if(room){net.mode='room';net.room=room;
+    net.emit=(t,d)=>room.emit(t,d).catch(()=>{});let last=0,pend=null;net.presence=s=>{pend=s;const now=Date.now();if(now-last>(o.rate||400)){last=now;room.presence(s).catch(()=>{});pend=null}else if(!net._pt){net._pt=setTimeout(()=>{net._pt=null;if(pend){last=Date.now();room.presence(pend).catch(()=>{});pend=null}},o.rate||400)}};
+    room.onPeers(ch=>{peers.clear();for(const p of ch.peers){if(p.isMe||p.sameTab)continue;peers.set(p.peer,{id:p.peer,state:p.presence||{},guest:p.guest,at:p.updatedAt})}firePeers()});
+    for(const t of o.topics||[])room.on(t,m=>{if(m.isMe)return;fire(t,{from:m.peer,data:m.data})});return net}}}catch(e){console.warn('room unavailable',e)}
+  // 2 · BroadcastChannel (other tabs or windows on this device)
+  if(G.BroadcastChannel){const bc=new BroadcastChannel('pxnet:'+(o.channel||'game'));net.mode='local';net.emit=(t,d)=>bc.postMessage({k:'ev',t,d,from:me.id});let st=null;net.presence=s=>{st=s;bc.postMessage({k:'pr',s,from:me.id})};
+    bc.onmessage=e=>{const m=e.data;if(!m||m.from===me.id)return;if(m.k==='ev')fire(m.t,{from:m.from,data:m.d});else if(m.k==='pr'){peers.set(m.from,{id:m.from,state:m.s,at:Date.now()});firePeers()}else if(m.k==='bye'){peers.delete(m.from);firePeers()}else if(m.k==='hi'&&st)bc.postMessage({k:'pr',s:st,from:me.id})};
+    bc.postMessage({k:'hi',from:me.id});setInterval(()=>{const now=Date.now();let ch=false;for(const [k,p] of peers)if(now-p.at>8000){peers.delete(k);ch=true}if(st)bc.postMessage({k:'pr',s:st,from:me.id});if(ch)firePeers()},2000);addEventListener('pagehide',()=>bc.postMessage({k:'bye',from:me.id}));return net}
+  return net}};
+PX.Net=Net;
+// ---------------------------------------------------------------- screen & loop
+// PX.create({parent, width, height, background}) → game {canvas, ctx, w, h, input}
+PX.create=function(o){o=o||{};const w=o.width||640,h=o.height||360;const wrap=document.createElement('div');wrap.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:'+(o.background||'#000')+';overflow:hidden;touch-action:none';
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.style.cssText='image-rendering:pixelated;image-rendering:crisp-edges;display:block;touch-action:none';(o.parent||document.body).appendChild(wrap);wrap.appendChild(cv);
+  const ctx=cv.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;const game={canvas:cv,ctx,w,h,wrap,scale:1,time:0,frame:0};
+  const fit=()=>{const W=wrap.clientWidth,H=wrap.clientHeight;let s=Math.min(W/w,H/h);if(o.integer!==false&&s>=1)s=Math.max(1,Math.floor(s*(o.snap||1))/(o.snap||1));game.scale=s;cv.style.width=Math.round(w*s)+'px';cv.style.height=Math.round(h*s)+'px'};
+  fit();new ResizeObserver(fit).observe(wrap);game.fit=fit;game.input=new Input(game);return game};
+// PX.run(game, {update(dt, input), draw(ctx)}) fixed 60 Hz updates, draw every frame
+PX.run=function(game,sys){let last=performance.now(),acc=0;const step=1/60;const loop=now=>{game.raf=requestAnimationFrame(loop);let dt=Math.min(.25,(now-last)/1000);last=now;acc+=dt;
+  try{if(sys.frame)sys.frame(dt);while(acc>=step){acc-=step;game.time+=step;sys.update&&sys.update(step);}game.frame++;game.ctx.imageSmoothingEnabled=false;sys.draw&&sys.draw(game.ctx,dt)}catch(e){console.error(e);if(!game.err){game.err=1;sys.error&&sys.error(e)}}};game.raf=requestAnimationFrame(loop);return ()=>cancelAnimationFrame(game.raf)};
+G.PX=PX;})(typeof window!=='undefined'?window:globalThis);
+
+// ---- CLOVER LINE · data: the rail network, places, goods, cars, people, words ----
+// An alternate America, forty-one years after the Hush (Oct 9, 2038: every satellite stopped answering, and a pale
+// ring appeared around the Moon). The forests grew back thick, long-distance calls fill with a hum, and people
+// travel slowly again. The Clover Line is a little railway that runs from Clover Bay on the Pacific to wherever you like.
+const YEAR0=2079;
+// biomes decide the land you see between stations
+const BIOMES={
+ coast:{n:'Pacific coast',sky:0,far:['#7a96a8','#5a7a8a'],mid:['#3e6a52','#2a5040'],near:['#4a8a4e','#336a3a'],ground:['#6aa858','#4e8a44','#3a6a34'],trees:['fir','fir','spruce','pine','bush'],farH:.55,midH:.4,water:1,deco:['rock','driftwood','beachgrass','boulder']},
+ rain:{n:'rainforest',far:['#6a8aa0','#4e6e84'],mid:['#2e5a44','#1e4234'],near:['#3e7a44','#2a5a34'],ground:['#5a9a4a','#447e3c','#2e5e2e'],trees:['fir','cedar','maple','fir','fern','bush'],farH:.75,midH:.55,deco:['fern','mushroom','stump','log']},
+ gorge:{n:'Columbia River Gorge',far:['#6a7e98','#4e627c'],mid:['#3a5a4a','#2a4638'],near:['#46804a','#305e36'],ground:['#5c9a4c','#447a3e','#2e5a2e'],trees:['fir','maple','oak','fir','bush'],farH:.9,midH:.5,cliffs:1,deco:['rock','boulder','stump','log']},
+ plateau:{n:'Clover Plateau',far:['#9aa4b8','#7e8aa4'],mid:['#8aa860','#6e8c4a'],near:['#7aa850','#5e8a42'],ground:['#8ab85a','#6e9a48','#4e7a3a'],trees:['juniper','oak','bush','juniper'],farH:.35,midH:.22,deco:['haybale','fence','barn','windmill','sheep']},
+ mountain:{n:'mountains',far:['#8a98b8','#6a7a9c'],mid:['#3e5e58','#2e4a46'],near:['#4a7a52','#365e40'],ground:['#5e9450','#467840','#325a32'],trees:['spruce','fir','pine','spruce','aspen'],farH:1,midH:.7,snow:1,deco:['rock','boulder','stump','elk']},
+ basin:{n:'high desert',far:['#b8a8b0','#9a8a98'],mid:['#b09a7a','#94806a'],near:['#a8a070','#8a8458'],ground:['#c8b888','#aa9a6e','#8a7a56'],trees:['sage','juniper','sage','sage'],farH:.6,midH:.25,deco:['sage','rock','cow_skull','fencepost','pronghorn']},
+ salt:{n:'salt flats',far:['#b8b0c8','#9a94b0'],mid:['#d8d4d0','#c0bcb8'],near:['#d8d0c0','#c4bca8'],ground:['#e8e4dc','#d4cec4','#b8b2a6'],trees:['sage'],farH:.7,midH:.08,deco:['rock','saltpile']},
+ alpine:{n:'high Rockies',far:['#9aa8c8','#7a88aa'],mid:['#4a6a6a','#36545a'],near:['#4e8058','#3a6448'],ground:['#6a9a58','#4e7c46','#365c36'],trees:['spruce','spruce','aspen','spruce','pine'],farH:1.2,midH:.8,snow:1,deco:['rock','boulder','elk','marmot']},
+ front:{n:'Front Range',far:['#8e9cbc','#7282a4'],mid:['#9a9a6a','#7e7e56'],near:['#9aa25a','#7e8648'],ground:['#a8b066','#8a924e','#6a723c'],trees:['oak','cotton','bush','pine'],farH:.85,midH:.2,snow:1,deco:['fence','haybale','horse','windmill']},
+ plains:{n:'high plains',far:['#a8b4c8','#8e9ab4'],mid:['#b4b07a','#9a9662'],near:['#b8b06a','#9a944e'],ground:['#c4b868','#a89c50','#86803e'],trees:['cotton','bush','cotton'],farH:.12,midH:.1,deco:['wheat','windmill','turbine','fence','bison','haybale','grain']},
+ prairie:{n:'Kansas prairie',far:['#b0bccc','#94a2b8'],mid:['#c4b470','#a89a58'],near:['#d4b858','#b49a44'],ground:['#d8c060','#bca04a','#94803a'],trees:['cotton','bush'],farH:.06,midH:.06,deco:['wheat','wheat','sunflower','turbine','grain','windmill','bison']},
+ texas:{n:'Texas plains',far:['#b4b4c4','#9898b0'],mid:['#a89a6a','#8c7e54'],near:['#a49a5a','#867c44'],ground:['#b4a464','#988a4e','#76683a'],trees:['mesquite','oak','mesquite','bush'],farH:.15,midH:.12,deco:['pumpjack','longhorn','fence','cactus','windmill']},
+ mesa:{n:'canyon country',far:['#c48a78','#a87060'],mid:['#b8704e','#9a5a3e'],near:['#b48a5a','#987044'],ground:['#c89a64','#ac7e4e','#8a5e3a'],trees:['mesquite','cactus','sage'],farH:.65,midH:.35,mesas:1,deco:['cactus','rock','longhorn']},
+ farm:{n:'farm country',far:['#a4b0c4','#8a96b0'],mid:['#6a9a4a','#4e7c3a'],near:['#7aaa4a','#5e8a38'],ground:['#7ab44a','#5e9640','#467634'],trees:['oak','maple','cotton','bush'],farH:.12,midH:.18,deco:['corn','corn','barn','silo','fence','cow']},
+ east:{n:'eastern hills',far:['#7e90a8','#62748e'],mid:['#3e6a4a','#2e523a'],near:['#4a7c44','#365e34'],ground:['#5e9a4a','#467c3e','#30602e'],trees:['maple','oak','maple','fir','bush'],farH:.5,midH:.45,deco:['stonewall','barn','fence','deer']}};
+// stations: id, name, state, map lon/lat, biome, size (0 halt, 1 town, 2 city), skyline style, what to buy/sell there
+const ST={
+ clover:{n:'Clover Bay',s:'OR',lon:-124.0,lat:45.5,b:'coast',z:1,make:'shells',want:'apples',f:'A harbor village on the Pacific, where the Clover Line begins. The Sky Sanctuary floats offshore, and boats trade with anyone at the pier.',sp:'harbor'},
+ pdx:{n:'Portland',s:'OR',lon:-122.68,lat:45.52,b:'rain',z:2,make:'hazelnuts',want:'wheat',f:'Rain, bridges, roses and lamps in every window. Mt. Hood floats on the horizon on clear days. People say the trees here grew taller after the Hush.',sp:'portland'},
+ mult:{n:'Multnomah Falls',s:'OR',lon:-122.12,lat:45.58,b:'gorge',z:0,f:'The tallest waterfall in Oregon, 620 feet of white water. The train slows here on purpose.',sp:'falls'},
+ hood:{n:'Hood River',s:'OR',lon:-121.52,lat:45.71,b:'gorge',z:1,make:'apples',want:'salt',f:'Windsurfers on the Columbia and orchards on every hill. The wind never stops here.',sp:'orchard'},
+ dalles:{n:'The Dalles',s:'OR',lon:-121.18,lat:45.6,b:'gorge',z:1,make:'cherries',want:'books',f:'Cherry orchards over the Columbia. The end of the old Oregon Trail road.'},
+ juniper:{n:'Juniper Springs',s:'OR',lon:-119.3,lat:45.4,b:'plateau',z:1,make:'wool',want:'hazelnuts',f:'The plateau used to be dry. Now it is the greenest meadow you ever saw, full of sheep.'},
+ bluemtn:{n:'Blue Mountain',s:'OR',lon:-118.2,lat:45.25,b:'mountain',z:0,f:'A tiny halt in the fir forest. Wagons were once lowered on ropes near here.'},
+ boise:{n:'Boise',s:'ID',lon:-116.2,lat:43.62,b:'rain',z:2,make:'potatoes',want:'cherries',f:'The City of Trees. The capitol is heated by hot springs, and the library stays open all night for anyone who cannot sleep.',sp:'capitol'},
+ bluebell:{n:'Bluebell',s:'ID',lon:-114.4,lat:42.7,b:'basin',z:1,make:'wool',want:'potatoes',f:'A farm town on the Snake River Plain. The fields turn blue with camas flowers in spring.'},
+ fthall:{n:'Fort Hall',s:'ID',lon:-112.45,lat:43.03,b:'basin',z:0,f:'The trail splits here, the way it always has. A hand-painted sign points to SOMEWHERE ELSE.',sp:'fort'},
+ soda:{n:'Soda Springs',s:'ID',lon:-111.6,lat:42.65,b:'mountain',z:0,f:'The water fizzes right out of the ground, and a geyser goes off every hour on the hour.',sp:'geyser'},
+ slc:{n:'Salt Lake City',s:'UT',lon:-111.89,lat:40.76,b:'salt',z:2,make:'salt',want:'apples',f:'Between the mountains and the great salt lake, where you float like a cork. The capitol dome glows at sunset.',sp:'capitol'},
+ silverpine:{n:'Silverpine',s:'CO',lon:-107.9,lat:40.3,b:'alpine',z:1,make:'crystals',want:'potatoes',f:'A mountain town where the snow stays all summer. The aspens ring like bells when the wind blows.'},
+ divide:{n:'Continental Divide',s:'CO',lon:-105.9,lat:39.9,b:'alpine',z:0,f:'Rain falling west of here runs to the Pacific. East of here, to the Atlantic. On a clear night the Ring looks close enough to touch.',sp:'divide'},
+ denver:{n:'Denver',s:'CO',lon:-104.99,lat:39.74,b:'front',z:2,make:'crystals',want:'peaches',f:'The gold dome still catches the morning light. The Mile High step on the capitol is worn into a bowl.',sp:'denver'},
+ prairie:{n:'Prairie Rose',s:'CO',lon:-102.6,lat:38.4,b:'plains',z:1,make:'wheat',want:'crystals',f:'A grain town where the wheat comes right up to the station platform.'},
+ gc:{n:'Garden City',s:'KS',lon:-100.87,lat:37.97,b:'prairie',z:1,make:'wheat',want:'shells',f:'The Big Pool is filled every June, half a city block of water under the biggest sky. The zoo keeps animals nobody has named yet.',sp:'pool'},
+ dodge:{n:'Dodge City',s:'KS',lon:-100.02,lat:37.75,b:'prairie',z:1,make:'leather',want:'books',f:'Wooden sidewalks on Front Street. The sheriff\'s radio only plays static. He says the static is company.'},
+ liberal:{n:'Liberal',s:'KS',lon:-100.92,lat:37.04,b:'prairie',z:0,f:'A little farmhouse painted like a storybook, with a yellow brick path. The tour guide says she has given 9,000 tours.'},
+ cadillac:{n:'Cadillac Ranch',s:'TX',lon:-101.99,lat:35.19,b:'mesa',z:0,f:'Ten old cars buried nose-down in a field, painted with the names of people travelers are trying to find.',sp:'cadillac'},
+ amarillo:{n:'Amarillo',s:'TX',lon:-101.83,lat:35.22,b:'mesa',z:1,make:'leather',want:'wool',f:'Helium town. Kids let balloons go at the Saturday market, to see if the Ring will catch them.'},
+ wfalls:{n:'Wichita Falls',s:'TX',lon:-98.49,lat:33.91,b:'texas',z:1,make:'peaches',want:'salt',f:'A little waterfall the city built by hand, because the real one washed away long ago.'},
+ ftworth:{n:'Fort Worth',s:'TX',lon:-97.33,lat:32.75,b:'texas',z:2,make:'leather',want:'crystals',f:'The stockyards still run cattle down Exchange Avenue at noon. The neon cowboy blinks a message nobody remembers.'},
+ austin:{n:'Austin',s:'TX',lon:-97.74,lat:30.27,b:'texas',z:2,make:'peaches',want:'hazelnuts',f:'A million bats pour out from under the Congress Avenue bridge every summer evening. People bring blankets and watch.',sp:'bats'},
+ cheyenne:{n:'Cheyenne',s:'WY',lon:-104.82,lat:41.14,b:'plains',z:1,make:'leather',want:'apples',f:'Wind town. They tie down everything, even the benches. The rodeo has not missed a July in a hundred and fifty years.'},
+ laramie:{n:'Fort Laramie',s:'WY',lon:-104.55,lat:42.2,b:'plains',z:0,f:'A white army fort turned trading post turned town. A kid named Wes plays the bugle at sunrise, badly.',sp:'fort'},
+ indrock:{n:'Independence Rock',s:'WY',lon:-107.13,lat:42.49,b:'basin',z:0,f:'A granite dome covered in names: pioneers from the 1840s, travelers from the 2040s, and people from this year.',sp:'namerock'},
+ southpass:{n:'South Pass',s:'WY',lon:-108.9,lat:42.37,b:'alpine',z:0,f:'The gentle saddle over the Continental Divide that the wagons crossed in 1843.'},
+ bridger:{n:'Fort Bridger',s:'WY',lon:-110.38,lat:41.32,b:'mountain',z:0,f:'A blacksmith, a schoolhouse, and one working jukebox that only plays songs from 1990.',sp:'fort'},
+ chimney:{n:'Chimney Rock',s:'NE',lon:-103.35,lat:41.7,b:'plains',z:0,f:'A thin spire of clay and ash, the most famous landmark on the Oregon Trail. It is shorter than it was last year.',sp:'chimney'},
+ kearny:{n:'Fort Kearny',s:'NE',lon:-98.98,lat:40.64,b:'plains',z:0,f:'Every spring half a million sandhill cranes land on the Platte nearby. It sounds like the whole sky talking at once.',sp:'fort'},
+ omaha:{n:'Omaha',s:'NE',lon:-95.94,lat:41.26,b:'farm',z:2,make:'corn',want:'crystals',f:'Where the old trails jumped off. The outfitters still sell wagon gear, even though almost nobody has a wagon.'},
+ desmoines:{n:'Des Moines',s:'IA',lon:-93.61,lat:41.59,b:'farm',z:1,make:'corn',want:'leather',f:'Corn taller than you remember corn being. Locals say it got taller after the Hush.'},
+ chicago:{n:'Chicago',s:'IL',lon:-87.63,lat:41.88,b:'farm',z:2,make:'books',want:'wheat',f:'The lake looks like an ocean, and the silver bean in the park reflects the Ring on clear nights.',sp:'chicago'},
+ pittsburgh:{n:'Pittsburgh',s:'PA',lon:-79.99,lat:40.44,b:'east',z:2,make:'steel',want:'corn',f:'Three rivers, four hundred bridges, and inclines that haul people up the cliffs for a chit.'},
+ philly:{n:'Philadelphia',s:'PA',lon:-75.17,lat:39.95,b:'east',z:2,make:'pretzels',want:'peaches',f:'The Liberty Bell is still cracked. Every New Year someone tries to ring it anyway.'},
+ nyc:{n:'New York City',s:'NY',lon:-74.0,lat:40.71,b:'east',z:2,make:'books',want:'potatoes',f:'The towers are green now, gardens on every roof and ivy down every wall. One subway line still runs, and people ride it just for the sound.',sp:'nyc'}};
+// rail lines (each consecutive pair is a track segment)
+const LINES=[{n:'Clover Line',c:'#4cbf6a',s:['clover','pdx','mult','hood','dalles','juniper','bluemtn','boise','bluebell','fthall','soda','slc','silverpine','divide','denver','prairie','gc']},
+ {n:'Long Road Line',c:'#ffb84a',s:['gc','dodge','liberal','cadillac','amarillo','wfalls','ftworth','austin']},
+ {n:'Oregon Trail Line',c:'#c88a5a',s:['slc','bridger','southpass','indrock','laramie']},
+ {n:'Great Plains Line',c:'#6aa8ff',s:['denver','cheyenne','laramie','chimney','kearny','omaha','desmoines','chicago','pittsburgh','philly','nyc']}];
+const ADJ={};
+function km(a,b){const A=ST[a],B=ST[b];const R=6371,dl=(B.lat-A.lat)*Math.PI/180,dg=(B.lon-A.lon)*Math.PI/180,la=A.lat*Math.PI/180,lb=B.lat*Math.PI/180;const h=Math.sin(dl/2)**2+Math.cos(la)*Math.cos(lb)*Math.sin(dg/2)**2;return Math.round(2*R*Math.asin(Math.sqrt(h))*1.22)}
+for(const L of LINES)for(let i=0;i<L.s.length-1;i++){const a=L.s[i],b=L.s[i+1];const d=Math.max(14,km(a,b));(ADJ[a]=ADJ[a]||[]).push({to:b,km:d,line:L});(ADJ[b]=ADJ[b]||[]).push({to:a,km:d,line:L})}
+const segKm=(a,b)=>((ADJ[a]||[]).find(e=>e.to===b)||{km:0}).km;
+// shortest path in km
+function route(a,b){const dist={[a]:0},prev={},Q=new Set(Object.keys(ST));while(Q.size){let u=null,du=1e18;for(const q of Q)if(dist[q]!=null&&dist[q]<du){du=dist[q];u=q}if(u==null||u===b)break;Q.delete(u);for(const e of ADJ[u]||[]){const nd=du+e.km;if(dist[e.to]==null||nd<dist[e.to]){dist[e.to]=nd;prev[e.to]=u}}}if(dist[b]==null)return null;const p=[b];while(p[0]!==a)p.unshift(prev[p[0]]);return {path:p,km:dist[b]}}
+// goods (Daisy's trading idea: buy where it is made, sell where it is wanted)
+const GOODS={shells:['🐚','Seashells',20],apples:['🍎','Apples',26],hazelnuts:['🌰','Hazelnuts',30],cherries:['🍒','Cherries',34],wool:['🧶','Wool',36],potatoes:['🥔','Potatoes',22],salt:['🧂','Salt',28],crystals:['💎','Crystals',60],wheat:['🌾','Wheat',24],leather:['👢','Leather',44],peaches:['🍑','Peaches',32],corn:['🌽','Corn',20],books:['📚','Books',50],steel:['🔩','Steel',56],pretzels:['🥨','Pretzels',30]};
+// cars you can couple behind the locomotive
+const CARS={
+ coach:{n:'Coach',p:300,seats:6,d:'Six seats with big windows.',body:'#3a7a5a',trim:'#e8c860'},
+ sleeper:{n:'Sleeper',p:900,seats:4,d:'Four bunks. Passengers love it at night.',body:'#4a4a8a',trim:'#e8c860',happy:'night'},
+ dining:{n:'Dining car',p:800,d:'Feeds passengers from your food stock. Happy passengers tip more.',body:'#8a3a3a',trim:'#f0d070',food:1},
+ cargo:{n:'Cargo car',p:400,crates:6,d:'Carries six crates of goods to trade between towns.',body:'#7a5a3a',trim:'#c8a070'},
+ pets:{n:'Pet car',p:1200,d:'Your pets ride along. Passengers visit them and tip extra.',body:'#c86a8a',trim:'#fff0b0',pets:4},
+ garden:{n:'Garden car',p:1000,d:'A glass greenhouse that grows food for the dining car.',body:'#4a8a4a',trim:'#d8f0c8',grow:1},
+ arcade:{n:'Arcade car',p:1500,d:'Glass Breaker cabinets, a jukebox, and a tape deck. Passengers love it.',body:'#3a2a6a',trim:'#ff6ad8',fun:1},
+ radio:{n:'Radio car',p:700,d:'Picks up KHUSH 105.9 at night and runs the telegraph.',body:'#5a6a7a',trim:'#9ad8ff',radio:1},
+ dome:{n:'Dome car',p:2000,seats:4,d:'A glass roof for stargazing. The best view on the line.',body:'#2e5a6a',trim:'#e8e0c8',view:1,happy:'view'},
+ caboose:{n:'Caboose',p:0,d:'The little red car at the end. Every train needs one.',body:'#b8483a',trim:'#f0d070',tail:1}};
+const LOCOS=[{n:'Clover Steam',spd:60,cars:3,tank:160,p:0},{n:'Clover Steam II',spd:75,cars:5,tank:220,p:2500},{n:'Golden Spike',spd:90,cars:7,tank:300,p:7000},{n:'Night Owl Express',spd:110,cars:9,tank:400,p:16000}];
+// Daisy's pets from the very first idea list, now riding in the pet car
+const PETS={unicorn:['🦄','Unicorn','#fff4ff','#ffb8e8'],dragon:['🐉','Dragon','#a68af0','#ffd0f0'],dog:['🐕','Dog','#ffffff','#2b2b33'],dolphin:['🐬','Dolphin','#7aa8d8','#e8f4ff'],whale:['🐋','Whale','#4a74b8','#e0ecf8'],deer:['🦌','Deer','#c88a52','#fff2dc'],leopard:['🐆','Snow leopard','#eef0f6','#5a5a6a'],fox:['🦊','Fox','#f08a3a','#ffffff'],cat:['🐈','Cat','#2a2832','#45424e'],redpanda:['🐾','Red panda','#d8602a','#3a2420']};
+const PETPRICE={dog:200,cat:200,fox:350,redpanda:400,deer:500,leopard:800,dolphin:900,whale:1400,dragon:1800,unicorn:2000};
+// people
+const FIRST=['Rosa','Theo','Juniper','Moss','Wren','Otis','Hazel','Milo','Ivy','Basil','Pip','Luna','Sage','Rory','Nova','Fig','Bea','Cosmo','Poppy','Lark','Opal','Ezra','Clem','Dot','Rue','Kit','Ada','Gus','June','Mabel','Arlo','Iris','Silas','Della','Walt','Peg','Hank','Lou','Vera','Abe','Nell','Ike','Mae','Ollie','Tess','Cyrus','Bonnie','Earl'];
+const LAST=['Bramble','Holloway','Pike','Marsh','Fairweather','Cobb','Rook','Lindqvist','Okafor','Nakamura','Reyes','Dubois','Castillo','Haverford','Moon','Weller','Ashby','Quill','Barlow','Penny'];
+const SPECIES=['cat','dog','fox','duck','raccoon','deer','owl','redpanda','bison','penguin','rabbit','bear'];
+const JOBS=['retired schoolteacher','beekeeper','mail rider','lighthouse keeper','fiddler','cartographer','radio repairer','orchard hand','pie judge','bridge painter','balloon pilot','librarian','telegraph clerk','sheep shearer','kite maker','bookbinder','zookeeper','lamp maker'];
+// special passengers you might meet (both games)
+const VIPS=[{id:'clementine',n:'Clementine',sp:'redpanda',job:'Mayor of Clover Bay',col:'#ff8a4a',lines:['The Clover Line is the best thing that ever happened to Clover Bay, sweet pea.','Have you seen the Sky Sanctuary from the train? It floats right off the coast.']},
+ {id:'hoot',n:'Professor Hoot',sp:'owl',job:'Retired astronomer',col:'#a08060',lines:['The Ring is not dust. Not ice either. I have looked at it every night for forty years. Hoo-hoo.','A tornado over Kansas is common. Over Portland? Rare and surprising.']},
+ {id:'biscuit',n:'Biscuit',sp:'bison',job:'Rancher from Garden City',col:'#c08040',lines:["When the clouds go green, darlin', you get underground.","Those wheat fields could feed the whole country, darlin'."]},
+ {id:'marigold',n:'Marigold',job:'Night host, KHUSH 105.9',col:'#c8a0ff',hum:1,lines:['You listen to my show? Oh, that is so nice. I am going to say your name on the radio tonight.','Long calls fill up with a hum. So I talk on the radio instead. Same thing, almost.']},
+ {id:'petalwink',n:'Petalwink',job:'A fairy from Forest Park',col:'#ff8ad8',fairy:1,lines:['A big person train! Can I ride in the pet car? I love unicorns.','If you sew me a new dress at Thread & Thimble I will grant you a tiny wish.']},
+ {id:'juniper',n:'Juniper',job:'Runs a lamp shop in Portland',col:'#ffc860',hum:1,lines:['My brother was supposed to visit. He wrote a letter. Letters are slow, but they always come.','Every window in Portland has a lamp in it. Half of them are mine.']},
+ {id:'moss',n:'Moss',job:'Keeper at the Garden City zoo',col:'#6ac87a',hum:1,lines:['We have an animal nobody has named yet. It hums when the Ring is out.','Bring a towel. Everybody forgets the towel.']},
+ {id:'wes',n:'Wes',job:'Bugler at Fort Laramie',col:'#8ab8d8',hum:1,lines:['I play the bugle every morning. Badly. People say it is the best part of their day.']}];
+// the world's words, carried over from The Long Road
+const BILLBOARDS=['LAST STOP FOR PIE 40 MI','MOTEL - CLEAN SHEETS - NO SIGNAL','HAVE YOU WRITTEN YOUR MOTHER','CORN. IT KNOWS.','REMEMBER CALLING? DIAL 0','JESUS SAVES / SO DOES A SPARE','KHUSH 105.9 FM - THE HUM','DO NOT LOOK AT THE RING','LOST DOG - ANSWERS TO BISCUIT','DRIVE-IN TONIGHT: SAME MOVIE','PEACHES PEACHES PEACHES','WE BUY TAPES','THE ROAD REMEMBERS','WELCOME HOME, WHOEVER YOU ARE','CLOVER LINE - RIDE THE GREEN','WORLDS LARGEST BALL OF TWINE','SKY SANCTUARY - EGGS HATCH DAILY'];
+const BROADCASTS=['KHUSH 105.9. This is Marigold, with the night show. A listener asks: what was the Hush, really? On October 9th, 2038, at 2:14 in the morning, every satellite stopped answering at once. No explosions. No falling stars. They just stopped. Like somebody had asked them a question.',
+ 'KHUSH 105.9. The next night, everyone saw it: a thin pale ring around the Moon. The scientists said it was dust. Then ice. Then they stopped saying. Most of them took up gardening.',
+ 'KHUSH 105.9. People ask why the phones never came back. The towers work. The wires work. But every long call fills up with a hum, and the hum gets louder the longer you talk. So we started writing letters. Honestly? Better letters.',
+ 'KHUSH 105.9. The cities got quiet, and folks moved back to little towns. The trucks stopped. The trains started again. Turns out you can do almost anything slower.',
+ 'KHUSH 105.9. My grandma said the satellites did not break. She said they turned around. Away from us. Toward the Ring. Toward something else.',
+ 'KHUSH 105.9. Last thing tonight. If you are out on the line, and you are tired, and you are thinking of turning back: do not. Somebody at the end of your road is still waiting up for you, with the porch light on. Goodnight.'];
+const TALKS=['An old man says the city used to be so loud you could not hear yourself think. "Now I can hear myself think. It is mostly about lunch."','A kid shows you a jar of fireflies. Some of them blink blue. "Those are new," she says.','"When the clouds go green, you get underground. When the Ring goes red, you stay underground."','A trucker with a trailer full of radios says he is collecting them. "Someday one of them is going to say something."','A woman sells hand-drawn maps. "The old ones show roads that are gone. Mine show roads that are here."','"The salmon came back thicker than ever after the Hush," says a fisherman. "Ocean got quiet. Fish like quiet."','A rancher says the coyotes started singing in harmony a few years back. "Prettiest thing you ever heard."','"Wind took my barn roof in \'71. Wind gave me a new one in \'73. Somebody else\'s."'];
+const ROADSIDE=['A drive-in theater is playing the same movie it has played for forty years. Everyone knows the words.','A mail rider on horseback races the train for a mile, waving a bundle of letters.','Wind turbines on a ridge turn slowly backwards. Nobody fixes them, because they still make power.','A field of old satellite dishes, all pointed up, all listening.','Somebody painted WELCOME HOME on a water tower.','A payphone stands alone in a field. It is ringing.','Two old men are playing chess on a card table by the tracks. One says: "Your move, since 2061."','A herd of horses runs alongside the train, then peels away into the grass.','A house has a lamp in every window, all lit, in the middle of the day.','A line of power poles with no wires stands in a row, like they are waiting for a bus.'];
+const SECRETS={xyzzy:'A hollow voice',plugh:'Plugh',underroad:'The Under-Road',listener:'The Listener',arcade:'Glass Breaker',khush:'All six KHUSH broadcasts',ring:'The light on the Ring',dial:'A voice on the line',spray:'Your name on the cars',clover:'A postcard from Clover Bay',somewhere:'Somewhere Else',sing:'A song in the dark',write:'A paragraph for Daisy',povswap:'Somebody else\'s window'};
+// Daisy's notebook: her ideas, as goals
+const NOTEBOOK=[{id:'pets7',t:'Ride with a unicorn, dragon, dog, dolphin, whale, deer and snow leopard',r:1500,test:S=>['unicorn','dragon','dog','dolphin','whale','deer','leopard'].every(p=>S.pets.includes(p))},
+ {id:'storms',t:'See a tornado in Kansas and a thunderstorm in Oregon',r:800,test:S=>S.seen.tornadoKS&&S.seen.stormOR},
+ {id:'trade',t:'Trade goods between towns, like the boats at Paradise Bay',r:400,test:S=>(S.stats.trades||0)>=5},
+ {id:'write',t:'Write a paragraph on the telegraph (type WRITE and a few sentences)',r:300,test:S=>(S.stats.writes||0)>=1},
+ {id:'fairy',t:'Sew a dress for a fairy passenger',r:600,test:S=>S.seen.fairyDress},
+ {id:'friend',t:'Wave at a friend on another train',r:500,test:S=>S.seen.waved},
+ {id:'pov',t:'Watch the world from a friend\'s window',r:500,test:S=>S.seen.friendPov},
+ {id:'cities',t:'Ride from Portland to Garden City',r:700,test:S=>S.visited.pdx&&S.visited.gc},
+ {id:'coast',t:'Reach New York City or Austin',r:1500,test:S=>S.visited.nyc||S.visited.austin},
+ {id:'secrets',t:'Find five secrets',r:1000,test:S=>Object.keys(S.secrets).length>=5},
+ {id:'vip',t:'Give a ride to someone famous',r:400,test:S=>(S.stats.vips||0)>=1},
+ {id:'cars',t:'Pull a train with six cars',r:800,test:S=>S.cars.length>=6}];
+
+// ---- CLOVER LINE · art: every sprite is painted by code, pixel by pixel ----
+const W=640,H=360,HZ=206,RAIL=292,RAIL2=276;// screen size, horizon, main rail top, far track
+const S2=PX.Surface;const C=PX.rgb,MIX=PX.mix,SH=PX.shade;
+const pn=(x,p,s)=>{const i=Math.floor(x),f=x-i,u=f*f*(3-2*f);const a=PX.hash(((i%p)+p)%p+s*57.3),b=PX.hash((((i+1)%p)+p)%p+s*57.3);return a*(1-u)+b*u};// periodic noise
+const pfbm=(x,p,s,o)=>{let a=0,w=.5,t=0,f=1;for(let i=0;i<(o||4);i++){a+=pn(x*f,p*f,s+i*7)*w;t+=w;w*=.5;f*=2}return a/t};
+// ---------------- trees and plants (near scale) ----------------
+function treeSprite(kind,v,seasonal){const key='tree:'+kind+':'+v+':'+(seasonal||'');const r=PX.rng(PX.hash(v*91+kind.length*7)*1e9);
+  const sz={fir:[30,64],cedar:[34,60],spruce:[26,60],pine:[34,58],maple:[44,50],oak:[52,48],cotton:[54,54],aspen:[24,50],juniper:[24,26],mesquite:[38,30],cactus:[14,26],sage:[18,10],bush:[26,16],fern:[20,12]}[kind]||[30,40];
+  const sc=.8+r()*.4;const w=Math.round(sz[0]*sc),h=Math.round(sz[1]*sc);
+  return PX.sprite(key,w+4,h+4,s=>{const cx=(w+4)>>1,base=h+3;const bark=C('#5a3e2c'),bark2=C('#3e2a1e');const fall=seasonal==='fall',winter=seasonal==='winter';
+   if(kind==='fir'||kind==='spruce'||kind==='cedar'){const tiers=kind==='spruce'?9:kind==='cedar'?6:7;s.rect(cx-1,base-h*.25,3,h*.25,bark2);
+     const col=kind==='spruce'?['#2a5246','#1e3e36','#3a6a5a']:kind==='cedar'?['#3e6e3e','#2a502e','#5a8a4a']:['#2e5e3e','#1e4430','#46784e'];
+     for(let i=0;i<tiers;i++){const t=i/(tiers-1);const yb=base-h*.18-t*h*.74,ww=(1-t*.82)*w*.5*(kind==='cedar'?1.1:1),hh=h*.2;for(let y=0;y<hh;y++){const k=y/hh;const half=Math.round(ww*(k*.9+.1));const yy=Math.round(yb-hh+y);for(let x=-half;x<=half;x++){const sh=(x/half)*.8+(1-k)*.4;const X=cx+x;s.px(X,yy,sh<-.2?col[2]:sh>.45&&PX.bayer(X,yy)<.6?col[1]:col[0])}}
+       if(winter||kind==='spruce'&&r()<.2)s.rect(cx-Math.round(ww*.6),Math.round(yb-hh*.15),Math.round(ww*1.1),1,'#e8f0f8')}
+     if(winter)s.rect(cx-1,base-h,3,2,'#ffffff');return}
+   if(kind==='pine'){s.rect(cx-1,base-h*.7,3,h*.7,'#8a4a2e');s.rect(cx,base-h*.7,1,h*.7,'#b06a3e');for(const [dx,dy,rx] of [[0,.82,.32],[-.22,.7,.24],[.24,.66,.24],[-.1,.56,.2],[.14,.9,.2]])s.blob(cx+dx*w,base-dy*h,Math.round(rx*w),Math.round(rx*w*.55),'#4a7a4a','#24442e',v+dx*100,.35);return}
+   if(kind==='aspen'){s.rect(cx-1,base-h*.85,2,h*.85,'#ece8e0');for(let y=base-h*.8;y<base;y+=4)s.px(cx-1,y,'#3a3a3a');const L=fall?['#f8d040','#c89020']:['#9ad86a','#4a8a3a'];s.blob(cx,base-h*.7,Math.round(w*.42),Math.round(h*.3),L[0],L[1],v,.4);s.blob(cx+2,base-h*.86,Math.round(w*.3),Math.round(h*.16),L[0],L[1],v+3,.4);return}
+   if(kind==='juniper'){s.rect(cx,base-5,2,5,bark2);s.blob(cx,base-h*.5,Math.round(w*.45),Math.round(h*.45),'#5a8a6a','#2e5240',v,.4);return}
+   if(kind==='mesquite'){s.line(cx,base,cx-4,base-h*.5,bark);s.line(cx,base,cx+5,base-h*.55,bark);s.line(cx+1,base,cx+1,base-h*.4,bark);s.blob(cx-6,base-h*.62,Math.round(w*.3),Math.round(h*.22),'#9aaa5a','#5a6a3a',v,.5);s.blob(cx+6,base-h*.7,Math.round(w*.32),Math.round(h*.24),'#9aaa5a','#5a6a3a',v+5,.5);return}
+   if(kind==='cactus'){const g='#4e8a4e',d='#2e5a34';s.rect(cx-2,base-h,5,h,g);s.rect(cx+1,base-h,1,h,d);s.rect(cx-6,base-h*.6,3,h*.3,g);s.rect(cx-6,base-h*.35,5,2,g);s.rect(cx+4,base-h*.75,3,h*.35,g);s.rect(cx+2,base-h*.42,5,2,g);if(r()<.4)s.circle(cx,base-h-1,1,'#ff6a8a');return}
+   if(kind==='sage'){s.blob(cx,base-h*.45,Math.round(w*.45),Math.round(h*.5),'#b4bca4','#7a8470',v,.4);return}
+   if(kind==='bush'){s.blob(cx,base-h*.45,Math.round(w*.45),Math.round(h*.5),winter?'#7a8a6a':'#5ca04a','#2e5a2e',v,.35);if(r()<.3&&!winter)for(let i=0;i<5;i++)s.px(cx-w*.3+r()*w*.6,base-h*.3-r()*h*.5,r()<.5?'#ff5a7a':'#ffd860');return}
+   if(kind==='fern'){for(let i=0;i<7;i++){const a=-Math.PI+.25+i/6*(Math.PI-.5);const L=w*.48;for(let k=0;k<L;k++){const x=cx+Math.cos(a)*k,y=base-1+Math.sin(a)*k*.7+k*k*.012;s.px(x,y,k%3?'#3e8a44':'#5aaa52')}}return}
+   // broadleaf: maple, oak, cotton
+   const L=fall?(kind==='maple'?['#e8682a','#a83a1e']:kind==='oak'?['#c8902a','#7a5418']:['#e8c040','#a88420']):winter?null:kind==='maple'?['#6ab84a','#2e6a30']:kind==='oak'?['#5aa040','#2a5a2a']:['#7ac850','#3e7a34'];
+   const th=kind==='oak'?.4:.45;s.rect(cx-2,base-h*th,4,h*th,bark);s.rect(cx-2,base-h*th,1,h*th,'#7a5a40');s.line(cx,base-h*th,cx-w*.22,base-h*(th+.18),bark);s.line(cx+1,base-h*th,cx+w*.24,base-h*(th+.16),bark);
+   if(!L){s.line(cx,base-h*th,cx,base-h*.9,bark2);s.line(cx-w*.22,base-h*(th+.18),cx-w*.34,base-h*.8,bark2);s.line(cx+w*.24,base-h*(th+.16),cx+w*.36,base-h*.78,bark2);return}
+   const parts=kind==='oak'?[[0,.68,.46,.28],[-.3,.58,.28,.2],[.32,.6,.28,.2],[0,.84,.3,.16]]:kind==='cotton'?[[0,.7,.44,.3],[-.28,.56,.26,.22],[.3,.58,.26,.22],[.05,.9,.28,.14]]:[[0,.66,.4,.3],[-.24,.56,.24,.2],[.26,.58,.24,.2],[0,.86,.28,.16]];
+   for(const [dx,dy,rx,ry] of parts)s.blob(Math.round(cx+dx*w),Math.round(base-dy*h),Math.round(rx*w),Math.round(ry*h),L[0],L[1],v*10+dx*50,.3);
+   for(let i=0;i<8;i++)s.px(cx+(r()-.5)*w*.7,base-h*(.55+r()*.35),MIX(L[0],'#ffffff',.35))})}
+// ---------------- small decorations ----------------
+function decoSprite(kind,v){const key='deco:'+kind+':'+v;const r=PX.rng(PX.hash(v*13+kind.length)*1e9);
+  const sizes={rock:[18,10],boulder:[30,18],stump:[12,8],log:[26,8],driftwood:[24,6],fence:[32,14],fencepost:[4,14],haybale:[16,12],barn:[56,44],silo:[18,52],windmill:[22,46],turbine:[30,90],grain:[40,80],pumpjack:[34,24],cow:[20,14],horse:[20,16],bison:[24,16],sheep:[14,10],elk:[20,20],pronghorn:[16,14],longhorn:[24,14],deer:[16,16],marmot:[8,6],wheat:[36,14],corn:[30,22],sunflower:[24,22],mushroom:[10,8],beachgrass:[16,10],cow_skull:[10,6],saltpile:[14,8],stonewall:[34,8],house:[40,34],shed:[22,18],pole:[10,46],billboard:[60,40],signal:[8,30],crossing:[18,30],milepost:[4,10]};
+  const [w,h]=sizes[kind]||[16,16];
+  return PX.sprite(key,w,h,s=>{const g=(x,y,ww,hh,c)=>s.rect(x,y,ww,hh,c);
+   switch(kind){
+    case 'rock':s.blob(w/2,h*.6,w*.45,h*.42,'#a8a49c','#5e5a54',v,.3);break;
+    case 'boulder':s.blob(w/2,h*.55,w*.46,h*.44,'#a8a29a','#58544e',v,.25);s.blob(w*.35,h*.3,w*.2,h*.12,'#6a9a4a','#3e6a34',v+1,.4);break;
+    case 'stump':g(2,2,8,6,'#7a5a3a');g(2,2,8,2,'#c8a070');g(1,7,10,1,'#5a3e2a');break;
+    case 'log':g(0,2,24,5,'#7a5a3a');g(0,2,24,1,'#9a7a54');s.circle(23,4,2,'#c8a070');s.blob(10,2,6,2,'#5a9a4a','#3a6a34',v,.4);break;
+    case 'driftwood':s.line(0,5,23,3,'#c8b8a0');s.line(0,4,23,2,'#e8dcc8');s.line(5,4,2,0,'#c8b8a0');break;
+    case 'fence':for(let x=0;x<w;x+=10)g(x,2,3,12,'#8a6a4a');g(0,4,w,2,'#a07a54');g(0,9,w,2,'#a07a54');break;
+    case 'fencepost':g(1,0,2,14,'#7a5a3a');break;
+    case 'haybale':s.ellipse(8,7,7,5,'#e0c060');s.ellipse(8,7,4,3,'#c8a040');s.ellipse(8,7,1,1,'#a88030');g(1,11,14,1,'#8a7030');break;
+    case 'barn':{const red='#b8483a',dk='#7a2a24';g(4,18,48,26,red);for(let x=6;x<52;x+=4)g(x,18,1,26,dk);for(let y=0;y<16;y++){const ww=Math.round(24+y*1.6);g(28-ww/2+2,2+y,ww,1,y<2?'#5a3a2a':'#6a4a3a')}g(20,28,16,16,'#e8e0d0');g(22,30,12,14,dk);s.line(22,30,33,43,'#e8e0d0');s.line(33,30,22,43,'#e8e0d0');g(25,8,6,6,'#e8e0d0');g(26,9,4,4,'#3a2a2a');break}
+    case 'silo':g(2,10,14,42,'#c8ccd0');for(let y=12;y<52;y+=5)g(2,y,14,1,'#9aa0a8');s.ellipse(9,10,7,6,'#a8b0b8');g(2,10,2,42,'#e8ecf0');break;
+    case 'windmill':s.line(11,46,6,10,'#8a8a90');s.line(11,46,16,10,'#8a8a90');s.line(8,30,14,30,'#8a8a90');s.line(7,20,15,20,'#8a8a90');g(9,6,5,6,'#a8a8b0');g(14,7,6,3,'#c84a3a');break;
+    case 'turbine':g(14,20,3,70,'#e8ecf0');g(16,20,1,70,'#b8c0c8');s.circle(15,18,2,'#f4f8fc');break;
+    case 'grain':{g(2,20,36,60,'#d8d0c0');for(let x=4;x<38;x+=6)g(x,20,1,60,'#b8b0a0');g(10,4,14,18,'#e8e0d0');s.line(10,4,24,4,'#b8b0a0');g(4,24,30,4,'#a89a8a');PX.text(s.ctx,'',0,0);g(28,30,8,50,'#c8c0b0');break}
+    case 'pumpjack':g(2,20,30,4,'#5a5a60');s.line(8,20,14,6,'#3a3a40');s.line(20,20,14,6,'#3a3a40');g(4,4,24,3,'#d8a030');g(0,4,6,8,'#3a3a40');break;
+    case 'cow':case 'horse':case 'bison':case 'longhorn':case 'elk':case 'deer':case 'pronghorn':case 'sheep':{
+      const pal={cow:['#f4f0e8','#2a2a2a'],horse:['#8a5a3a','#5a3a24'],bison:['#5a3a22','#3a2414'],longhorn:['#c88a5a','#f4e8d8'],elk:['#a8784a','#5a3e24'],deer:['#c08a5a','#fff2dc'],pronghorn:['#d8a060','#ffffff'],sheep:['#f4f0e8','#3a3a3a']}[kind];
+      const bw=Math.round(w*.62),bh=Math.round(h*.4),by=Math.round(h*.3);s.ellipse(Math.round(w*.45),by+bh/2,bw/2,bh/2,pal[0]);if(kind==='bison')s.ellipse(Math.round(w*.62),by+2,6,5,pal[1]);if(kind==='cow')for(let i=0;i<3;i++)s.circle(Math.round(w*.3+r()*w*.3),by+2+r()*3,1+(r()*2|0),pal[1]);
+      const hx=Math.round(w*.8),hy=by-1;s.ellipse(hx,hy+2,3,2,kind==='sheep'?pal[1]:pal[0]);if(kind==='horse'||kind==='deer'||kind==='elk'||kind==='pronghorn')s.line(Math.round(w*.68),by+1,hx,hy-2,pal[0]);
+      for(const lx of [.25,.35,.6,.68])g(Math.round(w*lx),by+bh-1,1,h-by-bh+1,kind==='sheep'?pal[1]:SH(pal[0],.7));
+      if(kind==='longhorn'){s.line(hx-6,hy-1,hx+5,hy-2,'#f4e8d8')}if(kind==='elk'||kind==='deer'){s.line(hx,hy,hx-3,hy-6,'#d8c8a0');s.line(hx,hy,hx+3,hy-6,'#d8c8a0');if(kind==='elk'){s.line(hx-2,hy-3,hx-5,hy-4,'#d8c8a0');s.line(hx+2,hy-3,hx+5,hy-4,'#d8c8a0')}}
+      if(kind==='horse')g(Math.round(w*.08),by+1,2,6,pal[1]);break}
+    case 'marmot':s.ellipse(4,4,3,2,'#8a6a4a');s.circle(6,2,1,'#8a6a4a');break;
+    case 'wheat':for(let x=0;x<w;x+=2){const hh=8+r()*5;g(x,h-hh,1,hh,'#d8b04a');g(x,h-hh,1,3,'#f0d070')}break;
+    case 'corn':for(let x=1;x<w;x+=4){const hh=16+r()*5;g(x,h-hh,1,hh,'#5a9a3a');s.line(x,h-hh+6,x-3,h-hh+3,'#6aaa4a');s.line(x,h-hh+10,x+3,h-hh+7,'#6aaa4a');g(x,h-hh,1,2,'#e8d070')}break;
+    case 'sunflower':for(let x=2;x<w;x+=5){const hh=12+r()*8;g(x,h-hh,1,hh,'#4a8a3a');s.circle(x,h-hh,2,'#ffd030');s.px(x,h-hh,'#6a4020')}break;
+    case 'mushroom':g(3,4,2,4,'#f4ecd8');s.ellipse(4,4,4,2,'#d84a3a');s.px(3,3,'#ffffff');s.px(6,4,'#ffffff');break;
+    case 'beachgrass':for(let i=0;i<8;i++)s.line(8,h-1,2+r()*12,r()*4,'#c8c070');break;
+    case 'cow_skull':s.ellipse(5,3,3,2,'#f4f0e0');s.line(0,1,9,1,'#f4f0e0');s.px(4,3,'#2a2a2a');s.px(6,3,'#2a2a2a');break;
+    case 'saltpile':for(let y=0;y<h;y++){const ww=Math.round((y/h)*w);g((w-ww)/2,y,ww,1,y<2?'#ffffff':'#e8e4e0')}break;
+    case 'stonewall':for(let x=0;x<w;x+=5)for(let y=0;y<h;y+=3)s.ellipse(x+2+(y%6?2:0),y+1,2,1,r()<.5?'#9a968e':'#7e7a72');break;
+    case 'house':{const wc=['#e8d8b8','#c8d8e8','#f0c8b8','#d8e8c8','#f4f0e4'][v%5],rc=['#6a3a2a','#3a4a6a','#4a5a3a','#5a3a3a'][v%4];g(4,14,32,20,wc);for(let y=0;y<12;y++){const ww=Math.round(8+y*2.7);g(20-ww/2,3+y,ww,1,rc)}g(8,18,6,6,'#3a4a5a');g(26,18,6,6,'#3a4a5a');g(17,24,6,10,'#7a4a2a');g(28,4,3,6,'#8a5a4a');break}
+    case 'shed':g(2,8,18,10,'#9a7a5a');for(let y=0;y<6;y++)g(1+y,2+y,20-y*2,1,'#6a5040');g(8,12,5,6,'#5a3a2a');break;
+    case 'pole':g(4,0,2,46,'#5a4030');g(0,4,10,2,'#5a4030');g(0,3,1,2,'#d8d8d0');g(9,3,1,2,'#d8d8d0');break;
+    case 'billboard':g(10,26,3,14,'#5a4030');g(46,26,3,14,'#5a4030');g(0,0,60,27,'#5a4a3a');g(1,1,58,25,'#f4ecd8');break;
+    case 'signal':g(3,6,2,24,'#4a4a50');g(1,0,6,9,'#2a2a2e');s.circle(4,3,1,'#5a2a2a');s.circle(4,6,1,'#2a5a2a');break;
+    case 'crossing':g(8,4,2,26,'#e8e8e8');for(let y=6;y<26;y+=6)g(8,y,2,3,'#c83a3a');s.line(2,2,15,10,'#e8e8e8');s.line(2,10,15,2,'#e8e8e8');break;
+    case 'milepost':g(0,0,4,10,'#f4f4f4');g(0,1,4,2,'#3a6a3a');break;
+    default:g(0,0,w,h,'#ff00ff')}})}
+// ---------------- the train ----------------
+const WHEELF=8;
+function wheelSprite(r,frame,col){return PX.sprite('wheel'+r+':'+frame+col,r*2+2,r*2+2,s=>{const c=r+1;s.circle(c,c,r,'#1e1e24');s.circle(c,c,r-1,col);s.circle(c,c,r-2,'#2a2a30');const a0=frame/WHEELF*Math.PI*2/ (r>5?6:4);
+  const n=r>5?6:4;for(let i=0;i<n;i++){const a=a0+i/n*Math.PI*2;s.line(c,c,c+Math.cos(a)*(r-2),c+Math.sin(a)*(r-2),col)}s.circle(c,c,Math.max(1,r>5?2:1),'#c8c8d0')})}
+function locoSprite(level,livery){const L=livery||'#2e7a4a';return PX.sprite('loco'+level+L,120,56,s=>{const body=C(L),dk=SH(L,.62),lt=MIX(L,'#ffffff',.25),gold='#e8c050',blk='#24242a',iron='#3a3a42';
+  // frame and footplate
+  s.rect(4,40,112,4,blk);s.rect(4,39,112,1,'#5a5a64');
+  // boiler: a shaded cylinder
+  for(let y=0;y<20;y++){const k=y/19;const c=k<.18?lt:k<.7?body:dk;s.rect(30,18+y,70,1,c)}s.rect(30,18,70,1,MIX(L,'#ffffff',.45));
+  for(const x of [44,62,80])s.rect(x,18,2,20,gold);
+  // smokebox and front
+  s.rect(98,17,10,22,iron);s.rect(98,17,10,2,'#5a5a64');s.circle(110,28,6,'#2a2a30');s.circle(110,28,4,'#3e3e46');s.rect(107,16,6,4,gold);
+  // smokestack, domes, bell
+  s.rect(92,4,8,14,iron);s.rect(90,2,12,4,'#2a2a30');s.rect(91,1,10,2,'#4a4a52');
+  s.ellipse(74,17,6,4,body);s.rect(68,15,12,3,lt);s.rect(72,11,4,4,gold);s.ellipse(56,17,5,3,body);s.rect(54,13,4,3,gold);
+  // headlamp
+  s.rect(111,14,6,7,'#3a3a40');s.rect(116,15,2,5,'#fff4c0');
+  // cab
+  s.rect(4,8,28,32,body);s.rect(4,8,28,2,lt);s.rect(2,5,32,4,dk);s.rect(2,4,32,1,lt);s.rect(9,13,8,9,'#2a3a4a');s.rect(20,13,8,9,'#2a3a4a');s.rect(9,13,8,1,'#5a7a9a');s.rect(20,13,8,1,'#5a7a9a');s.rect(4,26,28,2,gold);
+  // name plate with a clover
+  s.rect(8,30,20,6,dk);s.px(17,32,'#7aff9a');s.px(18,33,'#7aff9a');s.px(16,33,'#7aff9a');s.px(17,34,'#7aff9a');
+  // cowcatcher
+  for(let i=0;i<8;i++)s.line(108+i,44,104+i*.4,38,'#5a5a64');s.line(104,44,118,44,'#3a3a40');
+  // pipes and rivets
+  s.rect(34,36,62,2,'#6a6a72');for(let x=32;x<98;x+=6)s.px(x,20,'#ffffff')})}
+function carSprite(type,livery){const D=CARS[type];const body=livery&&type==='coach'?livery:D.body;return PX.sprite('car'+type+body,100,48,s=>{const b=C(body),dk=SH(body,.6),lt=MIX(body,'#ffffff',.22),tr=D.trim,blk='#24242a';
+  s.rect(4,38,92,4,blk);s.rect(2,39,2,2,'#5a5a64');s.rect(96,39,2,2,'#5a5a64');
+  if(type==='cargo'){for(let x=6;x<94;x+=4)s.rect(x,12,3,26,x%8?b:dk);s.rect(6,10,88,3,dk);s.rect(40,16,20,22,dk);s.rect(41,17,18,20,b);s.line(41,17,58,36,dk);s.line(58,17,41,36,dk);return}
+  if(type==='garden'){s.rect(6,26,88,12,b);s.rect(6,24,88,2,tr);for(let x=6;x<94;x+=11){s.rect(x,4,1,22,'#e8f0e8')}s.rect(6,4,88,1,'#e8f0e8');s.dither(7,5,86,19,MIX('#bfe8d8','#ffffff',.2),'#9ad0c0',.4);for(let x=10;x<92;x+=6)s.blob(x,22,3,4,'#6ac85a','#2e7a34',x,.4);for(let x=12;x<90;x+=14)s.circle(x,19,1,'#ff5a6a');return}
+  if(type==='dome'){s.rect(6,18,88,20,b);s.rect(6,16,88,2,tr);for(let y=0;y<12;y++){const ww=Math.round(88-y*y*.35);s.rect(50-ww/2,4+y,ww,1,y<1?'#e8f0f8':MIX('#9ad0e8','#d8f0ff',y/12))}for(let x=14;x<90;x+=12)s.line(x,6,x,16,'#5a7a8a');for(let x=10;x<90;x+=14)s.rect(x,22,10,9,'#2a3a4a');return}
+  if(type==='caboose'){s.rect(10,12,80,26,b);s.rect(8,10,84,3,dk);s.rect(36,2,28,9,b);s.rect(34,0,32,3,dk);s.rect(40,4,8,5,'#2a3a4a');s.rect(52,4,8,5,'#2a3a4a');s.rect(18,18,10,9,'#2a3a4a');s.rect(72,18,10,9,'#2a3a4a');s.rect(44,18,12,20,dk);s.rect(10,30,80,2,tr);for(const x of [6,92])s.rect(x,16,2,22,'#e8e8e8');s.rect(4,34,4,1,'#e8e8e8');s.rect(92,34,4,1,'#e8e8e8');return}
+  // passenger-style cars
+  s.rect(6,10,88,28,b);s.rect(6,10,88,2,lt);s.rect(4,7,92,4,dk);s.rect(4,6,92,1,lt);s.rect(6,30,88,2,tr);s.rect(6,35,88,1,dk);
+  if(type==='dining'){for(let x=12;x<90;x+=19){s.rect(x,14,13,11,'#2a3a4a');s.rect(x,14,13,1,'#5a7a9a')}s.rect(30,2,4,5,'#6a6a72')}
+  else if(type==='arcade'){for(let x=12;x<90;x+=19){s.rect(x,14,13,11,'#1a1430');s.rect(x,14,13,1,'#8a5aff')}for(let x=8;x<92;x+=4)s.px(x,32,x%8?'#ff6ad8':'#6af0ff')}
+  else if(type==='radio'){for(let x=12;x<90;x+=19){s.rect(x,14,13,11,'#2a3a4a')}s.rect(50,0,1,7,'#c8c8d0');s.rect(44,1,13,1,'#c8c8d0');s.rect(47,-1,7,1,'#c8c8d0');s.circle(70,4,3,'#a8b0b8')}
+  else if(type==='pets'){for(let x=12;x<90;x+=19){s.rect(x,14,13,11,'#2a3a4a')}for(let x=8;x<92;x+=10){s.px(x,32,'#fff0b0');s.px(x+1,33,'#fff0b0')}}
+  else{const n=type==='sleeper'?4:5;const step=88/n;for(let i=0;i<n;i++){const x=Math.round(9+i*step);s.rect(x,14,Math.round(step-6),11,'#2a3a4a');s.rect(x,14,Math.round(step-6),1,'#5a7a9a')}}
+  s.rect(6,10,2,28,dk);s.rect(92,10,2,28,dk)})}
+// window rectangles in car-local coords (for passengers and night glow)
+function carWindows(type){if(type==='dome'){const o=[];for(let x=10;x<90;x+=14)o.push([x,22,10,9]);return o}if(['cargo','garden','caboose'].includes(type))return type==='caboose'?[[18,18,10,9],[72,18,10,9]]:[];
+  if(['dining','arcade','radio','pets'].includes(type)){const o=[];for(let x=12;x<90;x+=19)o.push([x,14,13,11]);return o}const n=type==='sleeper'?4:5;const step=88/n;const o=[];for(let i=0;i<n;i++)o.push([Math.round(9+i*step),14,Math.round(step-6),11]);return o}
+// ---------------- people ----------------
+const SKINS=['#f4d0b0','#e8b48a','#c88a5a','#a86a42','#7a4a2e','#5a3420'],HAIRS=['#2a1a10','#5a3020','#a86a3a','#e8c070','#c8c8c8','#8a4aa8','#3a6ad8','#e84a6a','#f4f0e8'];
+function personLook(seed){const r=PX.rng(seed*7919+13);const animal=r()<.28;return {seed,animal:animal?pick2(SPECIES,r()):null,skin:pick2(SKINS,r()),hair:pick2(HAIRS,r()),hs:Math.floor(r()*6),shirt:pick2(['#c84a4a','#3a6aa8','#4a8a4a','#e8b84a','#8a5aa8','#e88aa8','#3a8a8a','#f4f0e4','#5a4a3a'],r()),pants:pick2(['#3a4a6a','#4a3a2a','#2a2a30','#6a5a4a','#3a5a3a'],r()),hat:r()<.25?pick2(['#3a3a40','#a83a3a','#d8b060','#3a5a8a'],r()):null,glasses:r()<.15}}
+function pick2(a,v){return a[Math.floor(v*a.length)%a.length]}
+const ANIMC={cat:['#3a3842','#5a5866'],dog:['#e8d8c0','#8a5a3a'],fox:['#e8803a','#ffffff'],duck:['#f4f4f0','#ffa030'],raccoon:['#8a8a96','#2b2b33'],deer:['#c08a5a','#fff2dc'],owl:['#a8784a','#f4e0c0'],redpanda:['#d8602a','#3a2420'],bison:['#5a3a22','#3a2414'],penguin:['#2a2a3a','#ffffff'],rabbit:['#e8e0d8','#f4b8c8'],bear:['#7a5a3a','#5a3e24']};
+// a little standing person, 2 walk frames
+function personSprite(look,frame){return PX.sprite('pp'+look.seed+':'+frame,12,22,s=>{const L=look;const step=frame%2;
+  if(L.animal){const [c1,c2]=ANIMC[L.animal];s.rect(3,9,6,8,L.shirt);s.rect(3,16,2,5-(step?1:0),c1);s.rect(7,16,2,5-(step?0:1),c1);s.ellipse(6,5,4,4,c1);if(['cat','fox','redpanda','raccoon','bear'].includes(L.animal)){s.px(3,1,c1);s.px(8,1,c1);s.px(3,0,c1);s.px(8,0,c1)}if(L.animal==='rabbit'){s.rect(4,-2,1,4,c1);s.rect(7,-2,1,4,c1)}if(L.animal==='deer'||L.animal==='bison'){s.px(2,1,'#e8d8b0');s.px(9,1,'#e8d8b0')}
+    if(L.animal==='duck'||L.animal==='penguin'||L.animal==='owl')s.rect(5,6,3,1,'#ffa030');s.rect(4,6,4,2,c2);s.px(4,4,'#1a1a1a');s.px(7,4,'#1a1a1a');return}
+  s.rect(4,9,5,7,L.shirt);s.rect(4,15,2,6-(step?1:0),L.pants);s.rect(7,15,2,6-(step?0:1),L.pants);s.rect(3,10,1,5,L.skin);s.rect(9,10,1,5,L.skin);s.rect(4,20+(step?-1:0),2,1,'#2a2a2a');s.rect(7,20+(step?0:-1),2,1,'#2a2a2a');
+  s.rect(4,3,5,6,L.skin);s.px(5,5,'#2a2a2a');s.px(7,5,'#2a2a2a');const hs=L.hs;s.rect(4,2,5,2,L.hair);if(hs===1||hs===4){s.rect(3,3,1,6,L.hair);s.rect(9,3,1,6,L.hair)}if(hs===2)s.rect(3,2,7,1,L.hair);if(hs===3){s.rect(3,3,1,3,L.hair);s.rect(9,3,1,3,L.hair);s.circle(6,1,1,L.hair)}if(hs===5)s.rect(3,4,1,8,L.hair);
+  if(L.hat){s.rect(3,1,7,2,L.hat);s.rect(2,3,9,1,L.hat)}if(L.glasses){s.rect(4,5,2,1,'#1a1a1a');s.rect(7,5,2,1,'#1a1a1a')}})}
+// head and shoulders seen through a window
+function bustSprite(look){return PX.sprite('bust'+look.seed,10,10,s=>{const L=look;if(L.animal){const [c1,c2]=ANIMC[L.animal];s.rect(1,7,8,3,L.shirt);s.ellipse(5,4,3,3,c1);s.px(2,1,c1);s.px(8,1,c1);s.rect(4,5,3,1,c2);s.px(4,3,'#1a1a1a');s.px(6,3,'#1a1a1a');return}
+  s.rect(1,7,8,3,L.shirt);s.rect(3,2,4,5,L.skin);s.rect(3,1,4,2,L.hair);if(L.hs===1||L.hs===4){s.rect(2,2,1,5,L.hair);s.rect(7,2,1,5,L.hair)}if(L.hat){s.rect(2,0,6,2,L.hat)}s.px(4,4,'#2a2a2a');s.px(6,4,'#2a2a2a')})}
+// a big portrait for dialog boxes (56×56)
+function portrait(who){const key='port'+(who.id||who.seed);return PX.sprite(key,56,56,s=>{const L=who.look||{};const r=PX.rng((who.seed||PX.hash((who.id||'x').length*31)*1e9)+5);
+  const bg=who.col||'#d8e8f8';s.vgrad(0,0,56,56,[[0,MIX(bg,'#ffffff',.5)],[1,bg]],8);
+  const sp=who.sp||L.animal;if(sp){const [c1,c2]=ANIMC[sp]||['#c8a080','#ffffff'];s.ellipse(28,58,20,12,who.shirt||L.shirt||'#4a6a8a');s.ellipse(28,30,15,14,c1);
+    if(['cat','fox','redpanda','raccoon','bear','dog'].includes(sp)){s.ellipse(15,16,5,6,c1);s.ellipse(41,16,5,6,c1);s.ellipse(15,17,2,3,c2)}if(sp==='owl'){s.ellipse(20,30,6,6,c2);s.ellipse(36,30,6,6,c2);s.rect(26,34,4,4,'#e8a030')}
+    if(sp==='bison'){s.ellipse(28,22,16,9,c2);s.line(12,20,6,12,'#e8e0d0');s.line(44,20,50,12,'#e8e0d0')}if(sp==='redpanda'||sp==='raccoon')s.ellipse(28,34,10,6,c2);if(sp==='duck'||sp==='penguin'){s.ellipse(28,36,6,3,'#ffa030')}
+    s.circle(22,29,2,'#1a1a1a');s.circle(34,29,2,'#1a1a1a');s.px(22,28,'#ffffff');s.px(34,28,'#ffffff');s.ellipse(28,35,2,1,'#2a1a1a');s.circle(18,35,2,'#ff9aaa');s.circle(38,35,2,'#ff9aaa');return}
+  const skin=who.skin||L.skin||'#f4d0b0',hair=who.hair||L.hair||'#3a2a1a',shirt=who.shirt||L.shirt||'#c84a4a';const long=who.long||(L.hs===1||L.hs===4);
+  if(long){s.ellipse(28,32,17,22,hair)}s.ellipse(28,58,21,12,shirt);s.rect(23,40,10,8,skin);s.ellipse(28,28,13,15,skin);s.ellipse(28,32,12,9,SH(skin,1.02));
+  s.ellipse(28,16,14,8,hair);if(!long){s.rect(14,16,4,8,hair);s.rect(38,16,4,8,hair)}else{s.rect(13,16,5,26,hair);s.rect(38,16,5,26,hair)}
+  if(who.band)s.rect(15,13,26,2,who.band);
+  s.rect(20,27,4,3,'#ffffff');s.rect(32,27,4,3,'#ffffff');s.rect(21,27,2,3,'#2a2018');s.rect(33,27,2,3,'#2a2018');s.rect(19,25,6,1,SH(hair,.9));s.rect(31,25,6,1,SH(hair,.9));
+  s.px(27,33,SH(skin,.8));s.px(28,34,SH(skin,.8));s.rect(25,37,6,1,'#a84a4a');s.px(24,36,'#a84a4a');s.px(31,36,'#a84a4a');s.circle(19,34,2,MIX(skin,'#ff8a8a',.4));s.circle(37,34,2,MIX(skin,'#ff8a8a',.4));
+  if(who.hat||L.hat){const h=who.hat||L.hat;s.ellipse(28,13,15,6,h);s.rect(12,15,32,2,SH(h,.8))}if(who.glasses||L.glasses){s.rect(18,26,8,5,'#1a1a1a');s.rect(30,26,8,5,'#1a1a1a');s.rect(19,27,6,3,'#bfe0f0');s.rect(31,27,6,3,'#bfe0f0');s.rect(26,28,4,1,'#1a1a1a')}
+  if(who.headphones){s.rect(12,20,4,10,'#3a3a44');s.rect(40,20,4,10,'#3a3a44');s.rect(14,8,28,2,'#3a3a44')}if(who.wings){for(const sx of [-1,1])for(let i=0;i<10;i++)s.line(28+sx*16,40,28+sx*(24+i),20+i*2,'#e8f4ff')}})}
+const DAISY={id:'daisy',n:'Daisy',col:'#ffd0e8',skin:'#f4d0b0',hair:'#2a1a12',long:1,band:'#e8c040',shirt:'#f4b8d0'};
+const FELIX={id:'felix',n:'Felix',col:'#c8e8d8',skin:'#f4d0b0',hair:'#5a3020',shirt:'#3a7a5a',hat:'#3a5a8a'};
+const CLEM={id:'clementine',n:'Clementine',col:'#ffd8b8',sp:'redpanda',shirt:'#4cbf6a'};
+// ---------------- pets in the pet car ----------------
+function petSprite(k,frame){return PX.sprite('pet'+k+frame,22,16,s=>{const [e,n,c1,c2]=PETS[k];const b=frame%2;
+  if(k==='dolphin'||k==='whale'){const L=k==='whale'?18:14;s.ellipse(11,9,L/2,k==='whale'?5:3,c1);s.ellipse(11,11,L/2-2,2,c2);s.px(11+L/2-3,7,'#1a1a1a');s.line(11-L/2,9,11-L/2-3,6+b,c1);s.line(11-L/2,9,11-L/2-3,12-b,c1);if(k==='whale'&&b)s.rect(14,1,1,3,'#bfe8ff');return}
+  s.ellipse(10,9,6,3,c1);for(const x of [6,8,12,14])s.rect(x,11,1,4-(x===8||x===14?b:0),c1);s.ellipse(16,5,3,3,c1);s.px(17,4,'#1a1a1a');
+  if(k==='unicorn'){s.line(17,2,19,-1,'#ffd860');s.rect(12,3,3,4,c2);s.line(4,8,1,11,c2)}if(k==='dragon'){s.line(8,6,4,1,'#c8b0ff');s.line(8,6,10,0,'#c8b0ff');s.line(4,9,0,12,c1)}if(k==='deer'){s.line(16,2,14,-1,'#e8d8b0');s.line(17,2,19,-1,'#e8d8b0')}
+  if(k==='leopard'){for(let i=0;i<4;i++)s.px(7+i*2,8+(i%2),c2);s.line(4,9,1,6,c1)}if(k==='dog'){s.rect(14,3,2,3,c2);s.line(4,8,2,6,c1)}if(k==='fox'){s.ellipse(3,9,3,2,c1);s.px(1,9,'#ffffff')}if(k==='cat'){s.px(15,2,c1);s.px(18,2,c1);s.line(4,8,2,4,c1)}if(k==='redpanda'){s.ellipse(3,9,3,2,'#a8481a')}})}
+// ---------------- the Sky Sanctuary (seen from Clover Bay) ----------------
+function islandSprite(v){return PX.sprite('isle'+v,60,44,s=>{const r=PX.rng(v+3);for(let y=0;y<16;y++){const w=Math.round(28-y*1.6);s.rect(30-w,12+y,w*2,1,y<3?'#6aaa5a':MIX('#8a7a6a','#4a4048',y/16))}s.ellipse(30,12,28,4,'#7ac86a');s.ellipse(30,11,26,2,'#a0e08a');for(let i=0;i<5;i++)s.blob(10+r()*40,8,3+r()*3,3,'#5ab86a','#2e7a40',v+i,.3);s.rect(26,28,1,12,'#6a9a5a');if(r()<.6)s.rect(36,4,6,6,'#ff8ab8')})}
+
+// ---- CLOVER LINE · the world along the tracks, and the three ways to see it ----
+const PXKM=70;// world pixels per kilometer
+const SEASONS=['winter','winter','spring','spring','spring','summer','summer','summer','fall','fall','fall','winter'];
+const segKey=(a,b)=>a<b?a+'|'+b:b+'|'+a;
+const segHash=(a,b)=>{let h=0;const k=segKey(a,b);for(let i=0;i<k.length;i++)h=(h*31+k.charCodeAt(i))|0;return Math.abs(h)%100000};
+// ---------------- parallax strips per biome ----------------
+const STRIPW=1024;
+function farStrip(bk,season){const B=BIOMES[bk];return PX.sprite('far'+bk+season,STRIPW,220,s=>{const hmax=Math.round(26+B.farH*112);const seed=bk.length*17+3;const base=219;
+  if(bk==='coast'){// open sea with sea stacks
+    s.vgrad(0,base-26,STRIPW,27,[[0,'#7aa8c8'],[1,'#4a7a9a']],6);for(let x=0;x<STRIPW;x+=3)if(PX.hash(x)<.3)s.rect(x,base-20+(x%11),3,1,'#a8d0e8');
+    for(const [cx,w,h] of [[180,22,48],[200,10,26],[640,30,36],[860,14,22]]){for(let y=0;y<h;y++){const ww=Math.round(w*(.55+.45*Math.sin((y/h)*Math.PI*.9)));s.rect(cx-ww/2,base-26-y,ww,1,y<h*.2?'#5a5a62':MIX(B.far[1],'#3a3a44',.4))}}return}
+  const HT=new Float32Array(STRIPW);for(let x=0;x<STRIPW;x++){const u=x/STRIPW*12;let h=pfbm(u,12,seed,5);if(B.mesas){h=Math.round(pfbm(u*.7,8.4,seed,3)*3)/3;h=h*.8+pn(u*6,72,seed+5)*.04}if(B.cliffs)h=Math.pow(pfbm(u*1.3,15.6,seed,4),1.6)*1.4;HT[x]=Math.round(Math.max(0,h-.18)/.82*hmax)}
+  const SL=new Float32Array(STRIPW);for(let x=0;x<STRIPW;x++){let a=0;for(let k=1;k<=5;k++)a+=HT[(x+k)%STRIPW]-HT[(x-k+STRIPW)%STRIPW];SL[x]=a/15}
+  for(let x=0;x<STRIPW;x++){const h=HT[x];const v=PX.clamp(.55-SL[x]*.35,0,1);
+    for(let y=0;y<h;y++){const Y=base-y;const k=y/Math.max(1,h);const ridge=h-y;const vv=PX.clamp(v+(pn(x/9+y/7,STRIPW/9,seed+3)-.5)*.5,0,1);
+     let lit=PX.bayer(x,Y)<vv;let c=lit?B.far[0]:B.far[1];if(ridge<2&&v>.4)c=MIX(B.far[0],'#ffffff',.2);
+     const snowy=B.snow&&(y>hmax*.55&&season!=='summer'||y>hmax*.72)||season==='winter'&&y>hmax*.4;if(snowy){c=lit?'#f4f8ff':'#c4cee4'}
+     if(B.cliffs&&!snowy&&(x+Math.floor(y/9))%7===0&&k<.85)c=SH(c,.88);if(k<.4&&PX.bayer(x,Y)<(.4-k)*1.3)c=MIX(c,B.far[0],.55);s.px(x,Y,c)}}
+  // haze at the base
+  for(let y=0;y<14;y++)for(let x=0;x<STRIPW;x++)if(PX.bayer(x,base-y)<(1-y/14)*.5)s.px(x,base-y,MIX(B.far[0],'#d8e4f0',.5))})}
+function midStrip(bk,season){const B=BIOMES[bk];return PX.sprite('mid'+bk+season,STRIPW,130,s=>{const base=129;const seed=bk.length*5+11;const hm=Math.round(14+B.midH*70);const win=season==='winter';const col=win?['#e4ecf2','#c4ccd8']:B.mid;
+  const HM=new Float32Array(STRIPW);for(let x=0;x<STRIPW;x++)HM[x]=Math.round(pfbm(x/STRIPW*8,8,seed,4)*hm);
+  for(let x=0;x<STRIPW;x++){const h=HM[x];const sl=HM[(x+2)%STRIPW]-HM[(x-2+STRIPW)%STRIPW];for(let y=0;y<h;y++){const lit=PX.bayer(x,base-y)<PX.clamp(.5-sl*.25,0,1);const Y=base-y;s.px(x,Y,(h-y<2)?MIX(col[0],'#ffffff',.12):lit?col[0]:(PX.bayer(x,Y)<.5?col[1]:MIX(col[0],col[1],.6)))}}
+  // a fringe of distant trees along the hilltops
+  const forest=['rain','gorge','mountain','alpine','east','coast'].includes(bk),dense=forest?3:['plateau','farm','front'].includes(bk)?14:40;
+  for(let x=0;x<STRIPW;x+=dense){const h=HM[x];const y=base-h+2;const t=SH(B.near[1],.8);if(forest&&bk!=='coast'||bk==='coast'&&PX.hash(x)<.4){const th=6+PX.hash(x*3)*8;for(let k=0;k<th;k++){const ww=Math.floor((th-k)/2.5);s.rect(x-ww,y-k,ww*2+1,1,win?'#5a7a7a':t)}}else if(PX.hash(x*7)<.5)s.blob(x,y-3,3+PX.hash(x)*3,3,win?'#7a8a8a':B.near[0],t,x,.4)}})}
+function nearStrip(bk,season){const B=BIOMES[bk];return PX.sprite('near'+bk+season,STRIPW,80,s=>{const base=79;const win=season==='winter',fall=season==='fall';const r=PX.rng(bk.length*99+1);const g=win?['#dce6ee','#b8c4d0']:B.ground;
+  for(let x=0;x<STRIPW;x++){const h=Math.round(6+pfbm(x/STRIPW*16,16,bk.length,3)*10);s.rect(x,base-h,1,h+1,g[0]);if(PX.hash(x*.7)<.3)s.px(x,base-h,MIX(g[0],'#ffffff',.2))}
+  const n=['plains','prairie','salt','basin','texas'].includes(bk)?22:['plateau','farm','front','mesa'].includes(bk)?40:90;
+  for(let i=0;i<n;i++){const x=r()*STRIPW,y=base-6-r()*6;const kind=pick2(B.trees,r());const tall=['fir','spruce','cedar','pine'].includes(kind);const L=fall&&!tall?['#e0a040','#a8601e']:win&&!tall?['#9aa0a0','#6a7070']:[B.near[0],B.near[1]];
+   if(tall){const th=16+r()*20;for(let k=0;k<th;k++){const ww=Math.floor((th-k)/2.8);s.rect(x-ww,y-k,ww*2+1,1,PX.bayer(x|0,(y-k)|0)<.3?L[0]:L[1]);if(win&&k%5===0)s.rect(x-ww,y-k,ww,1,'#e8f0f4')}}
+   else if(kind==='sage'||kind==='cactus')s.blob(x,y,3+r()*3,2,'#a8b098','#7a8270',i,.4);else{s.rect(x,y-4,1,5,'#4a3424');s.blob(x,y-8-r()*4,5+r()*6,4+r()*4,L[0],L[1],i,.3)}}})}
+function groundTex(bk,season){const B=BIOMES[bk];return PX.sprite('gtex'+bk+season,STRIPW,24,s=>{const win=season==='winter';const g=win?['#e8eef4','#ccd6e0','#aab6c4']:B.ground;s.dither(0,0,STRIPW,24,g[0],g[1],.25);
+  for(let i=0;i<500;i++){const x=PX.hash(i*1.7)*STRIPW,y=PX.hash(i*3.1)*22;s.rect(x,y,1,2,g[2]);if(!win&&PX.hash(i)<.08)s.px(x,y-1,pick2(['#ffffff','#ffd860','#ff8ab8','#a8c8ff'],PX.hash(i*9)))}})}
+function frontTex(bk,season){const B=BIOMES[bk];return PX.sprite('ftex'+bk+season,STRIPW,46,s=>{const win=season==='winter';const g=win?['#e8eef4','#ccd6e0','#aab6c4']:B.ground;s.dither(0,6,STRIPW,40,SH(g[1],.92),SH(g[2],.92),.4);
+  for(let x=0;x<STRIPW;x++){const h=Math.round(3+pfbm(x/STRIPW*30,30,7,3)*6);s.rect(x,6-h+3,1,h,SH(g[1],.92))}
+  // dark leafy silhouettes along the very front, like a hedge right beside the camera
+  for(let i=0;i<34;i++){const x=PX.hash(i*5.3)*STRIPW;const rx=10+PX.hash(i)*18;s.blob(x,46,rx,10+PX.hash(i*2)*10,'#1e2a26','#121a18',i,.45)}})}
+// ---------------- what stands beside the track ----------------
+// deterministic: everything comes from the segment and the slot number, so every player sees the same world
+const SLOT=22;
+function biomeAt(seg,u){const A=ST[seg.a].b,Bk=ST[seg.b].b;if(A===Bk)return A;const t=u/seg.len;if(t<.42)return A;if(t>.58)return Bk;return PX.hash(Math.floor(u/97)+seg.h)<(t-.42)/.16?Bk:A}
+function sceneryAt(seg,slot){const key=slot;let c=seg.cache.get(key);if(c!==undefined)return c;const u=slot*SLOT;const h=seg.h;const r=PX.hash(slot*1.31+h*.017),r2=PX.hash(slot*7.77+h*.31),r3=PX.hash(slot*3.3+h);
+  const out=[];const bk=biomeAt(seg,u);const B=BIOMES[bk];const nearSt=Math.min(u,seg.len-u);
+  if(u<0||u>seg.len){seg.cache.set(key,out);return out}
+  // telegraph poles every 8 slots
+  if(slot%8===0&&!inFeature(seg,u))out.push({k:'pole',x:u+4,y:283,row:0});
+  // town houses near stations
+  const nearTown=nearStrSize(seg,u);
+  if(nearTown&&nearSt>260&&nearSt<260+nearTown*420&&r<.55){out.push({k:'house',v:Math.floor(r2*9),x:u,y:270+r3*6,row:-1})}
+  else if(nearSt>380&&!inFeature(seg,u)){
+   const dens=['rain','gorge','mountain','alpine','east'].includes(bk)?.55:['coast','farm','plateau','front'].includes(bk)?.32:.14;
+   if(r<dens){out.push({k:'tree',t:pick2(B.trees,r2),v:Math.floor(r3*6),x:u+r3*12,y:279+r2*6,row:0,bk})}
+   else if(r<dens+.08){out.push({k:'deco',t:pick2(B.deco,r2),v:Math.floor(r3*5),x:u+r2*10,y:283+r3*3,row:0,bk})}
+   if(r3<.06&&slot%37===5)out.push({k:'billboard',x:u,y:282,row:0,text:BILLBOARDS[Math.floor(r2*BILLBOARDS.length)]});
+   // a little in front of the track
+   if(r2<(dens>.3?.35:.18))out.push({k:r3<.5?'tree':'deco',t:r3<.5?pick2(['bush','fern','bush'],r):pick2(['rock','mushroom','stump','beachgrass'].filter(k=>k!=='beachgrass'||bk==='coast'),r),v:Math.floor(r*5),x:u+r*16,y:322+r3*16,row:1,bk})}
+  seg.cache.set(key,out);return out}
+function nearStrSize(seg,u){const a=ST[seg.a],b=ST[seg.b];return u<seg.len/2?a.z:b.z}
+// rivers, bridges and tunnels along a segment
+function segFeatures(seg){if(seg.feat)return seg.feat;const f=[];const h=seg.h;const bA=ST[seg.a].b,bB=ST[seg.b].b;const mtn=['mountain','alpine','gorge'].includes(bA)||['mountain','alpine','gorge'].includes(bB);
+  if(seg.len>1800&&PX.hash(h*.13)<.55){const u=seg.len*(.3+PX.hash(h*.7)*.4);const L=320+PX.hash(h*1.9)*260;f.push({k:'bridge',u0:u,u1:u+L})}
+  if(mtn&&seg.len>2600&&PX.hash(h*.37)<.7){const u=seg.len*(.6+PX.hash(h*.9)*.2);const L=420+PX.hash(h*2.3)*500;f.push({k:'tunnel',u0:u,u1:u+L})}
+  seg.feat=f;return f}
+function inFeature(seg,u){for(const F of segFeatures(seg))if(u>F.u0-60&&u<F.u1+60)return F;return null}
+const SEGS=new Map();
+function getSeg(a,b){const k=segKey(a,b);let s=SEGS.get(k);if(!s){const [x,y]=a<b?[a,b]:[b,a];s={a:x,b:y,len:segKm(a,b)*PXKM,h:segHash(a,b),cache:new Map()};SEGS.set(k,s)}if(s.cache.size>3000)s.cache.clear();return s}
+// ---------------- station art ----------------
+function stationSprite(id){const S=ST[id];return PX.sprite('stn'+id,S.z===2?250:S.z===1?170:70,S.z===2?110:S.z===1?78:46,s=>{const w=s.w,h=s.h;const r=PX.rng(id.length*77+S.n.length);
+  const wall=S.z===2?pick2(['#c8a07a','#b8584a','#d8c8a8'],r()):pick2(['#c8805a','#e8d0a8','#a8583a','#d8c098'],r()),roof=pick2(['#3a4a5a','#5a3a2a','#3a5a4a','#6a4a3a'],r()),trim='#f4ead8';
+  if(S.z===0){s.rect(6,18,58,24,'#8a6a4a');s.rect(4,14,62,6,roof);s.rect(2,12,66,3,SH(roof,.8));s.rect(10,22,10,10,'#3a4a5a');s.rect(46,24,10,18,'#5a3a2a');s.rect(4,42,62,4,'#9a9a92');s.rect(26,2,18,10,'#f4ecd8');s.rect(25,1,20,1,'#3a3a3a');s.rect(34,11,2,4,'#3a3a3a');return}
+  const bw=w-20,by=h-(S.z===2?86:58);s.rect(10,by,bw,h-by-6,wall);for(let x=10;x<10+bw;x+=4)if(S.z===2)s.rect(x,by,1,h-by-6,SH(wall,.92));
+  // roof
+  const rh=S.z===2?18:14;for(let y=0;y<rh;y++){const ww=bw+16-y*2;s.rect(w/2-ww/2,by-rh+y,ww,1,y===0?SH(roof,1.25):roof)}if(S.z===2){s.rect(w/2-22,by-rh-26,44,26,wall);for(let y=0;y<10;y++)s.rect(w/2-24+y,by-rh-36+y,48-y*2,1,roof);s.circle(w/2,by-rh-14,8,'#f4ecd8');s.circle(w/2,by-rh-14,7,'#e8e0c8');s.line(w/2,by-rh-14,w/2,by-rh-19,'#2a2a2a');s.line(w/2,by-rh-14,w/2+4,by-rh-14,'#2a2a2a')}
+  // windows and doors
+  const nw=Math.floor(bw/22);for(let i=0;i<nw;i++){const x=16+i*22;if(i===Math.floor(nw/2)){s.rect(x,h-34,14,28,'#5a3a2a');s.rect(x+1,h-33,12,1,trim);continue}s.rect(x,by+10,12,S.z===2?24:16,'#2a3a4c');s.rect(x,by+10,12,1,trim);s.rect(x+5,by+10,1,S.z===2?24:16,trim);if(S.z===2){s.rect(x,by+44,12,16,'#2a3a4c');s.rect(x,by+44,12,1,trim)}}
+  s.rect(10,h-8,bw,2,trim);s.rect(4,h-6,w-8,6,'#9a968e');s.rect(4,h-6,w-8,1,'#c8c4bc');
+  // canopy over the platform
+  s.rect(6,by+(S.z===2?64:34),w-12,3,SH(roof,1.1));for(let x=12;x<w-10;x+=30)s.rect(x,by+(S.z===2?67:37),2,h-6-(by+(S.z===2?67:37)),'#4a4a50')})}
+function nameBoard(id){const S=ST[id];return PX.spriteCanvas('board'+id,PX.textWidth(S.n,'small')+14,13,(ctx)=>{PX.panel(ctx,0,0,PX.textWidth(S.n,'small')+12,12,{fill:'#f4ecd8',border:'#2a3a2a',flat:1,shadow:false});PX.text(ctx,S.n,6,3,{color:'#1e3a26'})})}
+// big landmarks drawn at their own parallax depth near a station: [depth factor, painter(ctx, x, groundY, view)]
+const LANDMARK={
+ harbor:[.35,(c,x,y,V)=>{const lh=PX.sprite('lighthouse',20,60,s=>{for(let i=0;i<50;i++){const w=Math.round(8-i*.06);s.rect(10-w,10+i,w*2,1,Math.floor(i/8)%2?'#f4f0e8':'#c84a3a')}s.rect(4,2,12,9,'#3a3a44');s.rect(6,4,8,5,'#fff0a0');s.rect(2,0,16,3,'#2a2a30')});c.drawImage(lh,Math.round(x+120),y-60);V.lights.push([x+130,y-54,40,'#fff0b0',1]);
+   const boat=PX.sprite('boat',36,22,s=>{s.rect(4,12,28,6,'#a0603a');s.rect(6,18,24,2,'#6a3a24');s.rect(16,0,1,12,'#6a5a4a');for(let i=0;i<10;i++)s.rect(17,1+i,Math.round(i*1.2),1,'#fff8e8');s.rect(8,8,8,4,'#f4ecd8')});for(const [dx,b] of [[-160,0],[-90,1]])c.drawImage(boat,Math.round(x+dx),y-14+Math.round(Math.sin(V.time*1.3+b)*1))}],
+ portland:[.22,(c,x,y,V)=>{const sk=PX.sprite('pdxsky',300,100,s=>{const r=PX.rng(5);for(let i=0;i<16;i++){const bw=10+r()*14,bh=26+r()*70,bx=i*18+r()*6;const col=pick2(['#7a8aa0','#8a9aae','#6a7a90','#b88a8a'],r());s.rect(bx,100-bh,bw,bh,col);for(let yy=100-bh+4;yy<96;yy+=5)for(let xx=bx+2;xx<bx+bw-2;xx+=4)s.rect(xx,yy,2,2,'#b8c8d8')}s.rect(110,22,14,78,'#d8a0a8');s.rect(112,14,10,8,'#d8a0a8')});c.drawImage(sk,Math.round(x-150),y-100);
+   const hood=PX.sprite('mthood',220,120,s=>{for(let yy=0;yy<110;yy++){const w=Math.round(yy*1.0);s.rect(110-w,10+yy,w*2,1,yy<38?(yy%7<4?'#ffffff':'#e4ecf8'):'#8a98b8');}});c.globalAlpha=.85;c.drawImage(hood,Math.round(x+60-(V.camX*.0)),y-150);c.globalAlpha=1}],
+ falls:[.3,(c,x,y,V)=>{const cl=PX.sprite('cliff',140,170,s=>{for(let i=0;i<140;i++){const h=150+PX.hash(i*.3)*20;s.rect(i,170-h,1,h,i%9<2?'#3a4a3a':'#4a5a48')}s.blob(70,12,60,14,'#3e7a44','#2a5a34',4,.3)});c.drawImage(cl,Math.round(x-70),y-170);c.fillStyle='#e8f4ff';for(let k=0;k<6;k++)c.fillRect(Math.round(x-6+k*2),y-156,2,150);c.fillStyle='#bfe0f0';for(let k=0;k<20;k++)c.fillRect(Math.round(x-6+(k*3)%12),Math.round(y-156+((V.time*80+k*23)%150)),1,6)}],
+ capitol:[.3,(c,x,y,V)=>{const d=PX.sprite('capitol',150,80,s=>{s.rect(10,40,130,40,'#e8e0d0');for(let i=14;i<136;i+=8)s.rect(i,44,3,30,'#c8c0b0');s.rect(50,20,50,22,'#e8e0d0');s.ellipse(75,20,22,16,'#d8d4c8');s.ellipse(75,18,20,14,'#c8c8c0');s.rect(73,0,4,6,'#e8e0d0');s.rect(5,76,140,4,'#a8a098')});c.drawImage(d,Math.round(x-75),y-80)}],
+ denver:[.3,(c,x,y,V)=>{const d=PX.sprite('denverdome',150,90,s=>{s.rect(10,50,130,40,'#e8e0d0');for(let i=14;i<136;i+=8)s.rect(i,54,3,30,'#c8c0b0');s.rect(52,28,46,24,'#e8e0d0');s.ellipse(75,28,20,16,'#e8b830');s.ellipse(72,24,10,8,'#f8e070');s.rect(73,6,4,8,'#e8b830')});c.drawImage(d,Math.round(x-75),y-90);V.lights.push([x,y-70,30,'#ffe0a0',.6])}],
+ pool:[.6,(c,x,y,V)=>{c.fillStyle='#e8e8e8';c.fillRect(Math.round(x-90),y-6,180,6);c.fillStyle='#4ac8e8';c.fillRect(Math.round(x-86),y-5,172,4);const wt=PX.sprite('wtower',30,70,s=>{s.ellipse(15,14,13,10,'#c8d0d8');s.rect(2,12,26,4,'#a8b0b8');for(const xx of [5,24])s.line(15,22,xx,70,'#8a929a');s.line(8,40,22,40,'#8a929a')});c.drawImage(wt,Math.round(x+110),y-70);PX.text(c,'GARDEN CITY',x+125,y-63,{font:'tiny',align:'center',color:'#3a4a5a'})}],
+ cadillac:[.9,(c,x,y,V)=>{for(let i=0;i<10;i++){const cx=x-90+i*18;const col=['#ff5a8a','#5ac8ff','#ffd040','#8aff6a','#c87aff'][i%5];c.fillStyle=col;for(let j=0;j<14;j++)c.fillRect(Math.round(cx+j*.35),y-14+j,8,1);c.fillStyle='#ffffff';c.fillRect(Math.round(cx+3),y-16,3,3)}}],
+ fort:[.6,(c,x,y,V)=>{const f=PX.sprite('fortspr',110,40,s=>{s.rect(4,14,102,26,'#b88a5a');for(let i=0;i<26;i++)s.rect(4+i*4,10,3,5,'#b88a5a');for(let i=0;i<26;i++)s.rect(4+i*4,14,1,26,'#9a7048');s.rect(46,22,18,18,'#5a3a2a');s.rect(90,0,1,14,'#5a4a3a');s.rect(91,0,10,6,'#c84a3a')});c.drawImage(f,Math.round(x-55),y-40)}],
+ geyser:[.6,(c,x,y,V)=>{const t=V.t*24*60%60;const on=t<4;const hh=on?60+Math.sin(V.time*20)*6:6;c.fillStyle='#e8f4ff';for(let i=0;i<hh;i++)c.fillRect(Math.round(x-3-i*.08),y-i,Math.round(6+i*.16),1)}],
+ chimney:[.4,(c,x,y,V)=>{const s=PX.sprite('chimney',60,110,s=>{for(let i=0;i<30;i++){const w=Math.round(28-i*.6);s.rect(30-w,110-i,w*2,1,'#c8a888')}for(let i=0;i<80;i++)s.rect(27+Math.sin(i*.2),30-i+80-80,6-i*.04,1,'#c8a888');for(let i=0;i<80;i++)s.rect(27,30+i-30,6,1,i%9<2?'#b0907a':'#c8a888')});c.drawImage(s,Math.round(x-30),y-110)}],
+ namerock:[.5,(c,x,y,V)=>{const s=PX.sprite('namerock',140,50,s=>{for(let i=0;i<140;i++){const h=Math.sqrt(Math.max(0,4900-(i-70)**2))*.68;s.rect(i,50-h,1,h,i<70?'#a89a8a':'#8a7c6c')}for(let i=0;i<40;i++)s.rect(20+PX.hash(i)*100,20+PX.hash(i*3)*26,3+PX.hash(i*5)*6,1,'#5a4a3a')});c.drawImage(s,Math.round(x-70),y-50)}],
+ divide:[.5,(c,x,y,V)=>{const s=PX.sprite('dividesign',120,40,s=>{s.rect(14,14,2,26,'#5a4030');s.rect(104,14,2,26,'#5a4030');PX.panel(s.ctx,0,0,120,18,{fill:'#4a6a3a',border:'#2a3a20',flat:1,shadow:false});PX.text(s.ctx,'CONTINENTAL DIVIDE',60,6,{font:'tiny',align:'center',color:'#ffffff'})});c.drawImage(s,Math.round(x-60),y-40)}],
+ chicago:[.22,(c,x,y,V)=>{const sk=PX.sprite('chisky',320,130,s=>{const r=PX.rng(11);for(let i=0;i<18;i++){const bw=10+r()*14,bh=30+r()*95,bx=i*17+r()*6;s.rect(bx,130-bh,bw,bh,pick2(['#5a6a80','#6a7a8e','#4a5a6e'],r()));for(let yy=130-bh+4;yy<126;yy+=4)for(let xx=bx+2;xx<bx+bw-2;xx+=3)s.px(xx,yy,'#a8b8cc')}s.rect(150,0,16,130,'#2a2a34');s.rect(152,-1,2,6,'#d8d8d8')});c.drawImage(sk,Math.round(x-160),y-130)}],
+ nyc:[.22,(c,x,y,V)=>{const sk=PX.sprite('nycsky',340,150,s=>{const r=PX.rng(13);for(let i=0;i<20;i++){const bw=10+r()*14,bh=40+r()*100,bx=i*17+r()*6;s.rect(bx,150-bh,bw,bh,pick2(['#6a7a8a','#7a8a9a','#5a6a7a'],r()));s.rect(bx,150-bh,bw,3,'#4a9a4a');for(let yy=150-bh+6;yy<146;yy+=4)for(let xx=bx+2;xx<bx+bw-2;xx+=3)s.px(xx,yy,'#a8c8b8')}s.rect(160,10,18,140,'#8a96a4');s.rect(164,2,10,8,'#8a96a4');s.rect(168,-6,2,8,'#c8c8c8')});c.drawImage(sk,Math.round(x-170),y-150)}],
+ bats:[.4,(c,x,y,V)=>{c.fillStyle='#5a5a62';c.fillRect(Math.round(x-90),y-24,180,6);for(let i=-80;i<90;i+=30)c.fillRect(Math.round(x+i),y-18,6,18);if(V.t>.72&&V.t<.82){c.fillStyle='#1a1a22';for(let i=0;i<70;i++){const bx=x-60+((i*37+V.time*50)%200),by=y-30-((i*13+V.time*30)%120);c.fillRect(Math.round(bx),Math.round(by),2+(i%2),1)}}}],
+ orchard:[.7,(c,x,y,V)=>{for(let i=0;i<8;i++){const t=treeSprite('oak',i%4,V.season);c.drawImage(t,Math.round(x-120+i*30),y-t.height);c.fillStyle='#e83a3a';for(let k=0;k<5;k++)c.fillRect(Math.round(x-112+i*30+PX.hash(i*5+k)*20),Math.round(y-t.height+10+PX.hash(k*3+i)*16),2,2)}}]};
+
+// ---- CLOVER LINE · drawing a view: side (classic), cab (first person), window (from a seat) ----
+const SKY=new PX.Sky(W,H,HZ+20);const LIGHT=new PX.Light(W,H);const FX=new PX.Particles(900);const FX2=new PX.Particles(300);
+let HEADX=W*.66;const STOFF=170;
+function sx(V,u){return HEADX+(u-V.u)*V.dir-V.cam}
+function seasonOf(day){return SEASONS[day]}
+// ---------------------------------------------------------------- shared backdrop
+function drawBackdrop(c,V,yoff){yoff=yoff||0;const seg=V.seg;const camX=V.u*V.dir;const bkA=biomeAt(seg,V.u-V.dir*300),bkB=biomeAt(seg,V.u+V.dir*600);
+  const glow=V.ringGlow||0;SKY.draw(c,V.t,V.wx,{time:V.time,dt:V.dt,ringGlow:glow});
+  // the Sky Sanctuary floats off the coast near Clover Bay
+  for(const id of [seg.a,seg.b]){if(id!=='clover')continue;const su=id===seg.a?0:seg.len;const x=HEADX+(su-V.u)*V.dir*.12-V.cam*.1-120;if(x<-300||x>W+300)continue;for(let i=0;i<5;i++){const iv=islandSprite(i);c.drawImage(iv,Math.round(x+i*58-(i%2)*20),Math.round(40+(i%3)*24+Math.sin(V.time*.6+i)*3+yoff))}}
+  const layers=[[farStrip,.06,HZ+30-220],[midStrip,.16,HZ+50-130],[nearStrip,.4,HZ+64-80]];
+  for(const [fn,f,y] of layers){const draw=(bk,a)=>{const cv=fn(bk,V.season);let ox=-(((camX+V.cam*-1)*f)%STRIPW+STRIPW)%STRIPW;c.globalAlpha=a;for(let x=Math.round(ox);x<W;x+=STRIPW)c.drawImage(cv,x,y+yoff);c.globalAlpha=1};draw(bkA,1);if(bkB!==bkA)draw(bkB,PX.smooth(.2,.8,blendK(V)))}
+  // landmarks near stations at their own depth
+  for(const id of [seg.a,seg.b]){const S=ST[id];if(!S.sp||!LANDMARK[S.sp])continue;const su=id===seg.a?0:seg.len;const [f,paint]=LANDMARK[S.sp];const x=HEADX-V.cam+((su-V.u)*V.dir-STOFF)*f-STOFF*(1-f)*.0;if(x<-400||x>W+400)continue;paint(c,x,Math.round(HZ+60+(1-f)*24)+yoff,V)}}
+function blendK(V){const t=V.u/V.seg.len;return V.dir>0?PX.clamp((t-.3)/.4,0,1):PX.clamp((.7-t)/.4,0,1)}
+// ---------------------------------------------------------------- side view
+function renderSide(c,V){V.lights=[];const seg=V.seg;const feats=segFeatures(seg);const camX=V.u*V.dir;
+  drawBackdrop(c,V);if(V.extraBack)V.extraBack(c);
+  // ground bands
+  const bk=biomeAt(seg,V.u);const B=BIOMES[bk];const win=V.season==='winter';const gc=win?['#e8eef4','#ccd6e0','#aab6c4']:B.ground;
+  c.fillStyle=PX.css(gc[0]);c.fillRect(0,HZ+60,W,H-HZ-60);
+  const tex=(cv,f,y)=>{const ox=-((camX*f+V.cam*(f-1)*0)%STRIPW+STRIPW)%STRIPW;for(let x=Math.round(ox);x<W;x+=STRIPW)c.drawImage(cv,x,y)};
+  tex(groundTex(bk,V.season),.85,HZ+62);
+  // water under bridges
+  for(const F of feats)if(F.k==='bridge'){const x0=sx(V,V.dir>0?F.u0:F.u1),x1=sx(V,V.dir>0?F.u1:F.u0);if(x1<-20||x0>W+20)continue;c.fillStyle='#3a7aa8';c.fillRect(Math.round(x0+16),RAIL+10,Math.round(x1-x0-32),H-RAIL-10);c.fillStyle='#2a6090';c.fillRect(Math.round(x0+16),RAIL+10,Math.round(x1-x0-32),3);c.fillStyle='#8ac8e8';for(let i=0;i<40;i++){const wx=x0+20+((i*37+V.time*12)%Math.max(1,(x1-x0-40)));c.fillRect(Math.round(wx),RAIL+18+(i%6)*7,6,1)}c.fillStyle=PX.css(SH(gc[1],.9));c.fillRect(Math.round(x0),RAIL+6,18,H);c.fillRect(Math.round(x1-18),RAIL+6,18,H)}
+  // scenery behind the track
+  const items=[];const s0=Math.floor((V.u-(W+200)*1)/SLOT)-2,s1=Math.floor((V.u+(W+200))/SLOT)+2;
+  for(let sl=s0;sl<=s1;sl++)for(const it of sceneryAt(seg,sl))items.push(it);
+  const back=items.filter(i=>i.row<=0).sort((a,b)=>a.y-b.y),front=items.filter(i=>i.row===1).sort((a,b)=>a.y-b.y);
+  // stations and towns
+  const stns=[];for(const id of [seg.a,seg.b]){const su=id===seg.a?0:seg.len;const x=sx(V,su)-STOFF;if(x>-400&&x<W+400)stns.push({id,x,su})}
+  for(const it of back)drawItem(c,V,it);
+  for(const s of stns)drawStation(c,V,s);
+  // poles get wires between them
+  drawWires(c,V,items.filter(i=>i.k==='pole'));
+  // the far track and other players' trains
+  drawTrack(c,V,RAIL2,.7,feats);for(const P of V.peers||[])drawPeerTrain(c,V,P);
+  // the main track (or a bridge, or a tunnel)
+  drawTrack(c,V,RAIL,1,feats);
+  // the train
+  const tr=drawTrain(c,V,HEADX-V.cam,RAIL,V.cars,V.loco,V.livery,true,V,true);V.trainBox=tr;
+  // the near platform, with people waiting on it
+  for(const s of stns){const cv=stationSprite(s.id);const x0=Math.round(s.x-cv.width/2-60),w=cv.width+180;c.fillStyle='#8a867e';c.fillRect(x0,RAIL+9,w,14);c.fillStyle='#b8b4ac';c.fillRect(x0,RAIL+9,w,2);c.fillStyle='#e8d070';c.fillRect(x0,RAIL+11,w,1);c.fillStyle='#6a665e';c.fillRect(x0,RAIL+21,w,2);if(V.platform&&s.id===V.station)drawPlatformPeople(c,V,s)}
+  // bridges and tunnels in front
+  for(const F of feats)drawFeatureFront(c,V,F);
+  FX.draw(c,0);
+  for(const it of front)drawItem(c,V,it);
+  tex(frontTex(bk,V.season),1.25,H-46);
+  // weather, then light
+  PX.weather(c,W,H,V.wx==='hail'?'rain':V.wx,V.time,.3);if(V.wx==='hail'){c.fillStyle='#e8f8ff';for(let i=0;i<60;i++)c.fillRect(Math.round((PX.hash(i)*W+V.time*20)%W),Math.round((PX.hash(i*7)*H+V.time*300)%H),2,2)}
+  FX2.draw(c,0);
+  lighting(c,V,inTunnel(V))}
+function inTunnel(V){for(const F of segFeatures(V.seg))if(F.k==='tunnel'){const a=sx(V,V.dir>0?F.u0:F.u1),b=sx(V,V.dir>0?F.u1:F.u0);const head=HEADX-V.cam;if(head>a+20&&head-100<b)return {a,b}}return null}
+function drawItem(c,V,it){const x=sx(V,it.x);if(x<-120||x>W+120)return;let cv;
+  if(it.k==='tree'){const season=V.season==='fall'?'fall':V.season==='winter'?'winter':'';cv=treeSprite(it.t,it.v,['fir','spruce','cedar','pine','juniper','cactus','sage','fern'].includes(it.t)?(season==='winter'?'winter':''):season)}
+  else if(it.k==='deco'){cv=decoSprite(it.t,it.v);if(it.t==='turbine'){c.drawImage(cv,Math.round(x-cv.width/2),Math.round(it.y-cv.height));drawBlades(c,x,it.y-cv.height+18,V.time*1.5+it.x);return}if(it.t==='pumpjack'){c.drawImage(cv,Math.round(x-cv.width/2),Math.round(it.y-cv.height+Math.sin(V.time*2+it.x)*0));return}}
+  else if(it.k==='house'){cv=decoSprite('house',it.v);c.drawImage(cv,Math.round(x-20),Math.round(it.y-34));if(V.night>.3){c.fillStyle='#ffd890';c.fillRect(Math.round(x-12),Math.round(it.y-16),6,6);c.fillRect(Math.round(x+6),Math.round(it.y-16),6,6);V.lights.push([x-9,it.y-13,14,'#ffc870',.9],[x+9,it.y-13,14,'#ffc870',.9])}return}
+  else if(it.k==='pole'){cv=decoSprite('pole',0)}
+  else if(it.k==='billboard'){cv=PX.spriteCanvas('bb'+it.text,60,40,(ctx)=>{ctx.drawImage(decoSprite('billboard',0),0,0);const L=PX.wrap(it.text,54,'tiny');L.slice(0,3).forEach((l,i)=>PX.text(ctx,l,30,4+i*7,{font:'tiny',align:'center',color:'#3a2a2a'}))})}
+  if(!cv)return;c.drawImage(cv,Math.round(x-cv.width/2),Math.round(it.y-cv.height))}
+function drawBlades(c,x,y,a){c.fillStyle='#f4f8fc';for(let i=0;i<3;i++){const an=a+i*2.094;for(let k=2;k<26;k++)c.fillRect(Math.round(x+Math.cos(an)*k),Math.round(y+Math.sin(an)*k),2,2)}}
+function drawWires(c,V,poles){poles.sort((a,b)=>sx(V,a.x)-sx(V,b.x));c.fillStyle='#2a2a2e';for(let i=0;i<poles.length-1;i++){const a=sx(V,poles[i].x),b=sx(V,poles[i+1].x);if(b-a>300)continue;for(const dy of [0,9])for(let x=a;x<b;x+=2){const t=(x-a)/(b-a);c.fillRect(Math.round(x),Math.round(poles[i].y-46+3+dy+Math.sin(t*Math.PI)*6),2,1)}}}
+function drawStation(c,V,s){const S=ST[s.id];const cv=stationSprite(s.id);const x=s.x;c.drawImage(cv,Math.round(x-cv.width/2),RAIL-14-cv.height+8);
+  // platform
+  c.fillStyle='#a8a49c';c.fillRect(Math.round(x-cv.width/2-60),RAIL-12,cv.width+120,8);c.fillStyle='#c8c4bc';c.fillRect(Math.round(x-cv.width/2-60),RAIL-12,cv.width+120,1);c.fillStyle='#7a766e';c.fillRect(Math.round(x-cv.width/2-60),RAIL-5,cv.width+120,2);
+  // lamps
+  for(let k=-1;k<=1;k+=2){const lx=Math.round(x+k*(cv.width/2+30));c.fillStyle='#3a3a40';c.fillRect(lx,RAIL-46,2,34);c.fillRect(lx-3,RAIL-48,8,3);c.fillStyle=V.night>.3?'#ffe8a0':'#d8d8c8';c.fillRect(lx-2,RAIL-45,6,3);if(V.night>.3)V.lights.push([lx+1,RAIL-44,46,'#ffd890',1])}
+  const nb=nameBoard(s.id);c.drawImage(nb,Math.round(x-nb.width/2),RAIL-14-cv.height-4);
+  if(V.night>.3){// lit windows
+   const w=cv.width;for(let i=0;i<4;i++)V.lights.push([x-w/3+i*w/4.5,RAIL-40,26,'#ffc870',.8])}}
+function drawTrack(c,V,y,k,feats){const camX=V.u*V.dir;const tie=Math.round(9*k);const ox=-((camX)%tie+tie)%tie;
+  if(k<1){c.fillStyle='#7a7064';c.fillRect(0,y+1,W,4);c.fillStyle='#4a3a2e';for(let x=Math.round(ox);x<W;x+=tie)c.fillRect(x,y+1,3,3);c.fillStyle='#8a8a92';c.fillRect(0,y-1,W,2);return}
+  const bal=PX.sprite('ballast',256,14,s=>{s.dither(0,0,256,14,'#8a8070','#6a6258',.4);for(let i=0;i<160;i++)s.px(PX.hash(i)*256,PX.hash(i*3)*14,PX.hash(i*5)<.5?'#a8a090':'#4e483e')});
+  const bo=-((camX)%256+256)%256;for(let x=Math.round(bo);x<W;x+=256)c.drawImage(bal,x,y+2);
+  c.fillStyle='#4a3626';for(let x=Math.round(ox);x<W;x+=tie){c.fillRect(x,y+2,4,6)}c.fillStyle='#5e4632';for(let x=Math.round(ox);x<W;x+=tie)c.fillRect(x,y+2,4,1);
+  c.fillStyle='#5a5a62';c.fillRect(0,y-1,W,3);c.fillStyle='#c8ccd4';c.fillRect(0,y-1,W,1)}
+function drawFeatureFront(c,V,F){const a=sx(V,V.dir>0?F.u0:F.u1),b=sx(V,V.dir>0?F.u1:F.u0);if(b<-40||a>W+40)return;
+  if(F.k==='bridge'){c.fillStyle='#5a4030';for(let x=a;x<b;x+=40){c.fillRect(Math.round(x),RAIL+8,6,H-RAIL)}const col='#6a4a32',hi='#8a6444';const top=RAIL-46;for(let x=a;x<b;x+=36){c.fillStyle=col;line2(c,x,RAIL,x+36,top,col);line2(c,x,top,x+36,RAIL,col);c.fillRect(Math.round(x),top,2,RAIL-top)}c.fillStyle=col;c.fillRect(Math.round(a),top,Math.round(b-a),3);c.fillStyle=hi;c.fillRect(Math.round(a),top,Math.round(b-a),1);c.fillStyle=col;c.fillRect(Math.round(a),RAIL+3,Math.round(b-a),4)}
+  if(F.k==='tunnel'){// the mountain swallows the track
+   const rock=PX.sprite('tunrock',64,64,s=>{s.dither(0,0,64,64,'#5a5650','#46423e',.4);for(let i=0;i<60;i++)s.blob(PX.hash(i)*64,PX.hash(i*3)*64,3,2,'#6e6a62','#3e3a36',i,.3)});
+   c.fillStyle='#16141a';c.fillRect(Math.round(a+28),HZ+30,Math.round(b-a-56),RAIL-HZ-30+10);for(let x=a+28;x<b-28;x+=64)for(let y=HZ-20;y<HZ+40;y+=64)c.drawImage(rock,Math.round(x),y);
+   for(const px of [a,b-28]){c.drawImage(rock,Math.round(px),RAIL-60);c.drawImage(rock,Math.round(px),RAIL-124);c.fillStyle='#8a847a';c.fillRect(Math.round(px),RAIL-66,28,6)}
+   const head=HEADX-V.cam;if(head>a+28)V.inTun=true}}
+function line2(c,x0,y0,x1,y1,col){const n=Math.ceil(Math.max(Math.abs(x1-x0),Math.abs(y1-y0))/2);for(let i=0;i<=n;i++)c.fillRect(Math.round(x0+(x1-x0)*i/n),Math.round(y0+(y1-y0)*i/n),2,2)}
+// the train: returns hit boxes for each car
+function drawTrain(c,V,headX,railY,cars,loco,livery,right,Vw,own){const boxes=[];const lc=locoSprite(loco||0,livery);const ang=(V.wheelA||0);const flipD=right?1:-1;
+  const lx=right?headX-120:headX;const ly=railY-55;
+  const put=(cv,x,y)=>{if(right)c.drawImage(cv,Math.round(x),Math.round(y));else c.drawImage(PX.flip(cv),Math.round(x),Math.round(y))};
+  // cars first (behind the engine)
+  let x=right?lx-2:lx+122;for(let i=0;i<cars.length;i++){const t=cars[i];const cw=100;const cx0=right?x-cw:x;if(cx0>W+10||cx0+cw<-10){x+=right?-(cw+2):cw+2;continue}
+    const cy=railY-49;
+    // windows: lit at night, passengers inside
+    const wins=carWindows(t);const pas=(V.pas&&V.pas[i])||[];
+    put(carSprite(t,livery),cx0,cy);
+    wins.forEach((w,k)=>{const wx=right?cx0+w[0]:cx0+cw-w[0]-w[2];if(V.night>.25){c.fillStyle=V.night>.6?'#ffd890':'#e8d8a0';c.fillRect(Math.round(wx),cy+w[1],w[2],w[3]);if(own||k%2===0)V.lights.push([wx+w[2]/2,cy+w[1]+w[3]/2,22,'#ffc870',.85])}const p=pas[k];if(p&&t!=='pets'){const b=bustSprite(p);c.drawImage(b,Math.round(wx+w[2]/2-5+Math.sin(V.time*.7+k)*1),cy+w[1]+w[3]-9)}
+      if(t==='pets'&&V.pets&&V.pets[k])c.drawImage(right?petSprite(V.pets[k],Math.floor(V.time*3+k)):PX.flip(petSprite(V.pets[k],Math.floor(V.time*3+k))),Math.round(wx+w[2]/2-11),cy+w[1]+w[3]-12)});
+    // trucks
+    for(const wx of [14,26,74,86]){const fr=Math.floor((ang*(9/5))%WHEELF+WHEELF)%WHEELF;const wcv=wheelSprite(5,fr,'#4a4a52');c.drawImage(wcv,Math.round(cx0+(right?wx:cw-wx)-6),cy+38)}
+    boxes.push({i,x:cx0,y:cy,w:cw,h:48,t});x+=right?-(cw+2):cw+2}
+  // the locomotive
+  put(lc,lx,ly);
+  const fr=Math.floor((ang%(Math.PI*2))/(Math.PI*2)*WHEELF+WHEELF)%WHEELF;
+  const wheels=[[44,9,'#3a3a44'],[62,9,'#3a3a44'],[80,9,'#3a3a44'],[100,5,'#3a3a44'],[18,6,'#3a3a44']];
+  for(const [wx,r,col] of wheels){const cxw=right?lx+wx:lx+120-wx;c.drawImage(wheelSprite(r,fr,col),Math.round(cxw-r-1),Math.round(railY-2*r-2))}
+  // connecting rod
+  const pin=k=>[(right?lx+k:lx+120-k)+Math.cos(ang)*5*flipD,railY-10+Math.sin(ang)*5];const p1=pin(44),p3=pin(80);c.fillStyle='#c8c8d0';line2(c,p1[0],p1[1],p3[0],p3[1],'#c8c8d0');const cyl=right?lx+96:lx+24;c.fillStyle='#9a9aa4';line2(c,pin(80)[0],pin(80)[1],cyl,railY-14,'#9a9aa4');c.fillStyle='#5a5a64';c.fillRect(Math.round(cyl-(right?6:0)),railY-18,8,7);
+  // lights: headlamp and cab
+  if(V.night>.2){const hx=right?lx+118:lx+2,hy=ly+17;c.fillStyle='#fff8d0';c.fillRect(Math.round(right?hx-2:hx),hy-2,2,5);V.lights.push([hx,hy,18,'#fff4c0',1]);V.cones=(V.cones||[]);V.cones.push([hx,hy,right?1:-1]);V.lights.push([right?lx+18:lx+102,ly+18,20,'#ffb860',.8])}
+  if(own){// Daisy waves from the cab
+   const dx=right?lx+12:lx+100;const dl=personLook(424242);c.drawImage(bustSprite({seed:'daisycab',skin:'#f4d0b0',hair:'#2a1a12',hs:1,shirt:'#f4b8d0'}),Math.round(dx),ly+16)}
+  boxes.push({i:-1,x:lx,y:ly,w:120,h:56,t:'loco'});return boxes}
+function drawPeerTrain(c,V,P){if(!P.seg||segKey(P.seg[0],P.seg[1])!==segKey(V.seg.a,V.seg.b))return;const x=sx(V,P.u);const right=P.dir===V.dir;const len=120+(P.cars||[]).length*102;if(right?(x<-20||x-len>W+20):(x>W+20||x+len<-20))return;
+  c.save();c.globalAlpha=1;const cars=(P.cars||['coach']).slice(0,9);drawTrain(c,{...V,pas:null,pets:null,wheelA:(P.wa||0)},x,RAIL2,cars,P.loco||0,P.liv||'#7a4a8a',right,V,false);c.restore();
+  const tx=right?x-60:x+60;PX.text(c,'🌐 '.slice(2)+P.name,tx,RAIL2-70,{align:'center',color:'#ffffff',outline:'#2a2a3a'});P.screenX=tx}
+function drawPlatformPeople(c,V,s){const list=V.platform||[];list.forEach((p,i)=>{const x=s.x-110+i*24+(i%2)*6,y=RAIL-1;const step=Math.floor(V.time*2+i)%6===0?1:0;c.drawImage(personSprite(p.look,step),Math.round(x),y);p.sx=x+6;p.sy=y})}
+// ---------------------------------------------------------------- lighting
+function lighting(c,V,tun){let amb=PX.lightColor(V.t);const W2={rain:.78,storm:.62,snow:.9,fog:.85,dust:.8,signal:.75,hail:.8}[V.wx];if(W2)amb=SH(amb,W2);if(V.flash>0){amb=MIX(amb,'#ffffff',V.flash);V.flash=0}if(tun||V.inTun)amb=MIX(amb,'#141020',.88);V.inTun=false;
+  LIGHT.begin(amb);for(const [x,y,r,col,k] of V.lights)LIGHT.point(x,y,r,col,k);for(const [x,y,d] of V.cones||[])LIGHT.cone(x,y,d,220,26,'#fff0c0',.9);V.cones=[];LIGHT.apply(c);
+  // the night sky keeps its own light: stars and the Moon (with its Ring) stay bright
+  if(V.night>.3&&!tun&&!V.inTun2&&V.wx!=='storm'&&V.wx!=='fog'){c.save();c.translate(0,V.skyY||0);c.globalAlpha=Math.min(1,(V.night-.3)*2);SKY.lights(c,V.t,V.wx,{time:V.time,ringGlow:V.ringGlow,maxY:HZ-70});c.restore();c.globalAlpha=1}}
+// ---------------------------------------------------------------- cab view (first person from the engine)
+const HZC=146,CAMH=42,FOC=300;
+function renderCab(c,V){V.lights=[];const seg=V.seg;const dist=V.u*V.dir;const bk=biomeAt(seg,V.u);const B=BIOMES[bk];const win=V.season==='winter';const g=win?['#e8eef4','#ccd6e0','#aab6c4']:B.ground;
+  V.skyY=HZC-HZ-20;c.save();c.translate(0,HZC-HZ-20);SKY.draw(c,V.t,V.wx,{time:V.time,dt:V.dt,ringGlow:V.ringGlow});c.restore();
+  const curve=s=>Math.sin(s/2600)*.9+Math.sin(s/900+1)*.35;const cv0=curve(dist);
+  const camX=dist*.02+cv0*60;for(const [fn,f,dy] of [[farStrip,1,-220],[midStrip,1.6,-130]]){const cv=fn(bk,V.season);const ox=-((camX*f)%STRIPW+STRIPW)%STRIPW;for(let x=Math.round(ox);x<W;x+=STRIPW)c.drawImage(cv,x,HZC+4+dy)}
+  // the ground rushes toward you, row by row
+  const cx=z=>W/2+(curve(dist+z)-cv0)*z*z*.0007*FOC/z;
+  for(let y=HZC;y<H;y++){const z=CAMH*FOC/(y-HZC+.5);const s=dist+z;const band=Math.floor(s/46)%2;const base=band?g[0]:g[1];c.fillStyle=PX.css(base);c.fillRect(0,y,W,1);
+    const k=FOC/z;const x0=cx(z);const bw=26*k,rw=10*k;c.fillStyle=Math.floor(s/9)%3===0?'#4a3626':'#7a7064';c.fillRect(Math.round(x0-bw),y,Math.round(bw*2),1);
+    c.fillStyle='#b8bcc4';c.fillRect(Math.round(x0-rw-Math.max(1,k*.6)),y,Math.max(1,Math.round(k*1.2)),1);c.fillRect(Math.round(x0+rw),y,Math.max(1,Math.round(k*1.2)),1)}
+  // things beside the track, far to near
+  const ahead=[];const s0=Math.floor(V.u/SLOT);for(let i=-2;i<110;i++){const sl=s0+i*V.dir;for(const it of sceneryAt(seg,sl)){const z=(it.x-V.u)*V.dir;if(z<14||z>2400)continue;ahead.push([z,it])}}
+  for(const id of [seg.a,seg.b]){const su=id===seg.a?0:seg.len;const z=(su-V.u)*V.dir-STOFF;if(z>14&&z<2600)ahead.push([z,{k:'station',id}])}
+  ahead.sort((a,b)=>b[0]-a[0]);
+  for(const [z,it] of ahead){const k=FOC/z;const yb=HZC+CAMH*k;const x0=cx(z);let cv,lat,sc=k;
+    if(it.k==='station'){cv=stationSprite(it.id);lat=-(cv.width/2+44);sc=k*.9}else if(it.k==='tree'){cv=treeSprite(it.t,it.v,V.season==='fall'&&!['fir','spruce','cedar','pine'].includes(it.t)?'fall':V.season==='winter'?'winter':'');lat=it.row===1?40+(it.y-318)*3:-(46+(it.y-276)*5)}
+    else if(it.k==='deco'){cv=decoSprite(it.t,it.v);lat=it.row===1?44+(it.y-318)*3:-(52+(it.y-280)*6)}else if(it.k==='house'){cv=decoSprite('house',it.v);lat=-(90+(it.y-270)*6)}else if(it.k==='pole'){cv=decoSprite('pole',0);lat=-36}else if(it.k==='billboard'){cv=decoSprite('billboard',0);lat=-80}
+    if(!cv)continue;const w=cv.width*sc,h=cv.height*sc;const X=x0+lat*k;if(X+w<-20||X-w>W+20)continue;c.drawImage(cv,Math.round(X-w/2),Math.round(yb-h),Math.max(1,Math.round(w)),Math.max(1,Math.round(h)));
+    if(it.k==='station'&&V.night>.3)V.lights.push([X,yb-h*.4,Math.min(80,40*sc),'#ffd890',.9])}
+  // a tunnel mouth ahead swallows the view
+  for(const F of segFeatures(seg))if(F.k==='tunnel'){const za=((V.dir>0?F.u0:F.u1)-V.u)*V.dir,zb=((V.dir>0?F.u1:F.u0)-V.u)*V.dir;if(za<0&&zb>0){V.inTun=true;c.fillStyle='#120e16';c.fillRect(0,0,W,H);const k=FOC/30;c.fillStyle='#2a2422';for(let y=HZC;y<H;y++){const z=CAMH*FOC/(y-HZC+.5);const x0=cx(z);c.fillRect(Math.round(x0-26*FOC/z),y,Math.round(52*FOC/z),1)}}else if(za>0&&za<2400){const k=FOC/za;const yb=HZC+CAMH*k;const x0=cx(za);const ww=110*k,hh=100*k;c.fillStyle='#5a5650';c.fillRect(0,Math.round(yb-hh*1.8),W,Math.round(hh*1.8));c.fillStyle='#120e16';c.fillRect(Math.round(x0-ww/2),Math.round(yb-hh),Math.round(ww),Math.round(hh))}}
+  PX.weather(c,W,H,V.wx==='hail'?'rain':V.wx,V.time,.1);
+  // headlight down the line at night
+  if(V.night>.2)for(let i=1;i<8;i++){const z=40+i*60;const k=FOC/z;V.lights.push([cx(z),HZC+CAMH*k,Math.max(8,70*k*.5),'#fff0c0',.7])}
+  // the cab around you
+  const frame=cabFrame();c.drawImage(frame,0,0);const spd=V.speed||0;const gx=470,gy=318;c.fillStyle='#1a1a1a';const a=Math.PI*.75+Math.min(1,spd/120)*Math.PI*1.5;line2(c,gx,gy,gx+Math.cos(a)*16,gy+Math.sin(a)*16,'#e84a3a');PX.text(c,Math.round(spd)+' KM/H',gx,gy+22,{font:'tiny',align:'center',color:'#f4e8c8'});
+  const dsy=PX.sprite('daisyback',40,60,s=>{s.ellipse(20,30,13,16,'#2a1a12');s.rect(7,32,26,28,'#2a1a12');s.rect(8,20,24,2,'#e8c040');s.rect(4,48,32,12,'#f4b8d0')});c.drawImage(dsy,90,300);
+  V.lights.push([gx,gy,40,'#ffb860',.8],[120,330,50,'#ffb860',.6]);lighting(c,V,V.inTun)}
+function cabFrame(){return PX.sprite('cabframe',W,H,s=>{const wood='#5a3a24',dk='#3a2416',brass='#c8a050',iron='#2e2e34';
+  // window opening x 30..610, y 16..260 stays clear
+  s.rect(0,0,W,16,dk);s.rect(0,0,30,H,dk);s.rect(W-30,0,30,H,dk);s.rect(0,256,W,H-256,wood);for(let x=0;x<W;x+=8)s.rect(x,262,1,H-262,SH(wood,.85));s.rect(30,252,580,6,brass);s.rect(30,14,580,4,brass);s.rect(26,14,4,244,brass);s.rect(610,14,4,244,brass);s.rect(318,14,4,240,iron);
+  s.rect(300,270,240,70,iron);s.rect(302,272,236,66,'#3a3a42');s.circle(470,318,20,brass);s.circle(470,318,18,'#f4ecd8');for(let i=0;i<9;i++){const a=Math.PI*.75+i/8*Math.PI*1.5;s.px(470+Math.cos(a)*15,318+Math.sin(a)*15,'#2a2a2a')}s.circle(380,312,14,brass);s.circle(380,312,12,'#f4ecd8');
+  s.rect(560,264,6,80,iron);s.rect(554,262,18,8,'#c84a3a');s.rect(250,284,40,10,brass);for(let i=0;i<4;i++)s.circle(340+i*0,0,0,iron)})}
+// ---------------------------------------------------------------- window view (from a seat inside a car)
+function renderWindow(c,V){V.lights=[];V.skyY=-40;const seg=V.seg;c.save();c.translate(0,-40);drawBackdrop(c,V,0);const bk=biomeAt(seg,V.u);const B=BIOMES[bk];const gc=V.season==='winter'?['#e8eef4','#ccd6e0']:B.ground;c.fillStyle=PX.css(gc[0]);c.fillRect(0,HZ+60,W,H);
+  const s0=Math.floor((V.u-W*1.2)/SLOT),s1=Math.floor((V.u+W*1.2)/SLOT);const items=[];for(let sl=s0;sl<=s1;sl++)for(const it of sceneryAt(seg,sl))items.push(it);items.sort((a,b)=>a.y-b.y);for(const it of items)drawItem(c,V,it);for(const id of [seg.a,seg.b]){const su=id===seg.a?0:seg.len;const x=sx(V,su)-STOFF;if(x>-400&&x<W+400)drawStation(c,V,{id,x,su})}
+  // the far track rushes past just outside the glass
+  const camX=V.u*V.dir;c.fillStyle='#6a6258';c.fillRect(0,RAIL+30,W,12);c.fillStyle='#4a3626';const ox=-((camX*1.4)%14+14)%14;for(let x=Math.round(ox);x<W;x+=14)c.fillRect(x,RAIL+30,5,12);c.restore();
+  PX.weather(c,W,H,V.wx==='hail'?'rain':V.wx,V.time,.3);
+  const t=V.windowCar||'coach';c.drawImage(interiorSprite(t,V.livery),0,0);
+  // passengers in the seats, and pets
+  const pas=(V.pas&&V.pas[V.windowIdx||0])||[];pas.slice(0,6).forEach((p,i)=>{if(!p)return;const x=70+(i%3)*210+(i>=3?70:0),y=i>=3?262:226;const b=bustSprite(p.look||p);c.drawImage(b,x,y,40,40)});
+  if(t==='pets')(V.pets||[]).forEach((k,i)=>{const cv=petSprite(k,Math.floor(V.time*3+i));c.drawImage(cv,90+i*130,304,66,48)});
+  for(const x of [120,320,520])V.lights.push([x,40,80,'#ffc870',.85]);lighting(c,V,false)}
+function interiorSprite(t,livery){return PX.sprite('int'+t,W,H,s=>{const D=CARS[t];const wall=MIX(D.body,'#f4e8d8',.55),dk=SH(D.body,.7),wood='#7a5236';
+  s.rect(0,0,W,H,wall);for(let x=0;x<W;x+=6)s.rect(x,0,1,H,SH(wall,.96));
+  // three big windows (left clear)
+  const wins=t==='dome'?[[20,0,600,230]]:[[30,50,170,150],[235,50,170,150],[440,50,170,150]];for(const [x,y,w,h] of wins){for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)s.buf[yy*W+xx]=0;s.rect(x-4,y-4,w+8,4,wood);s.rect(x-4,y+h,w+8,8,wood);s.rect(x-4,y,4,h,wood);s.rect(x+w,y,4,h,wood);s.rect(x+w/2-1,y,2,h,wood);s.rect(x-6,y+h+8,w+12,3,SH(wood,1.2))}
+  if(t==='dome')s.rect(0,230,W,10,wood);
+  s.rect(0,0,W,30,dk);s.rect(0,30,W,3,D.trim);for(const x of [120,320,520]){s.rect(x-10,26,20,8,'#f4e8c0');s.rect(x-6,34,12,3,'#c8a050')}
+  s.rect(0,230,W,10,SH(wall,.85));s.rect(0,330,W,30,'#5a3a2a');for(let x=0;x<W;x+=20)s.rect(x,330,1,30,'#4a2e20');
+  if(t==='dining'){for(const x of [120,320,520]){s.rect(x-50,286,100,6,'#f4f0e8');s.rect(x-3,292,6,38,wood);s.circle(x,282,4,'#c84a3a')}}
+  else if(t==='arcade'){for(const x of [100,320,540]){s.rect(x-24,230,48,100,'#3a2a6a');s.rect(x-18,240,36,26,'#7af0c8');s.rect(x-20,280,40,6,'#ff6ad8')}}
+  else if(t==='pets'){s.rect(0,300,W,30,'#c8a070');for(let x=10;x<W;x+=70)s.ellipse(x+30,326,26,6,'#e88aa8')}
+  else if(t==='radio'){s.rect(60,240,200,90,'#4a4a52');for(let i=0;i<8;i++)s.circle(90+i*22,270,6,'#c8a050');s.rect(80,300,160,10,'#2a2a2e')}
+  else{const seat=MIX(D.body,'#8a3a3a',.3);for(let row=0;row<2;row++)for(let i=0;i<3;i++){const x=30+i*210+row*70,y=row?292:252,w=150,h=row?60:46;
+    for(let yy=0;yy<h;yy++){const k=yy/h;s.rect(x+(yy<6?6-yy:0),y+yy,w-(yy<6?2*(6-yy):0),1,k<.12?SH(seat,1.25):k<.7?seat:SH(seat,.75))}for(let bx=x+14;bx<x+w-8;bx+=22)for(let by=y+12;by<y+h-10;by+=14)s.px(bx,by,SH(seat,.6));s.rect(x+w/2-1,y+4,2,h-8,SH(seat,.8));s.rect(x,y+h-6,w,6,'#5a3a2a')}
+   s.rect(20,214,600,4,'#c8a050');for(let x=24;x<620;x+=12)s.rect(x,206,2,9,'#c8a050');for(let i=0;i<4;i++)s.rect(60+i*150,198,40+i*6,10,pick2(['#8a5a3a','#3a6a8a','#a84a4a','#4a7a4a'],i/4))}})}
+
+// ---- CLOVER LINE · the simulation: the train, the clock, passengers, money, weather ----
+const SAVE='cloverline-v1';
+const CLOCK=new PX.Clock(.34,1/480);// one game day = 8 real minutes
+let S=null;
+function newState(name){return {v:1,name:name||'Conductor',coins:600,day:0,t:.34,loco:0,livery:'#2e7a4a',cars:['coach','cargo','caboose'],pets:[],food:40,fuel:160,cargo:[],pas:[],at:'clover',seg:null,dir:1,u:0,plan:[],target:null,speed:0,state:'station',visited:{clover:1},secrets:{},seen:{},stats:{},claimed:{},ts:1,pov:'side',dress:0,wx:'clear',wxT:0,autoGo:false,dwell:0,heard:0,lastListen:-1,lookups:0,intro:0,uid:Math.random().toString(36).slice(2,10)}}
+function save(){if(S){S.t=CLOCK.t;S.day=CLOCK.day;PX.store.set(SAVE,S)}}
+function load(){const s=PX.store.get(SAVE,null);if(!s||s.v!==1)return null;const n=Object.assign(newState(),s);return n}
+// ---- dates ----
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],MDAYS=[31,28,31,30,31,30,31,31,30,31,30,31];
+function dateOf(day){let d=day+90,y=YEAR0;while(d>=365){d-=365;y++}let m=0;while(d>=MDAYS[m]){d-=MDAYS[m];m++}return {y,m,d:d+1}}
+function dateLabel(){const D=dateOf(CLOCK.day);const sfx=n=>n%10===1&&n!==11?'st':n%10===2&&n!==12?'nd':n%10===3&&n!==13?'rd':'th';return `${MON[D.m]} ${D.d}${sfx(D.d)}, ${D.y}`}
+function seasonNow(){return SEASONS[dateOf(CLOCK.day).m]}
+// ---- train capacity ----
+const locoDef=()=>LOCOS[S.loco];
+function seats(){return S.cars.reduce((n,c)=>n+(CARS[c].seats||0),0)}
+function crates(){return S.cars.reduce((n,c)=>n+(CARS[c].crates||0),0)}
+function hasCar(k){return S.cars.includes(k)}
+function carOfPassenger(i){let k=0;for(let ci=0;ci<S.cars.length;ci++){const n=CARS[S.cars[ci]].seats||0;if(i<k+n)return [ci,i-k];k+=n}return [-1,-1]}
+// passengers arranged by car and window for drawing
+function passengersByCar(){const out=S.cars.map(()=>[]);S.pas.forEach((p,i)=>{const [ci,k]=carOfPassenger(i);if(ci>=0)out[ci][k]=p.look});return out}
+// ---- the line ahead ----
+function stationNow(){return S.state==='station'?S.at:null}
+function nextId(){return S.seg?(S.dir>0?S.seg.b:S.seg.a):null}
+function prevId(){return S.seg?(S.dir>0?S.seg.a:S.seg.b):S.at}
+function remainingKm(){if(!S.seg)return 0;const end=S.dir>0?S.seg.len:0;return Math.abs(end-S.u)/PXKM}
+function setTarget(id){if(id===S.at&&S.state==='station')return false;const from=S.state==='station'?S.at:nextId();const r=route(from,id);if(!r)return false;S.target=id;S.plan=r.path.slice(1);if(S.state!=='station'&&from!==S.at)S.plan=r.path.slice(1);return true}
+function depart(){if(S.state!=='station')return;if(!S.plan.length){if(!S.target||S.target===S.at){toast('Pick a destination on the map first.');openPanel('map');return}setTarget(S.target)}
+  const nx=S.plan[0];if(!nx)return;if(S.fuel<=0)toast('Out of clover coal! The solar roof will crawl you along slowly.','warn');
+  const seg=getSeg(S.at,nx);S.seg={a:seg.a,b:seg.b,len:seg.len};S.dir=seg.a===S.at?1:-1;S.u=S.dir>0?0:seg.len;S.state='moving';S.at=null;S.dwell=0;PLATFORM=[];PX.Sound.whistle();daisyMaybe('depart');save()}
+function arrive(id){S.state='station';S.at=id;S.speed=0;S.plan.shift();const first=!S.visited[id];S.visited[id]=1;S.dwell=0;
+  if(S.target===id){S.target=null;S.plan=[]}
+  PX.Sound.chime();showArrival(id,first);
+  // passengers getting off
+  let paid=0,count=0;S.pas=S.pas.filter(p=>{if(p.to!==id)return true;const fare=Math.round(p.fare*(.8+p.mood/250));paid+=fare;count++;if(p.vip)S.stats.vips=(S.stats.vips||0)+1;return false});
+  if(count){S.coins+=paid;S.stats.delivered=(S.stats.delivered||0)+count;floatText(`+${paid} fares from ${count} passenger${count>1?'s':''}`,'#ffe070');PX.Sound.coin()}
+  PLATFORM=waitingAt(id);checkNotebook();save()}
+// ---- people waiting on the platform ----
+let PLATFORM=[];
+function waitingAt(id){const St=ST[id];const r=PX.rng(PX.hash(CLOCK.day*31+id.length*7+(St.lon*100|0))*1e9);const n=[1,3,6][St.z]+Math.floor(r()*(St.z+2));const ids=Object.keys(ST).filter(k=>k!==id);const out=[];
+  for(let i=0;i<n;i++){let to=pick2(ids,r());const near=route(id,to);if(!near||near.km>1600&&r()<.6){const nb=(ADJ[id]||[]).map(e=>e.to);to=pick2(nb,r())}const rt=route(id,to);const look=personLook(Math.floor(r()*1e9));
+   out.push({id:id+CLOCK.day+'-'+i,look,name:pick2(FIRST,r())+' '+pick2(LAST,r()),job:pick2(JOBS,r()),from:id,to,fare:Math.round(30+rt.km*.32),mood:60,km:rt.km})}
+  // sometimes somebody famous is waiting
+  const vr=PX.hash(CLOCK.day*7+id.length);if(vr<.18){const V=VIPS[Math.floor(PX.hash(CLOCK.day+id.length*3)*VIPS.length)];if(!S.pas.some(p=>p.vip===V.id)){let to=pick2(ids,r());const rt=route(id,to);out.unshift({id:id+'vip'+CLOCK.day,vip:V.id,look:{seed:V.id,animal:V.sp||null,skin:'#f4d0b0',hair:V.hum?'#5a3020':'#ffffff',hs:1,shirt:V.col,pants:'#3a3a4a'},name:V.n,job:V.job,from:id,to,fare:Math.round(80+rt.km*.5),mood:80,km:rt.km})}}
+  return out}
+function board(p){if(S.pas.length>=seats()){toast('No free seats. Buy another coach or sleeper car.');return false}S.pas.push(Object.assign({},p));PLATFORM=PLATFORM.filter(q=>q!==p);PX.Sound.click();
+  if(p.vip){const V=VIPS.find(v=>v.id===p.vip);say({...V,id:V.id,n:V.n,col:V.col,sp:V.sp,skin:'#f4d0b0',hair:V.hum?'#5a3020':'#c8c8c8',shirt:V.col,headphones:V.id==='marigold',wings:V.fairy,long:V.fairy||V.id==='juniper'},[pick(V.lines)])}
+  return true}
+// ---- money, supplies and trade ----
+function priceOf(g,id){const base=GOODS[g][2];const St=ST[id];let k=1;if(St.make===g)k=.6;else if(St.want===g)k=1.7;return Math.round(base*k*(.92+PX.hash(CLOCK.day+g.length+id.length)*.16))}
+function buyGood(g){const id=S.at;if(S.cargo.length>=crates())return toast(crates()?'The cargo car is full.':'You need a cargo car.');const p=priceOf(g,id);if(S.coins<p)return toast('Not enough coins.');S.coins-=p;S.cargo.push({g,paid:p,from:id});PX.Sound.coin()}
+function sellGood(i){const c=S.cargo[i];const p=priceOf(c.g,S.at);S.coins+=p;S.cargo.splice(i,1);if(p>c.paid){S.stats.trades=(S.stats.trades||0)+1;floatText(`+${p-c.paid} profit!`,'#7aff9a')}PX.Sound.coin();checkNotebook()}
+// ---- weather follows the land and the season ----
+function rollWeather(){const bk=S.seg?biomeAt(getSeg(S.seg.a,S.seg.b),S.u):ST[S.at].b;const m=dateOf(CLOCK.day).m;const r=Math.random();const cold=m<=1||m===11,warm=m>=4&&m<=7;
+  if(r<.03&&CLOCK.daylight<.3)return 'signal';
+  if(['prairie','plains','texas'].includes(bk)){if(warm&&r<.22)return 'storm';if(r<.3)return 'rain';if(m<=4&&r<.36)return 'dust';if(cold&&r<.5)return 'snow';return 'clear'}
+  if(['rain','gorge','coast'].includes(bk)){if(r<.12)return 'storm';if(r<.45)return 'rain';if(r<.6)return 'fog';if(cold&&r<.75)return 'snow';return 'clear'}
+  if(['mountain','alpine'].includes(bk)){if((cold||m<=3||m>=9)&&r<.5)return 'snow';if(r<.25)return 'rain';if(r<.35)return 'fog';return 'clear'}
+  if(['basin','salt','mesa'].includes(bk)){if(r<.12)return 'dust';if(r<.18)return 'storm';return 'clear'}
+  if(r<.15)return 'rain';if(r<.22)return 'fog';if(cold&&r<.35)return 'snow';if(warm&&r<.3)return 'storm';return 'clear'}
+// ---- tornado on the plains (seen far off) ----
+let TORN=null;
+function maybeTornado(){if(TORN||S.wx!=='storm'||!S.seg)return;const bk=biomeAt(getSeg(S.seg.a,S.seg.b),S.u);if(!['prairie','plains','texas'].includes(bk))return;if(Math.random()<.004){TORN={x:W+80,life:40,t:0};toast('🌪️ A tornado on the horizon! Daisy grabs your arm.','warn');PX.Sound.thunder();const ks=['prairie','plains'].includes(bk);if(ST[nextId()].s==='KS'||ST[prevId()].s==='KS'){S.seen.tornadoKS=1;checkNotebook()}setTimeout(()=>say(DAISY,['A tornado! In Kansas they see these from miles away. Compare that to Portland, where they almost never happen.']),1500)}}
+// ---- the main update ----
+let TIPS=[],LIGHTNING=0,NEXTTHUNDER=0,DAISYT=60,RADIOT=0;
+function simUpdate(dt){if(!S)return;const ts=S.ts;const d=dt*ts;CLOCK.tick(d);S.t=CLOCK.t;S.day=CLOCK.day;
+  // weather changes every few game hours
+  S.wxT-=d;if(S.wxT<=0){S.wxT=40+Math.random()*80;const old=S.wx;S.wx=rollWeather();if(S.wx!==old&&S.wx==='storm'){const bk=S.seg?biomeAt(getSeg(S.seg.a,S.seg.b),S.u):'';if(['rain','gorge','coast'].includes(bk)&&(ST[prevId()]||{}).s==='OR'){S.seen.stormOR=1;checkNotebook()}}}
+  if(S.wx==='storm'){NEXTTHUNDER-=dt;if(NEXTTHUNDER<=0){NEXTTHUNDER=4+Math.random()*10;LIGHTNING=.7;setTimeout(()=>PX.Sound.thunder(),300+Math.random()*900)}}LIGHTNING=Math.max(0,LIGHTNING-dt*3);
+  maybeTornado();if(TORN){TORN.t+=dt;TORN.x-=dt*14;if(TORN.t>TORN.life)TORN=null}
+  if(S.state==='moving'){const L=locoDef();let want=L.spd;if(S.fuel<=0)want=18;if(S.wx==='snow')want*=.75;if(BISON>0){want=0;BISON-=d}
+    const endU=S.dir>0?S.seg.len:0;const left=Math.abs(endU-S.u);const stopDist=(S.speed*S.speed)/(2*30)*PXKM*.05+40;if(left<stopDist+20)want=Math.min(want,Math.max(6,left/PXKM*120));
+    S.speed+=PX.clamp(want-S.speed,-30*d,12*d);const kmh=S.speed;const kmMoved=kmh*(CLOCK.speed*24)*d;let du=kmMoved*PXKM;if(du>left)du=left;S.u+=du*S.dir;
+    S.fuel=Math.max(0,S.fuel-kmMoved*.45*(1+S.cars.length*.08));S.stats.km=(S.stats.km||0)+kmMoved;WHEELA+=du/9;
+    if(left-du<.5&&S.speed<10)arrive(nextId());
+    // smoke from the stack
+    if(Math.random()<dt*(8+kmh/10))FX.add({x:HEADX-V0cam()-120+94,y:RAIL-55+2,vx:-kmh*.6-10,vy:-18-Math.random()*10,ax:0,ay:-2,life:2.4,size:3,grow:5,color:'rgba(230,230,236,.8)',alpha:.7});
+    if(Math.random()<dt*kmh/40)PX.Sound.chug(kmh);
+    // bison on the line out on the plains
+    if(BISON<=0&&Math.random()<dt*.0025*ts){const bk=biomeAt(getSeg(S.seg.a,S.seg.b),S.u);if(['plains','prairie'].includes(bk)&&left>3000){BISON=12;toast('A herd of bison is crossing the tracks. The train waits.','warn')}}
+    // passengers: tips and moods
+    for(const p of S.pas){let m=55;if(hasCar('dining')&&S.food>0)m+=15;if(hasCar('arcade'))m+=8;if(S.pets.length&&hasCar('pets'))m+=8+S.pets.length*2;if(hasCar('sleeper')&&CLOCK.daylight<.3)m+=8;if(hasCar('dome')&&CLOCK.daylight>.5)m+=6;if(S.wx==='storm')m-=5;p.mood+=(m-p.mood)*d*.02}
+    if(hasCar('dining')&&S.pas.length)S.food=Math.max(0,S.food-d*.02*S.pas.length);if(hasCar('garden'))S.food=Math.min(200,S.food+d*.03);
+    if(S.pas.length&&Math.random()<dt*.05*S.pas.length*ts*.5){const i=Math.floor(Math.random()*S.pas.length);const p=S.pas[i];if(p.mood>45){const [ci]=carOfPassenger(i);TIPS.push({ci,amt:Math.round(2+p.mood/12*(p.vip?3:1)),t:0,y:0,heart:Math.random()<.4})}}
+    if(S.pets.length&&hasCar('pets')&&Math.random()<dt*.02*S.pets.length)TIPS.push({ci:S.cars.indexOf('pets'),amt:4+S.pets.length,t:0,y:0,pet:1});
+    // the radio car picks up KHUSH at night
+    if(hasCar('radio')&&CLOCK.daylight<.2){RADIOT-=dt;if(RADIOT<=0){RADIOT=50;if(S.lastListen!==CLOCK.day&&S.heard<BROADCASTS.length){S.lastListen=CLOCK.day;tele(BROADCASTS[S.heard],'radio');toast('📻 KHUSH 105.9 is on the radio car. Open the telegraph to read it.');S.heard++;if(S.heard>=BROADCASTS.length)found('khush')}}}
+    DAISYT-=dt;if(DAISYT<=0){DAISYT=120+Math.random()*120;daisyMaybe('ride')}}
+  else if(S.state==='station'){S.speed=0;S.dwell+=dt;if(S.autoGo&&S.dwell>18&&S.plan.length&&!PANEL&&!DLG)depart()}
+  for(let i=TIPS.length-1;i>=0;i--){const tp=TIPS[i];tp.t+=dt;if(tp.t>9)TIPS.splice(i,1)}}
+let BISON=0,WHEELA=0;
+function V0cam(){return VIEW.cam||0}
+// ---- Daisy rides with you ----
+const DAISYSAYS={depart:['All aboard! I love this part.','Next stop! Did you remember the snacks?','Choo choo! Sorry. I had to.'],
+ ride:['It is fun that this game is both of our ideas.','Look at the light on the hills right now. I want to remember this.','Do you think the Ring can see the train from up there?','If we pass another train, wave! Maybe they will share their view with us.','I want a unicorn in the pet car. And a dragon. And a whale. Is a whale too big?','Somebody should write a paragraph on the telegraph. It is good luck.','Portland has rain and Kansas has tornadoes. I love that we get both.'],
+ arrive:['We made it!','I could live here.','Let us see who wants a ride.']};
+function daisyMaybe(k){if(DLG||PANEL||Math.random()<.35)return;say(DAISY,[pick(DAISYSAYS[k])])}
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+// ---- notebook ----
+function checkNotebook(){for(const N of NOTEBOOK){if(S.claimed[N.id]||S.ready&&S.ready[N.id])continue;try{if(N.test(S)){S.ready=S.ready||{};S.ready[N.id]=1;toast('📓 Daisy\'s notebook: "'+N.t+'" done! Claim it in the notebook.','good')}}catch(e){}}}
+function found(id){if(S.secrets[id])return false;S.secrets[id]=Date.now();toast(`★ Secret found: ${SECRETS[id]} (${Object.keys(S.secrets).length}/${Object.keys(SECRETS).length})`,'sec');PX.Sound.chime();checkNotebook();save();return true}
+
+// ---- CLOVER LINE · interface: HUD, dialogs, panels, all drawn in pixels ----
+const UI={toasts:[],floats:[],arrival:null};let PANEL=null,PANELP={},DLG=null,VIEW={cam:0};
+const COL={ink:'#3a2414',paper:'#fbecd8',wood:'#5a3a24',gold:'#ffd860',green:'#4cbf6a',dim:'#8a7060'};
+function toast(msg,kind){UI.toasts.push({msg,kind:kind||'',t:0});if(UI.toasts.length>3)UI.toasts.shift()}
+function floatText(msg,col){UI.floats.push({msg,col:col||'#ffffff',t:0})}
+function showArrival(id,first){UI.arrival={id,t:0,first};if(first)setTimeout(()=>{if(!DLG)say(DAISY,[pick(DAISYSAYS.arrive)+' '+ST[id].f])},2600)}
+// ---------------- dialog boxes ----------------
+// say(who, ["line", "line"], [["Choice", fn], ...])
+function say(who,lines,choices){DLG={who,lines:lines.slice(),i:0,shown:0,choices:choices||null,t:0}}
+function dlgNext(){if(!DLG)return;const L=DLG.lines[DLG.i];if(DLG.shown<L.length){DLG.shown=L.length;return}if(DLG.i<DLG.lines.length-1){DLG.i++;DLG.shown=0;return}if(!DLG.choices)DLG=null}
+function drawDialog(c,inp){const D=DLG;if(!D)return;D.t+=1/60;const L=D.lines[D.i];D.shown=Math.min(L.length,D.shown+1.4);if(Math.floor(D.shown)%5===1)PX.Sound.click&&0;
+  const x=90,y=28,w=460,h=104;PX.panel(c,x,y,w,h,{fill:'#fbecd8',border:'#6a3e22',inner:'#b98a5e'});c.drawImage(portrait(D.who),x+10,y+(h-56)/2-2,64,64);c.fillStyle='#6a3e22';c.fillRect(x+9,y+(h-56)/2-3,66,1);
+  PX.text(c,D.who.n||'',x+w/2+34,y+10,{scale:2,align:'center',color:'#5a2e14'});const lines=PX.wrap(L.slice(0,Math.floor(D.shown)),350,'small');lines.slice(0,6).forEach((ln,i)=>PX.text(c,ln,x+86,y+30+i*10,{color:'#3a2414'}));
+  if(D.shown>=L.length&&!(D.i===D.lines.length-1&&D.choices)){if(Math.floor(D.t*2)%2)PX.text(c,'▼'.replace('▼','v'),x+w-14,y+h-14,{color:'#8a5a3a'})}
+  inp.zone(0,0,W,H,()=>dlgNext());
+  if(D.i===D.lines.length-1&&D.shown>=L.length&&D.choices){let bx=x+86;D.choices.forEach(([lab,fn])=>{const bw=PX.textWidth(lab)+16;PX.button(c,bx,y+h-24,bw,16,lab,{color:'#6ac46a',dark:'#2e6a34'});inp.zone(bx,y+h-24,bw,16,()=>{DLG=null;PX.Sound.click();fn&&fn()});bx+=bw+6})}}
+// ---------------- the heads-up display ----------------
+const ICON={};function icon(k){return ICON[k]||(ICON[k]=PX.sprite('ic'+k,16,16,s=>{const g=(x,y,w,h,c)=>s.rect(x,y,w,h,c);
+  switch(k){case 'map':g(2,3,12,10,'#f4e8c8');g(2,3,12,1,'#a88a5a');s.line(3,10,7,6,'#c84a3a');s.line(7,6,10,9,'#c84a3a');s.line(10,9,13,4,'#c84a3a');break;
+   case 'train':g(2,6,9,6,'#2e7a4a');g(10,4,4,8,'#2e7a4a');g(11,1,2,3,'#3a3a40');s.circle(5,13,2,'#3a3a40');s.circle(11,13,2,'#3a3a40');g(4,7,3,2,'#bfe0f0');break;
+   case 'book':g(3,2,10,12,'#c84a7a');g(4,3,8,10,'#ffd0e0');g(5,5,6,1,'#c84a7a');g(5,8,6,1,'#c84a7a');s.px(8,11,'#4cbf6a');break;
+   case 'friends':s.circle(5,6,3,'#ffd0a0');s.circle(11,6,3,'#c8a080');g(2,10,6,5,'#4a8ad8');g(8,10,6,5,'#e86a8a');break;
+   case 'eye':s.ellipse(8,8,6,4,'#ffffff');s.circle(8,8,3,'#3a6aa8');s.circle(8,8,1,'#1a1a1a');break;
+   case 'tele':g(2,4,12,9,'#3a3a44');g(3,5,10,6,'#0e2014');g(4,7,4,1,'#7aff9a');g(4,9,6,1,'#7aff9a');g(6,13,4,2,'#3a3a44');break;
+   case 'fast':s.line(3,3,8,8,'#ffffff');s.line(8,8,3,13,'#ffffff');s.line(8,3,13,8,'#ffffff');s.line(13,8,8,13,'#ffffff');break;
+   case 'sound':g(2,6,4,4,'#ffffff');s.line(6,6,10,2,'#ffffff');s.line(6,10,10,14,'#ffffff');g(10,2,1,12,'#ffffff');break;
+   case 'coin':s.circle(8,8,6,'#e8a820');s.circle(8,8,5,'#ffd860');g(7,4,2,8,'#e8a820');break;
+   case 'coal':s.blob(8,9,6,5,'#4a4a52','#1a1a20',3,.3);s.px(6,7,'#8a8a96');break;
+   case 'food':s.ellipse(8,10,6,3,'#e8e0d0');s.blob(8,8,4,3,'#e8803a','#a8481a',2,.3);break;
+   case 'crate':g(2,3,12,11,'#a87a4a');g(2,3,12,1,'#c89a6a');s.line(2,3,13,13,'#7a5a3a');s.line(13,3,2,13,'#7a5a3a');break;
+   case 'heart':g(3,4,4,4,'#ff5a7a');g(9,4,4,4,'#ff5a7a');g(2,6,12,3,'#ff5a7a');g(4,9,8,2,'#ff5a7a');g(6,11,4,2,'#ff5a7a');break}}))}
+function drawHUD(c,inp,V){
+  // top: where from, where to, how fast, what day
+  const from=V.fromName,to=V.toName;const cx=W/2;
+  PX.text(c,from,cx-112,8,{scale:1,align:'right',color:'#ffffff',outline:'#2a1a12'});if(to){PX.text(c,to,cx+110,8,{align:'left',color:'#ffffff',outline:'#2a1a12'});PX.text(c,`in ${V.kmLeft} km`,cx+110,18,{font:'tiny',color:'#ffffff',outline:'#2a1a12'})}
+  if(to||S.state!=='station'){c.fillStyle='#2a1a12';c.fillRect(cx-104,13,208,3);c.fillStyle='#ffffff';c.fillRect(cx-103,14,206,1);const prog=V.prog||0;c.drawImage(icon('train'),Math.round(cx-104+prog*200-8),4)}
+  PX.text(c,V.speedLabel,cx-112,19,{font:'tiny',align:'right',color:'#ffe060',outline:'#2a1a12'});PX.text(c,dateLabel()+'  ·  '+CLOCK.label(),cx,22,{font:'tiny',align:'center',color:'#ffffff',outline:'#2a1a12'});
+  // left: coins and supplies
+  PX.panel(c,4,4,92,46,{fill:'#fbecd8',flat:1});c.drawImage(icon('coin'),8,7);PX.text(c,S.coins.toLocaleString(),27,11,{color:'#3a2414'});c.drawImage(icon('coal'),8,22);bar(c,27,26,62,S.fuel/locoDef().tank,'#5a5a66');c.drawImage(icon('food'),8,35);bar(c,27,39,62,S.food/200,'#e8803a');
+  inp.zone(4,4,92,46,()=>openPanel('train'));
+  // right: buttons
+  const btns=[['map','Map',()=>openPanel('map')],['train','Train',()=>openPanel('train')],['book','Notebook',()=>openPanel('notebook')],['friends','Friends',()=>openPanel('friends')],['eye','View',()=>openPanel('pov')],['tele','Telegraph',()=>openTele()],['fast','x'+S.ts,()=>{S.ts=S.ts>=4?1:S.ts*2;toast('Time x'+S.ts)}],['sound',PX.Sound.on?'Sound':'Muted',()=>{PX.Sound.on=!PX.Sound.on}]];
+  btns.forEach(([ic,lab,fn],i)=>{const x=W-28,y=6+i*25;const hov=inp.hover&&inp.hover.id==='b'+i;PX.panel(c,x,y,24,22,{fill:hov?'#fff8e8':'#fbecd8',flat:1,shadow:true});c.drawImage(icon(ic),x+4,y+3);if(ic==='book'&&S.ready&&Object.keys(S.ready).length){c.fillStyle='#ff4a6a';c.fillRect(x+18,y+1,5,5)}if(ic==='friends'&&NET.peers().length){PX.text(c,String(NET.peers().length),x+20,y+14,{font:'tiny',color:'#ffffff',outline:'#c84a3a'})}inp.zone(x,y,24,22,()=>{PX.Sound.click();fn()},'b'+i);if(hov)PX.text(c,lab,x-4,y+8,{align:'right',color:'#ffffff',outline:'#2a1a12'})});
+  // station controls
+  if(S.state==='station'&&!V.friend){const bw=104;const by=H-28;const opts=[['Board ('+PLATFORM.length+')',()=>openPanel('board'),'#e8a840','#8a5a1a'],['Market',()=>openPanel('market'),'#6aa8e8','#2a5a8a'],['Shop',()=>openPanel('shop'),'#c87ae8','#5a2a7a'],[S.plan.length?'Depart ▶'.replace('▶','>'):'Pick a stop',()=>{S.plan.length?depart():openPanel('map')},'#6ac46a','#2e6a34']];
+    let x=W/2-(opts.length*(bw+6))/2;for(const [lab,fn,col,dk] of opts){PX.button(c,x,by,bw,20,lab,{color:col,dark:dk});inp.zone(x,by,bw,20,()=>{PX.Sound.click();fn()});x+=bw+6}
+    PX.text(c,S.autoGo?'[x] auto-depart':'[ ] auto-depart',W/2,by-12,{font:'tiny',align:'center',color:'#ffffff',outline:'#2a1a12'});inp.zone(W/2-50,by-14,100,10,()=>{S.autoGo=!S.autoGo})}
+  else if(S.state==='moving'&&!V.friend){PX.text(c,S.target?'Heading to '+ST[S.target].n:'',W/2,H-12,{align:'center',color:'#ffffff',outline:'#2a1a12'})}
+  if(V.friend){PX.panel(c,W/2-120,H-30,240,24,{fill:'#e8f4ff',border:'#2a4a6a',flat:1});PX.text(c,'Riding along with '+V.friendName,W/2,H-23,{align:'center',color:'#1a3a5a'});PX.button(c,W/2+70,H-27,44,16,'Back',{color:'#6aa8e8',dark:'#2a5a8a'});inp.zone(W/2+70,H-27,44,16,()=>{S.pov='side';FRIEND=null})}
+  // tips floating over the cars: tap to collect
+  if(V.trainBox&&S.pov==='side')for(const tp of TIPS){const b=V.trainBox.find(b=>b.i===tp.ci);if(!b)continue;tp.x=b.x+30+((tp.amt*13)%40);tp.y=b.y-14-Math.sin(tp.t*3)*3;const a=tp.t>8?1-(tp.t-8):1;c.globalAlpha=a;PX.panel(c,tp.x-2,tp.y-2,22,19,{fill:'#ffffff',border:'#c8a050',flat:1,shadow:false});c.drawImage(icon(tp.heart?'heart':'coin'),tp.x+1,tp.y);c.globalAlpha=1;inp.zone(tp.x-6,tp.y-6,30,26,()=>{S.coins+=tp.amt;TIPS.splice(TIPS.indexOf(tp),1);floatText('+'+tp.amt,'#ffe070');PX.Sound.coin()})}
+  // car taps (side view)
+  if(V.trainBox&&S.pov==='side'&&!V.friend)for(const b of V.trainBox)inp.zone(b.x,b.y,b.w,b.h,()=>carInfo(b));
+  if(V.platformHit)for(const p of PLATFORM)if(p.sx)inp.zone(p.sx-8,p.sy-4,16,26,()=>openPanel('board'));
+  // peers on the far track: tap to watch
+  for(const P of V.peers||[])if(P.screenX!=null)inp.zone(P.screenX-60,RAIL2-80,120,80,()=>watchFriend(P));
+  // arrival banner
+  if(UI.arrival){const A=UI.arrival;A.t+=1/60;if(A.t>4.5)UI.arrival=null;else{const a=Math.min(1,A.t*2,(4.5-A.t)*2);c.globalAlpha=a;const n=ST[A.id].n;PX.text(c,n,W/2,92,{scale:3,align:'center',color:'#ffffff',outline:'#2a1a12'});PX.text(c,(A.first?'New stop!  ':'')+ST[A.id].s+'  ·  '+BIOMES[ST[A.id].b].n,W/2,118,{align:'center',color:'#ffe8a0',outline:'#2a1a12'});c.globalAlpha=1}}
+  // toasts and floating numbers
+  let ty=H-(S.state==='station'&&!V.friend?44:V.friend?40:24);for(let i=UI.toasts.length-1;i>=0;i--){const t=UI.toasts[i];t.t+=1/60;const a=Math.min(1,(5-t.t));if(a<=0)continue;const lines=PX.wrap(t.msg,300,'small');const h=8+lines.length*10;ty-=h+4;c.globalAlpha=a;PX.panel(c,W/2-160,ty,320,h,{fill:t.kind==='warn'?'#ffe0c8':t.kind==='sec'?'#ffd8f4':t.kind==='good'?'#d8f8d8':'#fbecd8',flat:1,shadow:false});lines.forEach((l,k)=>PX.text(c,l,W/2,ty+5+k*10,{align:'center',color:'#3a2414'}));c.globalAlpha=1}UI.toasts=UI.toasts.filter(t=>t.t<5);
+  UI.floats.forEach((f,i)=>{f.t+=1/60;PX.text(c,f.msg,W/2,150-f.t*20-i*12,{align:'center',color:f.col,outline:'#2a1a12'})});UI.floats=UI.floats.filter(f=>f.t<2)}
+function bar(c,x,y,w,k,col){c.fillStyle='#3a2414';c.fillRect(x,y,w,6);c.fillStyle='#e8d8c0';c.fillRect(x+1,y+1,w-2,4);c.fillStyle=col;c.fillRect(x+1,y+1,Math.round((w-2)*PX.clamp(k,0,1)),4)}
+function carInfo(b){if(b.t==='loco')return say(DAISY,[`${locoDef().n}. Top speed ${locoDef().spd} km/h, room for ${locoDef().cars} cars. I keep the cab tidy. Mostly.`],[['Ride up front (cab view)',()=>{S.pov='cab'}],['Okay',null]]);
+  const t=b.t;const D=CARS[t];const pas=S.pas.filter((p,i)=>carOfPassenger(i)[0]===b.i);
+  const lines=[D.n+'. '+D.d];if(D.seats)lines.push(pas.length?pas.map(p=>`${p.name} (${p.job}) is going to ${ST[p.to].n}.`).join(' '):'Nobody is sitting here yet.');if(t==='pets')lines.push(S.pets.length?'Riding: '+S.pets.map(k=>PETS[k][1]).join(', ')+'.':'No pets yet. Adopt some at a city shop.');if(t==='cargo')lines.push(S.cargo.length?'Carrying: '+S.cargo.map(x=>GOODS[x.g][1]).join(', ')+'.':'Empty.');
+  say({id:'car'+t,n:D.n,col:'#e8d8c0',skin:'#f4d0b0',hair:'#3a2a1a',shirt:D.body},lines,[['Sit by the window',()=>{S.pov='window';VIEW.windowIdx=b.i}],['Close',null]])}
+// ---------------- panels ----------------
+function openPanel(k,p){PANEL=k;PANELP=p||{page:0};PX.Sound.click()}
+function closePanel(){PANEL=null}
+function panelFrame(c,inp,title,sub){const x=40,y=30,w=W-80,h=H-60;c.fillStyle='rgba(20,12,8,.55)';c.fillRect(0,0,W,H);inp.zone(0,0,W,H,()=>{});PX.panel(c,x,y,w,h,{fill:'#fbecd8',border:'#6a3e22',inner:'#c9a07a'});PX.text(c,title,x+w/2,y+10,{scale:2,align:'center',color:'#5a2e14'});if(sub)PX.text(c,sub,x+w/2,y+28,{align:'center',color:'#8a6a50'});
+  PX.button(c,x+w-26,y+6,20,18,'X',{color:'#e86a5a',dark:'#8a2a2a'});inp.zone(x+w-26,y+6,20,18,closePanel);return {x:x+12,y:y+42,w:w-24,h:h-54}}
+function btn(c,inp,x,y,w,label,fn,o){o=o||{};PX.button(c,x,y,w,16,label,{color:o.color||'#6ac46a',dark:o.dark||'#2e6a34',text:o.text});if(!o.off)inp.zone(x,y,w,16,()=>{PX.Sound.click();fn()});else{c.fillStyle='rgba(251,236,216,.6)';c.fillRect(x,y,w,17)}}
+function drawPanel(c,inp){if(!PANEL)return;const f=PANELS[PANEL];if(f)f(c,inp);else PANEL=null}
+const PANELS={
+ // ---- the map: tap a station to set your destination
+ map(c,inp){const R=panelFrame(c,inp,'Rail Map',S.target?'Heading to '+ST[S.target].n+' · tap a station to change':'Tap any station to plan a trip');const [x0,y0,w,h]=[R.x,R.y,R.w,R.h];
+  const lon0=-126,lon1=-72,lat0=28,lat1=50;const P=(lon,lat)=>[x0+(lon-lon0)/(lon1-lon0)*w,y0+(lat1-lat)/(lat1-lat0)*h];
+  c.fillStyle='#d8ecf4';c.fillRect(x0,y0,w,h);const outline=[[-124.7,48.4],[-123,49],[-95,49],[-89,48],[-84,46.5],[-82.5,45.3],[-79,43.5],[-76,44],[-71,45],[-67,45],[-70,43],[-70.5,41.5],[-74,40.5],[-75.5,38.5],[-76.3,35],[-78,34],[-81,31.5],[-80.5,28],[-82.5,28],[-84,30],[-89,30.2],[-94,29.5],[-97,28],[-97.5,26],[-100,28.5],[-103,29],[-104.5,30],[-106.5,31.8],[-111,31.3],[-114.8,32.5],[-117.1,32.6],[-120.5,34.5],[-122.5,37.5],[-124,40],[-124.4,43],[-124.7,48.4]];
+  c.fillStyle='#e8dcb8';c.beginPath();outline.forEach(([lo,la],i)=>{const [x,y]=P(lo,la);i?c.lineTo(x,y):c.moveTo(x,y)});c.closePath();c.fill();
+  // pixelate the coastline edge by sampling (keeps it crisp)
+  for(const L of LINES){for(let i=0;i<L.s.length-1;i++){const [ax,ay]=P(ST[L.s[i]].lon,ST[L.s[i]].lat),[bx,by]=P(ST[L.s[i+1]].lon,ST[L.s[i+1]].lat);c.fillStyle='#3a2414';line2(c,ax,ay+1,bx,by+1,'#3a2414');c.fillStyle=L.c;line2(c,ax,ay,bx,by,L.c)}}
+  if(S.plan.length){let prev=S.state==='station'?S.at:prevId();c.fillStyle='#ff4a8a';for(const id of S.plan){const [ax,ay]=P(ST[prev].lon,ST[prev].lat),[bx,by]=P(ST[id].lon,ST[id].lat);line2(c,ax,ay,bx,by,'#ff4a8a');prev=id}}
+  for(const id in ST){const [x,y]=P(ST[id].lon,ST[id].lat);const v=S.visited[id];c.fillStyle='#3a2414';c.fillRect(Math.round(x-3),Math.round(y-3),7,7);c.fillStyle=v?'#ffffff':'#c8b89a';c.fillRect(Math.round(x-2),Math.round(y-2),5,5);if(id===S.target){c.fillStyle='#ff4a8a';c.fillRect(Math.round(x-2),Math.round(y-2),5,5)}
+   const hov=inp.hover&&inp.hover.id==='st'+id;if(hov||ST[id].z===2||id===S.target||id===S.at)PX.text(c,ST[id].n,x+5,y-8,{font:'tiny',color:hov?'#c84a3a':'#3a2414'});inp.zone(x-6,y-6,13,13,()=>{if(setTarget(id)){toast('Next destination: '+ST[id].n+' ('+route(S.state==='station'?S.at:nextId(),id).km+' km)');}},'st'+id)}
+  // you are here
+  let px,py;if(S.state==='station')[px,py]=P(ST[S.at].lon,ST[S.at].lat);else{const a=ST[prevId()],b=ST[nextId()];const k=1-remainingKm()/(S.seg.len/PXKM);[px,py]=P(a.lon+(b.lon-a.lon)*k,a.lat+(b.lat-a.lat)*k)}c.drawImage(icon('train'),Math.round(px-8),Math.round(py-14));
+  for(const P2 of NET.peers()){const st=P2.state;if(!st||!st.seg)continue;const a=ST[st.seg[0]],b=ST[st.seg[1]];if(!a||!b)continue;const k=st.u/(segKm(st.seg[0],st.seg[1])*PXKM||1);const [qx,qy]=P(a.lon+(b.lon-a.lon)*k,a.lat+(b.lat-a.lat)*k);c.fillStyle='#4ad0ff';c.fillRect(Math.round(qx-3),Math.round(qy-3),6,6);PX.text(c,st.n||'',qx+5,qy+2,{font:'tiny',color:'#1a5a8a'})}
+  LINES.forEach((L,i)=>{c.fillStyle=L.c;c.fillRect(x0+6,y0+h-46+i*10,10,4);PX.text(c,L.n,x0+20,y0+h-48+i*10,{font:'tiny',color:'#3a2414'})});
+  if(S.state==='station'&&S.plan.length)btn(c,inp,x0+w-110,y0+h-20,104,'Depart >',()=>{closePanel();depart()})},
+ // ---- passengers on the platform
+ board(c,inp){const R=panelFrame(c,inp,'All aboard?',`${S.pas.length} of ${seats()} seats taken · tap Board to take someone along`);const per=5,page=PANELP.page||0;const list=PLATFORM;
+  if(!list.length)PX.text(c,'Nobody is waiting right now.',R.x+R.w/2,R.y+40,{align:'center',color:'#8a6a50'});
+  list.slice(page*per,page*per+per).forEach((p,i)=>{const y=R.y+i*42;PX.panel(c,R.x,y,R.w,38,{fill:p.vip?'#fff0c8':'#fff8ee',flat:1,shadow:false});c.drawImage(portrait({seed:p.look.seed,look:p.look,id:p.vip,col:'#d8e8f8',sp:p.look.animal}),R.x+4,y+3,32,32);
+   PX.text(c,p.name+(p.vip?'  ★':''),R.x+42,y+5,{color:'#3a2414'});PX.text(c,p.job,R.x+42,y+15,{font:'tiny',color:'#8a6a50'});PX.text(c,'to '+ST[p.to].n+' · '+p.km+' km',R.x+42,y+24,{color:'#2e6a34'});
+   PX.text(c,'+'+p.fare,R.x+R.w-140,y+15,{color:'#a87a10'});c.drawImage(icon('coin'),R.x+R.w-112,y+11);btn(c,inp,R.x+R.w-86,y+11,78,'Board',()=>{board(p)},{off:S.pas.length>=seats()})});
+  pager(c,inp,R,list.length,per);
+  if(S.pas.length){PX.text(c,'Riding now: '+S.pas.map(p=>p.name.split(' ')[0]+' > '+ST[p.to].n).join(', ').slice(0,120),R.x,R.y+R.h-8,{font:'tiny',color:'#5a3a24'})}},
+ // ---- buy where it is made, sell where it is wanted
+ market(c,inp){const id=S.at;const R=panelFrame(c,inp,ST[id].n+' Market',`Cargo ${S.cargo.length}/${crates()} crates · ${ST[id].make?'Made here: '+GOODS[ST[id].make][1]:'Nothing made here'}${ST[id].want?' · Wanted here: '+GOODS[ST[id].want][1]:''}`);
+  const gs=Object.keys(GOODS);const col=4;gs.forEach((g,i)=>{const x=R.x+(i%col)*(R.w/col),y=R.y+Math.floor(i/col)*30;const p=priceOf(g,id);const tag=ST[id].make===g?'cheap':ST[id].want===g?'wanted':'';PX.text(c,GOODS[g][1].slice(0,9),x,y+2,{color:tag==='cheap'?'#2e7a34':tag==='wanted'?'#c84a3a':'#3a2414'});PX.text(c,p+'c',x,y+12,{font:'tiny',color:'#8a6a50'});btn(c,inp,x+70,y+4,40,'Buy',()=>buyGood(g),{off:S.cargo.length>=crates(),color:'#e8a840',dark:'#8a5a1a'})});
+  const y=R.y+R.h-40;PX.text(c,'Your cargo (tap to sell):',R.x,y-4,{color:'#5a3a24'});S.cargo.forEach((k,i)=>{const x=R.x+i*66;const p=priceOf(k.g,id);btn(c,inp,x,y+6,62,GOODS[k.g][1].slice(0,6)+' '+p,()=>sellGood(i),{color:p>k.paid?'#6ac46a':'#c8b098',dark:p>k.paid?'#2e6a34':'#7a6a54'})});if(!crates())PX.text(c,'Buy a cargo car in the Shop to trade.',R.x,y+10,{color:'#8a6a50'})},
+ // ---- the shop: supplies, cars, engines, pets, and Thread & Thimble
+ shop(c,inp){const id=S.at;const z=ST[id].z;const R=panelFrame(c,inp,ST[id].n+' Shop','Supplies, new cars'+(z===2?', engines and pets':''));const tab=PANELP.tab||'supplies';const tabs=['supplies','cars'].concat(z===2||id==='clover'?['engines','pets']:[]).concat(['clover','pdx'].includes(id)?['tailor']:[]);
+  tabs.forEach((t,i)=>{btn(c,inp,R.x+i*82,R.y-2,78,t[0].toUpperCase()+t.slice(1),()=>{PANELP.tab=t;PANELP.page=0},{color:t===tab?'#e8a840':'#c8b098',dark:t===tab?'#8a5a1a':'#7a6a54'})});const y0=R.y+22;
+  if(tab==='supplies'){const tank=locoDef().tank;const items=[['Clover coal x40',40,40,()=>{S.fuel=Math.min(tank,S.fuel+40)},S.fuel>=tank],['Fill the tender',Math.ceil((tank-S.fuel)),0,()=>{S.fuel=tank},S.fuel>=tank],['Food x40',30,0,()=>{S.food=Math.min(200,S.food+40)},S.food>=200]];
+   items.forEach(([n,p,_,fn,full],i)=>{const y=y0+i*26;PX.text(c,n,R.x,y+4,{color:'#3a2414'});PX.text(c,p+' coins',R.x+150,y+4,{color:'#a87a10'});btn(c,inp,R.x+230,y,70,full?'Full':'Buy',()=>{if(S.coins<p)return toast('Not enough coins.');S.coins-=p;fn();PX.Sound.coin()},{off:full})});
+   PX.text(c,'Coal: '+Math.round(S.fuel)+'/'+tank+'   Food: '+Math.round(S.food)+'/200',R.x,y0+90,{color:'#5a3a24'});PX.text(c,'Coal runs the engine. Food keeps dining-car passengers happy. The solar roof crawls you home if you run dry.',R.x,y0+104,{font:'tiny',color:'#8a6a50'})}
+  if(tab==='cars'){const keys=Object.keys(CARS).filter(k=>k!=='caboose');const max=locoDef().cars;PX.text(c,`Cars: ${S.cars.length}/${max+1} (with caboose) · tap a car below to sell it back`,R.x,y0,{color:'#5a3a24'});
+   keys.forEach((k,i)=>{const x=R.x+(i%3)*(R.w/3),y=y0+14+Math.floor(i/3)*44;c.drawImage(carSprite(k,S.livery),x,y,60,29);PX.text(c,CARS[k].n,x+64,y+2,{color:'#3a2414'});PX.text(c,CARS[k].p+'c',x+64,y+12,{font:'tiny',color:'#a87a10'});btn(c,inp,x+64,y+20,50,'Add',()=>{if(S.cars.length>max)return toast(`Your engine can only pull ${max} cars plus the caboose. Upgrade the engine in a city.`);if(S.coins<CARS[k].p)return toast('Not enough coins.');S.coins-=CARS[k].p;S.cars.splice(S.cars.length-1,0,k);PX.Sound.coin();checkNotebook()},{off:S.cars.length>max})});
+   S.cars.forEach((k,i)=>{if(k==='caboose')return;const x=R.x+i*42,y=R.y+R.h-22;c.drawImage(carSprite(k,S.livery),x,y,40,19);inp.zone(x,y,40,19,()=>say(DAISY,[`Sell the ${CARS[k].n.toLowerCase()} for ${Math.round(CARS[k].p/2)} coins?`],[['Sell it',()=>{const seatsAfter=seats()-(CARS[k].seats||0);if(S.pas.length>seatsAfter)return toast('Passengers are sitting in it!');S.cars.splice(i,1);S.coins+=Math.round(CARS[k].p/2);if(k==='cargo')S.cargo=S.cargo.slice(0,crates())}],['Keep it',null]]))})}
+  if(tab==='engines'){LOCOS.forEach((L,i)=>{const y=y0+i*40;c.drawImage(locoSprite(i,S.livery),R.x,y,80,37);PX.text(c,L.n,R.x+90,y+4,{color:'#3a2414'});PX.text(c,`${L.spd} km/h · ${L.cars} cars · tender ${L.tank}`,R.x+90,y+14,{font:'tiny',color:'#8a6a50'});btn(c,inp,R.x+270,y+6,80,i===S.loco?'Yours':i<S.loco?'Owned':L.p+'c',()=>{if(S.coins<L.p)return toast('Not enough coins.');S.coins-=L.p;S.loco=i;PX.forget('loco');PX.Sound.chime();toast('New engine: '+L.n+'!','good')},{off:i<=S.loco})});
+   const livs=['#2e7a4a','#8a2a3a','#2a4a8a','#3a3a44','#c88a2a','#6a3a8a','#e86a9a'];PX.text(c,'Paint:',R.x+380,y0+4,{color:'#3a2414'});livs.forEach((l,i)=>{const x=R.x+380+(i%4)*24,y=y0+16+Math.floor(i/4)*24;c.fillStyle=l;c.fillRect(x,y,18,18);if(l===S.livery){c.fillStyle='#ffffff';c.fillRect(x+7,y+7,4,4)}inp.zone(x,y,18,18,()=>{S.livery=l;PX.Sound.click()})})}
+  if(tab==='pets'){const ks=Object.keys(PETS);ks.forEach((k,i)=>{const x=R.x+(i%5)*(R.w/5),y=y0+Math.floor(i/5)*62;c.drawImage(petSprite(k,0),x+8,y,44,32);PX.text(c,PETS[k][1],x,y+34,{font:'tiny',color:'#3a2414'});const own=S.pets.includes(k);btn(c,inp,x,y+42,70,own?'Riding':PETPRICE[k]+'c',()=>{if(!hasCar('pets'))return toast('Buy a pet car first (Cars tab).');if(S.pets.length>=4)return toast('The pet car holds four pets.');if(S.coins<PETPRICE[k])return toast('Not enough coins.');S.coins-=PETPRICE[k];S.pets.push(k);PX.Sound.chime();checkNotebook()},{off:own})});PX.wrap('Daisy\'s first list: unicorn, dragon, dog, dolphin, whale, deer, snow leopard. Pets ride in the pet car (holds 4), so swap them out as you collect.',R.w-130,'small').forEach((l,i)=>PX.text(c,l,R.x,R.y+R.h-30+i*10,{color:'#8a6a50'}));
+   if(S.pets.length)btn(c,inp,R.x+R.w-110,R.y+R.h-36,104,'Let one off',()=>{S.pets.shift()},{color:'#c8b098',dark:'#7a6a54'})}
+  if(tab==='tailor'){PX.text(c,'Thread & Thimble · fairy dresses',R.x,y0,{color:'#c84a7a'});PX.text(c,'A fairy dress costs 2 wool (buy wool at Juniper Springs or Bluebell) and 60 coins.',R.x,y0+14,{font:'tiny',color:'#5a3a24'});const wool=S.cargo.filter(k=>k.g==='wool').length;PX.text(c,'Wool in cargo: '+wool+' · dresses ready: '+S.dress,R.x,y0+28,{color:'#3a2414'});
+   btn(c,inp,R.x,y0+44,120,'Sew a dress',()=>{if(wool<2)return toast('You need 2 wool crates.');if(S.coins<60)return toast('Not enough coins.');let n=0;S.cargo=S.cargo.filter(k=>{if(k.g==='wool'&&n<2){n++;return false}return true});S.coins-=60;S.dress++;PX.Sound.chime();toast('You sewed a fairy dress! Give it to a fairy passenger.','good')},{color:'#e88ab8',dark:'#8a2a5a'});
+   const fairy=S.pas.find(p=>p.vip==='petalwink');if(fairy&&S.dress)btn(c,inp,R.x+130,y0+44,150,'Give it to Petalwink',()=>{S.dress--;S.seen.fairyDress=1;S.coins+=300;checkNotebook();say({id:'petalwink',n:'Petalwink',col:'#ff8ad8',skin:'#f4d0b0',hair:'#ff8ad0',long:1,wings:1,shirt:'#ff8ad8'},['It is PERFECT! Here is your tiny wish: 300 coins, and every unicorn on this train is now extra sparkly.'])})}},
+ // ---- the train at a glance
+ train(c,inp){const R=panelFrame(c,inp,'Your Train',`${locoDef().n} · ${S.cars.length} cars · ${S.pas.length}/${seats()} passengers · ${S.cargo.length}/${crates()} crates`);
+  let x=R.x+R.w-130;c.drawImage(locoSprite(S.loco,S.livery),x,R.y,120,56);S.cars.forEach((k,i)=>{const cx=x-(i+1)*62;if(cx<R.x-20)return;c.drawImage(carSprite(k,S.livery),cx,R.y+14,60,29)});
+  const st=[['Coins',S.coins],['Clover coal',Math.round(S.fuel)+' / '+locoDef().tank],['Food',Math.round(S.food)+' / 200'],['Delivered',S.stats.delivered||0],['Kilometers',Math.round(S.stats.km||0)],['Stops visited',Object.keys(S.visited).length+' / '+Object.keys(ST).length],['Secrets',Object.keys(S.secrets).length+' / '+Object.keys(SECRETS).length],['Pets',S.pets.map(k=>PETS[k][1]).join(', ')||'none']];
+  st.forEach(([k,v],i)=>{const y=R.y+70+i*13;PX.text(c,k,R.x,y,{color:'#8a6a50'});PX.text(c,String(v),R.x+110,y,{color:'#3a2414'})});
+  PX.text(c,'Passengers:',R.x+300,R.y+70,{color:'#8a6a50'});S.pas.slice(0,8).forEach((p,i)=>PX.text(c,`${p.name} > ${ST[p.to].n} ${p.mood>70?':)':p.mood>45?':|':':('}`,R.x+300,R.y+82+i*11,{font:'tiny',color:'#3a2414'}))},
+ // ---- Daisy's notebook
+ notebook(c,inp){const R=panelFrame(c,inp,"Daisy's Notebook",'Her ideas, turned into goals. Finish them for rewards.');c.drawImage(portrait(DAISY),R.x+R.w-60,R.y-8,56,56);
+  NOTEBOOK.forEach((N,i)=>{const y=R.y+i*15;const done=S.claimed[N.id],ready=S.ready&&S.ready[N.id];PX.text(c,(done?'[x] ':ready?'[!] ':'[ ] ')+N.t,R.x,y+3,{color:done?'#8a9a8a':ready?'#c84a3a':'#3a2414'});if(ready&&!done)btn(c,inp,R.x+R.w-136,y,64,'+'+N.r,()=>{S.claimed[N.id]=1;delete S.ready[N.id];S.coins+=N.r;PX.Sound.chime();floatText('+'+N.r,'#ffe070')})})},
+ // ---- who else is riding the rails right now
+ friends(c,inp){const R=panelFrame(c,inp,'Friends on the Line',NET.mode==='room'?'Everyone with this page open is on the same rails':NET.mode==='local'?'Playing with other tabs on this device':'Offline: share the page so friends can join');const ps=NET.peers();
+  PX.text(c,'You are '+S.name+'. ',R.x,R.y,{color:'#3a2414'});btn(c,inp,R.x+200,R.y-4,90,'Change name',()=>openName());
+  if(!ps.length)PX.text(c,'Nobody else is on the rails right now. When a friend opens this game, their train shows up on the far track and on the map.',R.x,R.y+24,{font:'tiny',color:'#8a6a50'});
+  ps.slice(0,6).forEach((P,i)=>{const st=P.state||{};const y=R.y+22+i*34;PX.panel(c,R.x,y,R.w,30,{fill:'#eef6ff',border:'#2a4a6a',flat:1,shadow:false});PX.text(c,st.n||'Player',R.x+8,y+5,{color:'#1a3a5a'});const where=st.at?'at '+(ST[st.at]||{}).n:st.seg?'between '+(ST[st.seg[0]]||{}).n+' and '+(ST[st.seg[1]]||{}).n:'';PX.text(c,where,R.x+8,y+16,{font:'tiny',color:'#4a6a8a'});
+   btn(c,inp,R.x+R.w-210,y+7,64,'Wave',()=>{NET.emit('wave',{to:P.id,n:S.name});S.seen.waved=1;checkNotebook();toast('You waved at '+(st.n||'them')+'.')},{color:'#e8a840',dark:'#8a5a1a'});btn(c,inp,R.x+R.w-140,y+7,64,'Watch',()=>{closePanel();watchFriend({id:P.id})},{color:'#6aa8e8',dark:'#2a5a8a'});btn(c,inp,R.x+R.w-70,y+7,62,'Say hi',()=>{NET.emit('chat',{n:S.name,t:'Hi from '+(S.state==='station'?ST[S.at].n:'the rails')+'!'});toast('Sent.')})});
+  btn(c,inp,R.x,R.y+R.h-18,120,'Send a message',()=>{openTele();teleInput('SAY ')})},
+ // ---- points of view
+ pov(c,inp){const R=panelFrame(c,inp,'Point of View','How do you want to watch the world go by?');const opts=[['side','Side view','The classic view of the whole train.'],['cab','Engine cab','Ride up front with Daisy and watch the rails.'],['window','Window seat','Sit inside a car and look out the window.'],['friend','A friend\'s window','See exactly what another player sees, live.']];
+  opts.forEach(([k,n,d],i)=>{const y=R.y+i*44;PX.panel(c,R.x,y,R.w,40,{fill:S.pov===k?'#fff0c8':'#fff8ee',flat:1,shadow:false});PX.text(c,n,R.x+10,y+8,{scale:2,color:'#3a2414'});PX.text(c,d,R.x+10,y+26,{font:'tiny',color:'#8a6a50'});inp.zone(R.x,y,R.w,40,()=>{if(k==='friend'){const p=NET.peers()[0];if(!p)return toast('Nobody else is online right now. When a friend joins, you can watch from their window.');watchFriend({id:p.id});closePanel();return}S.pov=k;if(k==='window')VIEW.windowIdx=Math.max(0,S.cars.findIndex(t=>t==='dome'||t==='coach'||t==='pets'));closePanel()})})}};
+function pager(c,inp,R,n,per){const pages=Math.ceil(n/per);if(pages<=1)return;const p=PANELP.page||0;PX.text(c,`${p+1}/${pages}`,R.x+R.w/2,R.y+R.h-22,{align:'center',color:'#8a6a50'});if(p>0)btn(c,inp,R.x+R.w/2-70,R.y+R.h-26,40,'<',()=>{PANELP.page=p-1});if(p<pages-1)btn(c,inp,R.x+R.w/2+30,R.y+R.h-26,40,'>',()=>{PANELP.page=p+1})}
+
+// ---- CLOVER LINE · the telegraph: type commands, find secrets, play the old games ----
+let TELE=null;
+const TELECSS=`#tele{position:absolute;left:0;right:0;bottom:0;height:46%;display:flex;flex-direction:column;background:rgba(6,10,8,.94);border-top:3px solid #3a5a3a;font:15px/1.45 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:#cfe8c0;z-index:20}
+#tele[hidden]{display:none}#tele .out{flex:1;overflow-y:auto;padding:8px 14px;text-shadow:0 0 6px rgba(120,255,140,.25)}#tele .row{display:flex;gap:6px;align-items:center;padding:6px 14px;border-top:1px solid #1a2a1a}
+#tele input{flex:1;background:transparent;border:0;outline:0;color:#e8ffe0;font:inherit;caret-color:#8affa0;min-width:0}#tele button{background:#122014;color:#bfffc8;border:1px solid #2e5a34;border-radius:6px;font:12px ui-monospace,monospace;padding:6px 10px;cursor:pointer}
+#tele .l{white-space:pre-wrap;margin:1px 0}#tele .you{color:#8affa0}#tele .q{color:#ffe08a}#tele .dim{color:#7a9a7a}#tele .warn{color:#ffb86a}#tele .good{color:#9ae8ff}#tele .sec{color:#ff9ae8}#tele .radio{color:#c8b8ff;font-style:italic}#tele .chips{display:flex;gap:5px;flex-wrap:wrap;padding:0 14px 8px}`;
+function teleInit(root){const st=document.createElement('style');st.textContent=TELECSS;document.head.appendChild(st);const d=document.createElement('div');d.id='tele';d.hidden=true;d.innerHTML=`<div class="out" role="log" aria-live="polite"></div><div class="row"><span style="color:#8affa0">&gt;</span><input autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="type a command, or HELP" aria-label="Telegraph command"><button data-x>close</button></div><div class="chips"></div>`;root.appendChild(d);
+  TELE={el:d,out:d.querySelector('.out'),inp:d.querySelector('input'),hist:[],hi:-1};d.querySelector('[data-x]').onclick=()=>closeTele();
+  TELE.inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){const v=TELE.inp.value;TELE.inp.value='';teleCmd(v)}else if(e.key==='Escape')closeTele();else if(e.key==='ArrowUp'){if(TELE.hist.length){TELE.hi=Math.min(TELE.hist.length-1,TELE.hi+1);TELE.inp.value=TELE.hist[TELE.hi]}e.preventDefault()}else if(e.key==='ArrowDown'){TELE.hi=Math.max(-1,TELE.hi-1);TELE.inp.value=TELE.hi>=0?TELE.hist[TELE.hi]:''}});
+  ['HELP','STATUS','LOOK UP','LISTEN','WRITE ','SECRETS'].forEach(c=>{const b=document.createElement('button');b.textContent=c.trim();b.onclick=()=>{if(c.endsWith(' ')){teleInput(c)}else teleCmd(c)};d.querySelector('.chips').appendChild(b)});
+  tele('CLOVER LINE TELEGRAPH · type HELP. Some words are not on the list. The rails reward the curious.','dim')}
+function tele(s,cls){if(!TELE)return;const d=document.createElement('div');d.className='l '+(cls||'');d.textContent=s;TELE.out.appendChild(d);while(TELE.out.children.length>300)TELE.out.firstChild.remove();TELE.out.scrollTop=TELE.out.scrollHeight}
+function openTele(){TELE.el.hidden=false;setTimeout(()=>TELE.inp.focus(),30)}
+function closeTele(){TELE.el.hidden=true;TELE.inp.blur()}
+function teleInput(s){openTele();TELE.inp.value=s;TELE.inp.focus()}
+const isNight=()=>CLOCK.daylight<.25;
+function teleCmd(raw){raw=String(raw);if(!raw.trim())return;tele('> '+raw,'you');TELE.hist.unshift(raw);TELE.hi=-1;PX.Sound.click();const c=raw.trim().toUpperCase().split(/\s+/);const v=c[0];const rest=raw.trim().split(/\s+/).slice(1).join(' ');
+  if(MODE==='dungeon')return dungeonCmd(c);if(MODE==='arcade'){if(v==='EXIT'||v==='QUIT')arcadeEnd();return}
+  const here=S.state==='station'?S.at:null;
+  switch(v){
+   case 'HELP':case '?':tele('STATUS · MAP · GO <town> · DEPART · BUY COAL <n> · BUY FOOD <n> · TIME 1/2/4 · POV SIDE/CAB/WINDOW/FRIEND','q');tele('SAY <message> · WAVE · NAME <you> · WRITE <a paragraph> · LOOK UP · LISTEN · DIAL <number> · SECRETS · CLEAR','q');return;
+   case 'CLEAR':TELE.out.innerHTML='';return;
+   case 'STATUS':tele(`${dateLabel()} ${CLOCK.label()} · ${here?'at '+ST[here].n:'between '+ST[prevId()].n+' and '+ST[nextId()].n+', '+Math.round(remainingKm())+' km to go'} · ${Math.round(S.speed)} km/h · weather: ${S.wx}`);tele(`${S.coins} coins · coal ${Math.round(S.fuel)} · food ${Math.round(S.food)} · ${S.pas.length}/${seats()} passengers · ${S.cargo.length}/${crates()} crates · pets: ${S.pets.join(', ')||'none'}`);return;
+   case 'MAP':closeTele();openPanel('map');return;
+   case 'GO':case 'TO':{const q=rest.toLowerCase();const id=Object.keys(ST).find(k=>ST[k].n.toLowerCase().startsWith(q)||k===q);if(!id)return tele('Where? Try GO PORTLAND or GO GARDEN CITY.','dim');if(!setTarget(id))return tele('You are already there.','dim');tele(`Destination set: ${ST[id].n}, ${route(here||nextId(),id).km} km.`,'good');if(here)depart();return}
+   case 'DEPART':case 'LEAVE':if(!here)return tele('You are already rolling.','dim');depart();return;
+   case 'BUY':{if(!here)return tele('You can only buy at a station.','dim');const k=(c[1]||'').toLowerCase(),n=Math.max(1,parseInt(c[2])||20);if(k==='coal'||k==='fuel'){const t=locoDef().tank;const m=Math.min(n,t-S.fuel);if(m<=0)return tele('The tender is full.','dim');if(S.coins<m)return tele('Not enough coins.','dim');S.coins-=Math.ceil(m);S.fuel+=m;return tele(`Bought ${Math.round(m)} coal.`,'good')}if(k==='food'){const m=Math.min(n,200-S.food);if(S.coins<Math.ceil(m*.75))return tele('Not enough coins.','dim');S.coins-=Math.ceil(m*.75);S.food+=m;return tele(`Bought ${Math.round(m)} food.`,'good')}return tele('BUY COAL 40 or BUY FOOD 40. Goods are in the Market.','dim')}
+   case 'TIME':S.ts=[1,2,4].includes(+c[1])?+c[1]:1;return tele('Time x'+S.ts,'dim');
+   case 'POV':case 'VIEW':{const m=(c[1]||'').toLowerCase();if(m==='friend'){const p=NET.peers()[0];if(!p)return tele('Nobody else is online.','dim');watchFriend({id:p.id});return}if(!['side','cab','window'].includes(m))return tele('POV SIDE, CAB, WINDOW or FRIEND.','dim');S.pov=m;return}
+   case 'SAY':if(!rest)return tele('SAY what?','dim');NET.emit('chat',{n:S.name,t:rest.slice(0,140)});tele(NET.mode==='offline'?'(Nobody is online to hear it.)':'Sent down the line.','dim');return;
+   case 'WAVE':NET.emit('wave',{n:S.name});S.seen.waved=1;checkNotebook();tele('You wave out the window.','dim');return;
+   case 'NAME':if(!rest)return tele('NAME <your name>','dim');S.name=rest.slice(0,16);save();return tele('Hello, '+S.name+'.','good');
+   case 'WRITE':{const words=rest.split(/\s+/).filter(Boolean);if(words.length<8)return tele('Write a real paragraph: at least eight words. Daisy will read it.','dim');S.stats.writes=(S.stats.writes||0)+1;S.coins+=50;tele('Daisy reads it twice and smiles. "That is going in my notebook." +50 coins','good');found('write');checkNotebook();if(NET.mode!=='offline')NET.emit('chat',{n:S.name,t:'✎ '+rest.slice(0,140)});return}
+   case 'SECRETS':tele(`SECRETS ${Object.keys(S.secrets).length}/${Object.keys(SECRETS).length}`,'q');for(const k in SECRETS)tele((S.secrets[k]?'★ '+SECRETS[k]:'· ???'),S.secrets[k]?'sec':'dim');return;
+   case 'XYZZY':tele('A hollow voice says "Fool."','sec');found('xyzzy');return;
+   case 'PLUGH':tele('Far under the tracks, a door you have never seen clicks open. Something is in your coat pocket: a cassette labeled 1982.','sec');S.tape=1;found('plugh');return;
+   case 'CLOVER':tele('A postcard falls out of the timetable: a harbor town, a hall with a clover on the door, floating islands in the sky. "Wish you were here. There is a house with your name on it."','sec');found('clover');return;
+   case 'LOOK':if((c[1]||'')==='UP'||c[1]==='RING'){if(!isNight())return tele('It is daytime. The Ring is a faint arc near the Moon.','dim');S.lookups=(S.lookups||0)+1;const L=['The Ring is bright tonight. Everybody on the train goes quiet.','Tonight there is a bright bead on the Ring.','The bright bead is moving along the Ring. Slowly. Like something walking.'];tele(L[Math.min(2,S.lookups-1)]);if(S.lookups>=3){found('ring');RINGGLOW=6}return}tele(here?ST[here].f:pick(ROADSIDE));return;
+   case 'LISTEN':case 'RADIO':case 'TUNE':if(!isNight())return tele('Daytime radio: farm reports, static, and one station that only plays polka.','dim');if(S.lastListen===CLOCK.day&&S.heard<BROADCASTS.length)return tele('Marigold is playing slow songs. The next part of her story will be on another night.','dim');if(S.heard>=BROADCASTS.length)return tele('KHUSH plays soft music. Marigold says goodnight to the Clover Line by name.','radio');S.lastListen=CLOCK.day;tele(BROADCASTS[S.heard],'radio');S.heard++;if(S.heard>=BROADCASTS.length)found('khush');else tele(`(Broadcast ${S.heard} of ${BROADCASTS.length}. Listen again another night.)`,'dim');return;
+   case 'DIAL':case 'CALL':{if(!here)return tele('Payphones are at the stations.','dim');const n=rest.replace(/\D/g,'');if(n==='0'){tele('An operator picks up. "Number please." You do not have one. "That is all right, honey. Most folks just call to hear a voice."');found('dial');return}if(n==='8675309'){tele('"There is no Jenny," says a tired voice. "There has never been a Jenny. Please stop calling."','sec');found('dial');return}tele('It rings, and rings. Then a hum fills the line and grows. You hang up.','dim');return}
+   case 'DIG':if(here==='cadillac'){if(S.tape)return tele('Just dirt and old paint caps now.','dim');S.tape=1;tele('Under the tenth car you dig up a lunchbox. Inside: a cassette labeled 1982, and a note. PLAY AT NIGHT.','sec');return}return tele('You dig a little hole by the tracks. Nothing.','dim');
+   case 'SPRAY':case 'PAINT':case 'CARVE':{if(here!=='cadillac'&&here!=='indrock')return tele('Nothing here to write on that would last. Try Cadillac Ranch or Independence Rock.','dim');const n=(rest||S.name).slice(0,16).toUpperCase();const L=PX.store.get('cloverline-names',[]);L.push(n);PX.store.set('cloverline-names',L.slice(-40));NET.emit('spray',{n,at:here});tele(`You leave ${n} for everyone who comes after. Names already here: ${L.slice(-8).join(', ')}.`,'sec');found('spray');return}
+   case 'FOLLOW':if(here!=='fthall')return tele('Follow what?','dim');tele('You follow the hand-painted sign. The fields turn silver. There is a diner with all its lights on, and a waitress who says "Long road? Drink up. Then go back. You have someplace to be." When you step out, you are at Fort Hall, and the sign is gone. Everyone on the train feels wonderful.','sec');for(const p of S.pas)p.mood=100;S.coins+=200;found('somewhere');return;
+   case 'SING':if(!isNight())return tele('You sing a little. Daisy joins in on the chorus.','dim');tele('You sing an old railroad song into the dark. Far off, coyotes join in, in harmony.','sec');for(const p of S.pas)p.mood=Math.min(100,p.mood+15);found('sing');return;
+   case 'WHISTLE':case 'HONK':PX.Sound.whistle();return tele('WOOOO-WOOO.','dim');
+   case 'PLAY':if((c[1]||'')==='TAPE'){if(!S.tape)return tele('You have no tape. People say there is one buried at Cadillac Ranch.','dim');if(!isNight())return tele('"Play it at night," the note said. "Not before."','dim');tele('Hiss. A heartbeat. A calm old voice: "YOU HAVE ENTERED THE DUNGEONS UNDER THE ROAD."','sec');setTimeout(dungeonStart,1200);return}return tele('PLAY TAPE?','dim');
+   case 'INSERT':case 'ARCADE':if(!(hasCar('arcade')||here))return tele('You need an arcade car, or a station arcade.','dim');arcadeStart();return;
+   case 'SAVE':save();return tele('Saved.','dim');
+  }
+  tele(pick(['The telegraph clicks, but nothing comes back. Type HELP.','Unknown word. The rails do not know it. Yet.']),'dim')}
+// ---------------- THE UNDER-ROAD: a wireframe dungeon on a little green screen ----------------
+let MODE='play',DG=null,AR=null;const RS=new PX.Surface(320,180);
+function mazeOf(n,seed){let s=seed;const r=()=>{s=(s*16807)%2147483647;return s/2147483647};const Wl=[];for(let i=0;i<n*n;i++)Wl.push(15);const seen=new Set([0]);const st=[0];const D=[[0,-1,1,4],[1,0,2,8],[0,1,4,1],[-1,0,8,2]];
+  while(st.length){const c=st[st.length-1];const x=c%n,y=(c/n)|0;const o=D.filter(([dx,dy])=>{const nx=x+dx,ny=y+dy;return nx>=0&&ny>=0&&nx<n&&ny<n&&!seen.has(ny*n+nx)});if(!o.length){st.pop();continue}const [dx,dy,b,ob]=o[Math.floor(r()*o.length)];const nc=(y+dy)*n+x+dx;Wl[c]&=~b;Wl[nc]&=~ob;seen.add(nc);st.push(nc)}
+  for(let i=0;i<n*2;i++){const c=Math.floor(r()*n*n),k=Math.floor(r()*4);const [dx,dy,b,ob]=D[k];const x=c%n+dx,y=((c/n)|0)+dy;if(x>=0&&y>=0&&x<n&&y<n){Wl[c]&=~b;Wl[y*n+x]&=~ob}}return Wl}
+const DDX=[0,1,0,-1],DDY=[-1,0,1,0],DBIT=[1,2,4,8];
+function dungeonStart(){MODE='dungeon';found('underroad');DG={lv:1,hp:100,x:0,y:0,d:1,n:8,gold:0,mob:[],chest:[],ladder:0};dgLevel(1);tele('THE UNDER-ROAD. MOVE (M), BACK, TURN LEFT/RIGHT/AROUND (TL TR TA), ATTACK (A), LOOK, GET, CLIMB, QUIT. Arrow keys work. Listen to your heart.','q');openTele()}
+function dgLevel(lv){const D=DG;D.lv=lv;D.W=mazeOf(D.n,(S.uid.charCodeAt(0)||7)*31+lv*977);D.x=0;D.y=0;D.d=1;D.mob=[];D.chest=[];const cells=[];for(let i=1;i<D.n*D.n;i++)cells.push(i);cells.sort(()=>Math.random()-.5);D.ladder=cells.pop();
+  for(let i=0;i<3+lv*2;i++)D.mob.push({c:cells.pop(),k:pick(lv===1?['spider','blob']:lv===2?['blob','knight','bat']:['knight','wraith','bat']),hp:lv*12+5+Math.floor(Math.random()*8)});for(let i=0;i<3;i++)D.chest.push(cells.pop());if(lv===3)D.mob.push({c:D.ladder,k:'listener',hp:90});tele(lv===3?'LEVEL 3. The air hums. Something very large is listening.':'LEVEL '+lv+'.','q')}
+const dgCell=(x,y)=>y*DG.n+x,dgOpen=(c,d)=>!(DG.W[c]&DBIT[d]);
+function dgFront(){const D=DG;const cc=dgCell(D.x,D.y);if(!dgOpen(cc,D.d))return null;return dgCell(D.x+DDX[D.d],D.y+DDY[D.d])}
+function dungeonCmd(c){const D=DG;const v=c[0]||'';let moved=false;
+  if(v==='QUIT'||v==='EXIT')return dungeonEnd(false);
+  if(['TURN','TL','TR','TA','LEFT','RIGHT','AROUND'].includes(v)){const w=v==='TL'||v==='LEFT'||c[1]==='LEFT'?3:v==='TR'||v==='RIGHT'||c[1]==='RIGHT'?1:2;D.d=(D.d+w)%4}
+  else if(['MOVE','M','F','FORWARD','BACK','B'].includes(v)){const back=v==='BACK'||v==='B';const d=back?(D.d+2)%4:D.d;const cc=dgCell(D.x,D.y);if(!dgOpen(cc,d))tele('A wall.','dim');else{const nx=D.x+DDX[d],ny=D.y+DDY[d];if(D.mob.some(m=>m.c===dgCell(nx,ny)))tele('Something is in the way.','warn');else{D.x=nx;D.y=ny;moved=true}}}
+  else if(['ATTACK','A','HIT'].includes(v)){const fc=dgFront();const m=fc!=null&&D.mob.find(m=>m.c===fc);if(!m)tele('You swing at the dark.','dim');else{m.hp-=8+Math.floor(Math.random()*11);PX.Sound.tone(150,.08,{type:'sawtooth'});if(m.hp<=0){D.mob=D.mob.filter(x=>x!==m);const g=(10+Math.floor(Math.random()*20))*D.lv;D.gold+=g;tele(m.k==='listener'?'The Listener folds up like a paper lantern. Behind it, a ladder of light.':`The ${m.k} crumbles into green dust. ${g} coins.`,m.k==='listener'?'sec':'good');if(m.k==='listener'){found('listener');D.won=1}}else tele(`You hit the ${m.k}.`)}}
+  else if(v==='LOOK'||v==='L'){const fc=dgFront();const m=fc!=null&&D.mob.find(m=>m.c===fc);tele(m?`A ${m.k} blocks the corridor.`:dgCell(D.x,D.y)===D.ladder?'A ladder.':D.chest.includes(dgCell(D.x,D.y))?'An old crate.':'Green stone walls.')}
+  else if(v==='GET'||v==='OPEN'){const cc=dgCell(D.x,D.y);if(D.chest.includes(cc)){D.chest=D.chest.filter(x=>x!==cc);const g=40*D.lv;D.gold+=g;tele(`Inside the crate: ${g} old coins.`,'good')}else tele('Nothing here.','dim')}
+  else if(v==='CLIMB'||v==='C'){if(D.lv===1&&D.x===0&&D.y===0)return dungeonEnd(false);if(dgCell(D.x,D.y)!==D.ladder)return tele('No ladder here.','dim');if(D.lv<3)dgLevel(D.lv+1);else if(D.won)return dungeonEnd(true);else return tele('The Listener is in the way.','warn')}
+  else return tele('MOVE, TURN LEFT, ATTACK, CLIMB, QUIT.','dim');
+  if(moved){const cc=dgCell(D.x,D.y);if(D.chest.includes(cc))tele('There is a crate here. GET it.','dim');if(cc===D.ladder)tele('There is a ladder here. CLIMB it.','dim')}
+  for(const m of D.mob){const mx=m.c%D.n,my=(m.c/D.n)|0;const dist=Math.abs(mx-D.x)+Math.abs(my-D.y);if(dist===1){D.hp-=3+Math.floor(Math.random()*6)*(m.k==='listener'?2:1)+D.lv;PX.Sound.tone(60,.12,{type:'sine',vol:.3});tele(`The ${m.k} ${pick(['bites','claws','slams into'])} you.`,'warn')}else if(dist<5&&Math.random()<.5&&m.k!=='listener'){for(let d=0;d<4;d++){if(!dgOpen(m.c,d))continue;const nx=mx+DDX[d],ny=my+DDY[d];if(Math.abs(nx-D.x)+Math.abs(ny-D.y)<dist&&!(nx===D.x&&ny===D.y)&&!D.mob.some(o=>o.c===dgCell(nx,ny))){m.c=dgCell(nx,ny);break}}}}
+  if(D.hp<=0){tele('Your heart pounds, then stops. You wake with a gasp in your seat. The tape has ended.','warn');dungeonEnd(false)}}
+function dungeonEnd(won){const D=DG;MODE='play';if(won){S.coins+=D.gold+500;tele(`You climb the ladder of light and come out through the roof of the train under a sky full of stars. ${D.gold+500} coins came back with you.`,'sec')}else{S.coins+=D.gold;tele(`You climb out. The tape clicks off. ${D.gold} coins came back with you.`)}DG=null;save()}
+function drawDungeon(c,T){const D=DG;const s=RS;s.begin(true);s.rect(0,0,320,180,'#000000');const g=PX.Surface.pack('#3aff6a'),g2=PX.Surface.pack('#1a8a3a');const cx=160,cy=82;const sz=k=>[[150,80],[96,52],[60,32],[38,20],[24,12]][k];let cc=dgCell(D.x,D.y);
+  for(let k=0;k<4;k++){const [w0,h0]=sz(k),[w1,h1]=sz(k+1);const x=cc%D.n,y=(cc/D.n)|0;const L=(D.d+3)%4,R=(D.d+1)%4;
+   if(!dgOpen(cc,L)){s.line(cx-w0,cy-h0,cx-w1,cy-h1,g);s.line(cx-w0,cy+h0,cx-w1,cy+h1,g)}else{s.line(cx-w0,cy-h1,cx-w1,cy-h1,g2);s.line(cx-w0,cy+h1,cx-w1,cy+h1,g2);s.line(cx-w0,cy-h1,cx-w0,cy+h1,g2)}
+   if(!dgOpen(cc,R)){s.line(cx+w0,cy-h0,cx+w1,cy-h1,g);s.line(cx+w0,cy+h0,cx+w1,cy+h1,g)}else{s.line(cx+w0,cy-h1,cx+w1,cy-h1,g2);s.line(cx+w0,cy+h1,cx+w1,cy+h1,g2);s.line(cx+w0,cy-h1,cx+w0,cy+h1,g2)}
+   s.line(cx-w1,cy-h1,cx-w1,cy+h1,g);s.line(cx+w1,cy-h1,cx+w1,cy+h1,g);
+   const m=k>0?D.mob.find(m=>m.c===cc):null;if(m){const col=PX.Surface.pack(m.k==='listener'?'#ff8ad8':'#ff4a4a');const sc=w0/150;if(m.k==='listener'){for(let i=0;i<5;i++)for(let a=0;a<6.28;a+=.06)s.px(cx+Math.cos(a)*(20+i*12)*sc,cy+Math.sin(a)*(20+i*12)*sc*.3,col)}else{s.rect(cx-12*sc,cy-h0*.5,24*sc,h0*1.2,col);s.rect(cx-6*sc,cy-h0*.7,12*sc,14*sc,col)}}
+   if(k>0&&cc===D.ladder){s.line(cx-w0*.2,cy-h0,cx-w0*.2,cy+h0,g);s.line(cx+w0*.2,cy-h0,cx+w0*.2,cy+h0,g);for(let r=-h0;r<h0;r+=h0/4)s.line(cx-w0*.2,cy+r,cx+w0*.2,cy+r,g)}
+   if(!dgOpen(cc,D.d)){s.rect(cx-w1,cy-h1,w1*2,1,g);s.rect(cx-w1,cy+h1,w1*2,1,g);break}cc=dgCell(x+DDX[D.d],y+DDY[D.d])}
+  const rate=1.2-(100-D.hp)/120;const b=(T%rate)/rate;s.circle(14,168,b<.12?6:4,'#ff3a4a');s.end();
+  c.fillStyle='#0a0a0a';c.fillRect(0,0,W,H);c.drawImage(RS.cv,0,0,W,H);PX.text(c,`LEVEL ${D.lv}   HEART ${Math.max(0,D.hp)}   COINS ${D.gold}   FACING ${'NESW'[D.d]}`,30,8,{color:'#3aff6a'});scanlines(c);
+  [['<','TL'],['^','M'],['>','TR'],['v','BACK'],['Hit','A'],['Get','GET'],['Climb','CLIMB'],['Quit','QUIT']].forEach(([l,cmd],i)=>{const x=W-8-(8-i)*50,y=H-24;PX.button(c,x,y,46,18,l,{color:'#1a5a2a',dark:'#0a2a12',text:'#7aff9a'});GAME.input.zone(x,y,46,18,()=>{tele('> '+cmd,'you');dungeonCmd([cmd])})})}
+function scanlines(c){c.fillStyle='rgba(0,0,0,.25)';for(let y=0;y<H;y+=2)c.fillRect(0,y,W,1)}
+// ---------------- GLASS BREAKER ----------------
+function arcadeStart(){closeTele();MODE='arcade';found('arcade');AR={px:160,bx:160,by:140,vx:70,vy:-90,lives:3,score:0,bricks:[],lv:1,stuck:1};arLevel();toast('GLASS BREAKER: arrows or drag to move, tap or Space to launch, Esc to quit.')}
+function arLevel(){AR.bricks=[];const cs=['#ff5a8a','#ffa04a','#ffd84a','#6ae87a','#4ac8ff','#a87aff'];for(let j=0;j<6;j++)for(let i=0;i<14;i++)AR.bricks.push({x:12+i*21,y:24+j*9,c:cs[j],hp:j===0&&AR.lv>1?2:1});AR.stuck=1}
+function arcadeTick(dt,inp){const A=AR;if(inp.down('ArrowLeft'))A.px-=220*dt;if(inp.down('ArrowRight'))A.px+=220*dt;if(inp.ptr.down)A.px=inp.ptr.x/2;A.px=PX.clamp(A.px,20,300);if(A.stuck){A.bx=A.px;A.by=150;return}
+  A.bx+=A.vx*dt;A.by+=A.vy*dt;if(A.bx<3||A.bx>317){A.vx*=-1;A.bx=PX.clamp(A.bx,3,317)}if(A.by<12)A.vy=Math.abs(A.vy);if(A.by>152&&A.by<158&&Math.abs(A.bx-A.px)<20&&A.vy>0){A.vy=-Math.abs(A.vy)*1.02;A.vx=(A.bx-A.px)*5;PX.Sound.tone(300,.03)}
+  if(A.by>180){A.lives--;A.stuck=1;A.vx=70;A.vy=-90;if(A.lives<=0)arcadeEnd()}for(const b of A.bricks)if(b.hp>0&&A.bx>b.x&&A.bx<b.x+19&&A.by>b.y&&A.by<b.y+7){b.hp--;A.vy*=-1;A.score+=10*A.lv;PX.Sound.tone(800+b.y*4,.03);break}if(A.bricks.every(b=>b.hp<=0)){A.lv++;A.vx*=1.1;A.vy*=1.1;arLevel()}}
+function drawArcade(c){const A=AR;const s=RS;s.begin(true);s.rect(0,0,320,180,'#0a0a1a');for(const b of A.bricks)if(b.hp>0){s.rect(b.x,b.y,19,7,b.c);s.rect(b.x,b.y,19,1,'#ffffff')}s.rect(A.px-18,154,36,4,'#e8e8ff');s.circle(A.bx|0,A.by|0,2,'#ffffff');s.end();c.drawImage(RS.cv,0,0,W,H);PX.text(c,`SCORE ${A.score}   LIVES ${A.lives}   LEVEL ${A.lv}`,12,8,{color:'#ffffff'});if(A.stuck)PX.text(c,'TAP OR PRESS SPACE',W/2,230,{align:'center',color:'#ffd84a'});scanlines(c);PX.button(c,W-64,6,56,16,'Quit',{color:'#e86a5a',dark:'#8a2a2a'});GAME.input.zone(W-64,6,56,16,()=>arcadeEnd())}
+function arcadeEnd(){const A=AR;MODE='play';const coins=Math.floor(A.score/20);S.coins+=coins;toast(`GAME OVER. Score ${A.score}. +${coins} coins in tickets.`);AR=null;save()}
+
+// ---- CLOVER LINE · playing together: trains on the same rails, waves, messages, and swapping views ----
+let NET={mode:'offline',peers:()=>[],emit(){},presence(){},on(){}};let FRIEND=null;const PASSED={};
+async function netInit(){try{NET=await PX.Net.connect({channel:'cloverline',topics:['chat','wave','spray'],rate:500});}catch(e){console.warn(e)}
+  NET.on('chat',m=>{const d=m.data||{};const t=String(d.t||'').slice(0,140);if(!t)return;toast('💬 '+String(d.n||'Someone').slice(0,16)+': '+t);tele((d.n||'Someone')+': '+t,'good')});
+  NET.on('wave',m=>{const d=m.data||{};if(d.to&&d.to!==NET.me.id)return;toast('👋 '+String(d.n||'Someone').slice(0,16)+' waved at you!','good');PX.Sound.chime();S.seen.waved=1;checkNotebook()});
+  NET.on('spray',m=>{const d=m.data||{};if(!d.n)return;const L=PX.store.get('cloverline-names',[]);L.push(String(d.n).slice(0,16).toUpperCase());PX.store.set('cloverline-names',L.slice(-40))});
+  NET.onPeers&&NET.onPeers(ps=>{for(const p of ps){if(!PASSED['j'+p.id]){PASSED['j'+p.id]=1;const n=(p.state&&p.state.n)||'A friend';toast('🌐 '+n+' is on the rails! Their train shows on the map.','good')}}});
+  if(NET.mode!=='offline')toast(NET.mode==='room'?'🌐 Online: everyone with this page open shares the rails.':'🌐 Linked with other tabs on this device.','good')}
+function myPresence(){const seg=S.seg?[S.seg.a,S.seg.b]:null;return {n:S.name,seg,u:Math.round(S.u),dir:S.dir,at:S.state==='station'?S.at:null,spd:Math.round(S.speed),ts:S.ts,t:+CLOCK.t.toFixed(4),day:CLOCK.day,wx:S.wx,cars:S.cars,loco:S.loco,liv:S.livery,pets:S.pets,pas:passengersByCar().map(a=>a.map(l=>l?l.seed:0)),stamp:Date.now()}}
+let PRT=0;function netTick(dt){PRT-=dt;if(PRT<=0&&NET.mode!=='offline'){PRT=.5;NET.presence(myPresence())}}
+// estimate where a peer is now (they report every half second)
+function peerNow(st){if(!st)return null;const age=Math.min(3,(Date.now()-(st.stamp||Date.now()))/1000);const du=(st.spd||0)*(CLOCK.speed*24)*PXKM*age*(st.ts||1);const len=st.seg?segKm(st.seg[0],st.seg[1])*PXKM:0;return Object.assign({},st,{u:st.seg?PX.clamp(st.u+du*st.dir,0,len):0})}
+// other trains on my stretch of track
+function peersOnMySeg(){if(!S.seg)return[];const out=[];for(const p of NET.peers()){const st=peerNow(p.state);if(!st||!st.seg)continue;if(segKey(st.seg[0],st.seg[1])!==segKey(S.seg.a,S.seg.b))continue;out.push({id:p.id,name:st.n||'Player',seg:st.seg,u:st.u,dir:st.dir,cars:st.cars,liv:st.liv,loco:st.loco});
+   // passing each other
+   const d=(st.u-S.u)*S.dir;const k='p'+p.id;const side=d>0?1:-1;if(PASSED[k]!=null&&PASSED[k]!==side&&Math.abs(d)<400){toast(`🚂 You passed ${st.n||'a friend'}'s train! Tap it, or open View > A friend's window.`,'good');PX.Sound.whistle();S.seen.waved=1}PASSED[k]=side}return out}
+function watchFriend(P){const p=NET.peers().find(q=>q.id===P.id);if(!p)return toast('They just left the line.');FRIEND=p.id;S.pov='friend';S.seen.friendPov=1;found('povswap');checkNotebook();toast('Now watching '+((p.state&&p.state.n)||'a friend')+"'s window.")}
+// a view built from a friend's presence, drawn with the same renderer
+function friendView(dt){const p=NET.peers().find(q=>q.id===FRIEND);if(!p){S.pov='side';FRIEND=null;toast('Your friend left the line.');return null}const st=peerNow(p.state);
+  if(!st.seg){// they are standing at a station
+   const id=st.at||'clover';const e=(ADJ[id]||[])[0];const seg=getSeg(id,e.to);st.seg=[seg.a,seg.b];st.u=seg.a===id?0:seg.len;st.dir=seg.a===id?1:-1}
+  const seg=getSeg(st.seg[0],st.seg[1]);const pas=(st.pas||[]).map(a=>a.map(sd=>sd?personLook(sd):null));
+  return {seg,u:st.u,dir:st.dir||1,t:st.t||CLOCK.t,wx:st.wx||'clear',season:seasonOf(dateOf(st.day||CLOCK.day).m),cars:st.cars||['coach'],loco:st.loco||0,livery:st.liv||'#2e7a4a',pets:st.pets||[],pas,time:TIME,dt,cam:0,night:1-PX.dayk(st.t||CLOCK.t),wheelA:TIME*((st.spd||0)/12),speed:st.spd,friend:1,friendName:st.n||'Friend',station:st.at,peers:[]}}
+
+// ---- CLOVER LINE · boot and main loop ----
+let GAME=null,TIME=0,RINGGLOW=0,TITLE=true;
+function stateView(dt){let seg,u=S.u,dir=S.dir;if(S.seg){seg=getSeg(S.seg.a,S.seg.b)}else{const to=S.plan[0]||(ADJ[S.at][0]||{}).to;seg=getSeg(S.at,to);dir=seg.a===S.at?1:-1;u=seg.a===S.at?0:seg.len;S.u=u;S.dir=dir}
+  const V={seg,u,dir,t:CLOCK.t,wx:S.wx,season:seasonNow(),cars:S.cars,loco:S.loco,livery:S.livery,pets:S.pets,pas:passengersByCar(),time:TIME,dt,cam:VIEW.cam||0,night:1-CLOCK.daylight,wheelA:WHEELA,speed:S.speed,station:S.state==='station'?S.at:null,platform:S.state==='station'?PLATFORM:null,platformHit:S.state==='station',peers:peersOnMySeg(),ringGlow:RINGGLOW>0?1:0,flash:LIGHTNING,windowCar:S.cars[VIEW.windowIdx||0],windowIdx:VIEW.windowIdx||0};
+  V.extraBack=c=>{if(TORN){const tx=Math.round(TORN.x),base=HZ+56;c.globalAlpha=Math.min(1,TORN.t/4,(TORN.life-TORN.t)/4);c.fillStyle='#5a5e6a';for(let y=0;y<150;y++){const w=3+Math.pow(y/150,2)*30;c.fillRect(Math.round(tx-w/2+Math.sin(y*.08+TIME*3)*6),base-y,Math.round(w),1)}c.globalAlpha=1}};
+  return V}
+function hudLabels(V){if(S.state==='station'){V.fromName=ST[S.at].n;V.toName=S.plan.length?ST[S.plan[0]].n:'';V.kmLeft=S.plan.length?segKm(S.at,S.plan[0]):0;V.prog=0}else{V.fromName=ST[prevId()].n;V.toName=ST[nextId()].n;V.kmLeft=Math.ceil(remainingKm());V.prog=1-remainingKm()/(S.seg.len/PXKM)}V.speedLabel=Math.round(S.speed)+' km/h'}
+function frame(dt){const inp=GAME.input;const r=inp.frame();
+  // keyboard
+  const P=r.pressed;if(MODE==='play'&&!TITLE){if(P[' ']||P.Enter){if(DLG)dlgNext();else if(S.state==='station'&&!PANEL)S.plan.length?depart():openPanel('map')}if(P.Escape){if(PANEL)closePanel();else if(DLG&&!DLG.choices)DLG=null;else if(S.pov!=='side')S.pov='side'}if(P.m||P.M)PANEL==='map'?closePanel():openPanel('map');if(P.t||P.T)openTele();if(P.v||P.V){const k=['side','cab','window'];S.pov=k[(k.indexOf(S.pov)+1)%3];if(S.pov==='window')VIEW.windowIdx=0}if(P['1'])S.ts=1;if(P['2'])S.ts=2;if(P['4'])S.ts=4}
+  if(MODE==='dungeon'&&!(TELE.inp.value)){const m={ArrowUp:'M',ArrowDown:'BACK',ArrowLeft:'TL',ArrowRight:'TR'};for(const k in m)if(P[k]){tele('> '+m[k],'you');dungeonCmd([m[k]])}}
+  if(MODE==='arcade'){if(P[' ']||r.tap)AR&&(AR.stuck=0);if(P.Escape)arcadeEnd()}
+  if(TITLE&&(r.tap||P[' ']||P.Enter))startGame();
+  // drag to look along the train
+  if(inp.ptr.down&&inp.ptr.drag&&!PANEL&&!DLG&&S&&S.pov==='side'){VIEW.cam=PX.clamp((VIEW.cam||0)+(inp.ptr.lx!=null?inp.ptr.x-inp.ptr.lx:0),-60,Math.max(0,S.cars.length*102-200))}inp.ptr.lx=inp.ptr.down?inp.ptr.x:null;
+  if(!inp.ptr.down&&!PANEL&&S&&S.pov==='side'&&S.state==='moving')VIEW.cam*=Math.pow(.2,dt)}
+function update(dt){TIME+=dt;if(!S)return;if(RINGGLOW>0)RINGGLOW-=dt;if(MODE==='arcade'&&AR)arcadeTick(dt,GAME.input);if(TITLE){CLOCK.tick(dt*.6);return}simUpdate(dt);FX.update(dt);FX2.update(dt);netTick(dt);
+  // fireflies on summer nights, leaves in the fall
+  if(CLOCK.daylight<.3&&seasonNow()==='summer'&&Math.random()<dt*3)FX2.add({x:Math.random()*W,y:HZ+40+Math.random()*90,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*6,life:3,size:1,color:'#d8ff7a'});
+  if(seasonNow()==='fall'&&S.state==='moving'&&Math.random()<dt*2)FX2.add({x:W+4,y:HZ+Math.random()*120,vx:-60-S.speed,vy:10,ay:6,life:6,size:2,color:pick(['#e8803a','#c8501e','#f0c040']),fade:false});
+  if(S.wx==='signal'){RINGGLOW=1}SAVET+=dt;if(SAVET>10){SAVET=0;save()}}
+let SAVET=0;
+function draw(c,dt){const inp=GAME.input;c.imageSmoothingEnabled=false;
+  if(MODE==='dungeon'&&DG){drawDungeon(c,TIME);return}if(MODE==='arcade'&&AR){drawArcade(c);return}
+  if(!S){c.fillStyle='#0b0d26';c.fillRect(0,0,W,H);return}
+  let V;if(S.pov==='friend'&&FRIEND){V=friendView(dt);if(!V)V=stateView(dt)}else V=stateView(dt);hudLabels(V);VIEW.last=V;
+  if(TITLE){V.cam=0;V.cars=['coach','dining','caboose'];renderSide(c,V);drawTitle(c);return}
+  if(S.pov==='cab')renderCab(c,V);else if(S.pov==='window')renderWindow(c,V);else renderSide(c,V);
+  if(!V.friend&&S.pov==='friend')S.pov='side';
+  drawHUD(c,inp,V);drawPanel(c,inp);drawDialog(c,inp)}
+function drawTitle(c){const t=TIME;c.fillStyle='rgba(10,12,30,.25)';c.fillRect(0,0,W,H);PX.text(c,'CLOVER LINE',W/2,70,{scale:5,align:'center',color:'#ffffff',outline:'#1e3a26'});PX.text(c,'a little railway across a quiet America',W/2,112,{scale:1,align:'center',color:'#e8ffe8',outline:'#1e3a26'});
+  PX.text(c,"from Daisy's ideas and Felix's long road",W/2,126,{font:'tiny',align:'center',color:'#ffe8a0',outline:'#1e3a26'});if(Math.floor(t*2)%2)PX.text(c,PX.store.get(SAVE,null)?'TAP TO CONTINUE':'TAP TO START',W/2,H-60,{scale:2,align:'center',color:'#ffd860',outline:'#2a1a12'});PX.text(c,'FWEDDLE.COM',W/2,H-16,{font:'tiny',align:'center',color:'#ffffff',outline:'#1e1a12'})}
+function startGame(){TITLE=false;PX.Sound.unlock();const had=PX.store.get(SAVE,null);S=load()||newState();CLOCK.t=S.t;CLOCK.day=S.day;if(S.state==='station'&&!PLATFORM.length)PLATFORM=waitingAt(S.at);netInit();
+  if(!S.intro){S.intro=1;S.state='station';say(CLEM,['Oh! You made it! Welcome to Clover Bay, sweet pea. I\'m Clementine, the mayor.','Forty-one years ago the satellites went quiet and a ring came around the Moon. The trucks stopped, the forests grew back, and people started riding trains again.','The Clover Line is yours now: an engine, a coach, a cargo car and a little red caboose. The rails go all the way to Garden City, Kansas, and beyond.'],null);
+    setTimeout(()=>{const q=()=>{if(DLG){setTimeout(q,400);return}say(DAISY,['Hi! I\'m Daisy, your co-conductor!','This whole game is both of our ideas. My pets ride in a pet car, my fairies want new dresses, we trade goods like boats at a harbor, and we get to see a Kansas tornado AND an Oregon thunderstorm.','And Felix put in his long road, a telegraph you type into, and secret words that open secret worlds.','If we pass another train, wave! We can even look out of their window. What should I call you?'],[['Tell her your name',()=>openName()],['Just call me Conductor',()=>{S.name='Conductor';tutorial()}]])};q()},400)}
+  else toast('Welcome back, '+S.name+'. '+(S.state==='station'?'You are at '+ST[S.at].n+'.':'The train kept its place on the rails.'),'good')}
+function tutorial(){say(DAISY,['Okay, '+S.name+'! Tap Board to pick up passengers. Their fares get paid when they reach their stop.','Then tap Map, pick a town, and press Depart. Coins pop up over the cars while we ride. Tap them!','Tap any car to see who is inside. The eye button changes how you watch the world: side view, the engine cab, or a window seat.'])}
+// a small name box (HTML, so phones get a keyboard)
+function openName(){const d=document.createElement('div');d.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);z-index:30';d.innerHTML=`<form style="background:#fbecd8;border:4px solid #6a3e22;border-radius:8px;padding:16px;font:16px ui-monospace,monospace;color:#3a2414;display:flex;gap:8px;align-items:center"><label>Your name <input maxlength="16" style="font:inherit;padding:6px;border:2px solid #6a3e22;border-radius:4px;width:150px" value="${S.name==='Conductor'?'':S.name}"></label><button style="font:inherit;padding:6px 12px;background:#6ac46a;border:2px solid #2e6a34;border-radius:4px;color:#fff">OK</button></form>`;GAME.wrap.appendChild(d);const inp=d.querySelector('input');setTimeout(()=>inp.focus(),30);inp.addEventListener('keydown',e=>e.stopPropagation());
+  d.querySelector('form').onsubmit=e=>{e.preventDefault();S.name=(inp.value.trim()||'Conductor').slice(0,16);d.remove();save();if(!S.toldTut){S.toldTut=1;tutorial()}else toast('Hello, '+S.name+'!')}}
+function boot(){const root=document.getElementById('cl-root');GAME=PX.create({parent:root,width:W,height:H,background:'#0b0d14',integer:false});teleInit(GAME.wrap);
+  S=load()||newState();CLOCK.t=S.t||.72;CLOCK.day=S.day||0;if(!load()){CLOCK.t=.74}
+  // phones held upright get a gentle hint
+  const hint=document.createElement('div');hint.style.cssText='position:absolute;left:8px;right:8px;top:8px;padding:8px 10px;background:rgba(251,236,216,.95);border:3px solid #6a3e22;border-radius:8px;font:13px ui-monospace,monospace;color:#3a2414;z-index:25;text-align:center';hint.textContent='Turn your phone sideways for the full view. (Tap to hide)';hint.onclick=()=>hint.remove();const chk=()=>{hint.style.display=innerHeight>innerWidth*1.1?'block':'none'};chk();addEventListener('resize',chk);GAME.wrap.appendChild(hint);
+  addEventListener('pagehide',()=>save());document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+  PX.run(GAME,{frame,update,draw,error:e=>toast('Something went wrong: '+e.message,'warn')})}
+boot();
+
+</script>
+</html>
