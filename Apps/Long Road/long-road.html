@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Long Road</title>
+<meta name="description" content="A road trip text game across a quiet America. Ideas by Daisy and Felix.">
+<style>html,body{margin:0;height:100%;background:#07080c;overflow:hidden}#lr-root{position:fixed;inset:0}</style>
+<div id="lr-root"></div>
+<script>
+(function(){'use strict';
+// ---- THE LONG ROAD · data: routes, places, people, lore ----
+// The world: our own, forty-one years after the Hush. One night in 2038 every satellite stopped answering
+// and a pale ring appeared around the Moon. Nothing exploded. The phones just went quiet. The roads remained.
+const YEAR=2079;
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MDAYS=[31,28,31,30,31,30,31,31,30,31,30,31];
+// region: what the land looks like on the way TO this stop
+const ROUTES={
+ txor:{n:'Texas to Oregon',from:'Fort Worth, Texas',to:'Portland, Oregon',why:'Your sister Juniper wrote you a letter on real paper. She runs a lamp shop in Portland now. "Come west," it says. "There is room here. There is rain."',stops:[
+  {n:'Fort Worth',mi:0,k:'town',r:'city',st:'TX',f:'The stockyards still run cattle down Exchange Avenue at noon. The neon cowboy over the old saloon blinks the same message it has blinked since the Hush. Nobody remembers what it means.'},
+  {n:'Wichita Falls',mi:115,k:'town',r:'plains',st:'TX',f:'A little waterfall the city built by hand, because the real one washed away long before your grandparents. People still come to look at it. It is the only waterfall for a long way.'},
+  {n:'Amarillo',mi:330,k:'town',r:'plains',st:'TX',f:'Helium town. The old tanks hum in the wind. Kids buy balloons at the Saturday market and let them go, to see if the Ring will catch them.'},
+  {n:'Cadillac Ranch',mi:345,k:'mark',r:'plains',st:'TX',f:'Ten old cars buried nose-down in a wheat field. Since the Hush, travelers paint them with the names of people they are trying to find. The paint is a hundred layers thick.',sp:'cadillac'},
+  {n:'Canadian River',mi:380,k:'river',r:'mesa',st:'TX',f:'A wide red river cutting through the breaks. The old bridge has a sign: CLOSED SINCE 2051. TRY YOUR LUCK.'},
+  {n:'Liberal',mi:520,k:'town',r:'prairie',st:'KS',f:'The town keeps a little farmhouse painted like a storybook, with a yellow brick path. A woman in gingham gives tours for two chits. She says she has given 9,000 tours.'},
+  {n:'Dodge City',mi:600,k:'town',r:'prairie',st:'KS',f:'Front Street has wooden sidewalks again. The sheriff rides a horse and carries a radio that only plays static. He says the static is company.'},
+  {n:'Garden City',mi:650,k:'town',r:'prairie',st:'KS',f:'The Big Pool is still filled every June, half a city block of water under a giant sky. The zoo keeps the old animals and the new ones, the ones nobody has a name for yet.',sp:'pool'},
+  {n:"Bent's Old Fort",mi:830,k:'mark',r:'prairie',st:'CO',f:'An adobe trading fort on the Arkansas River, rebuilt for the second time. Traders here still swap news by mouth. They keep a chalkboard of who has passed through, going which way.',sp:'fort'},
+  {n:'Pueblo',mi:910,k:'town',r:'prairie',st:'CO',f:'Steel town, chile town. The mill makes horseshoes, bells and wagon springs now. Every evening at six the whole town smells like roasting peppers.'},
+  {n:'Denver',mi:1020,k:'town',r:'mountains',st:'CO',f:'The gold dome still catches the morning light. The Mile High step on the capitol is worn into a bowl from everyone standing on it, just to say they did.',sp:'dome'},
+  {n:'Cheyenne',mi:1120,k:'town',r:'prairie',st:'WY',f:'Wind town. They tie down everything, even the benches. The rodeo runs every July, and nobody has missed one in a hundred and fifty years.'},
+  {n:'Independence Rock',mi:1330,k:'mark',r:'desert',st:'WY',f:'A huge granite dome covered in the names of pioneers from the 1840s. Below them are names from the 2040s. Below those, names from this year. You could add yours.',sp:'dome_rock'},
+  {n:'South Pass',mi:1430,k:'pass',r:'mountains',st:'WY',f:'The gentle saddle over the Continental Divide. Wagons crossed here in 1843. On a clear night up here the Ring looks close enough to touch.'},
+  {n:'Green River',mi:1520,k:'river',r:'desert',st:'WY',f:'Cold and fast, and greener than it has any right to be. There is a ferry run by two brothers who argue the whole way across.'},
+  {n:'Fort Bridger',mi:1600,k:'town',r:'mountains',st:'WY',f:'An old trading post with a blacksmith, a schoolhouse and one working jukebox. The jukebox only plays songs from 1990.'},
+  {n:'Soda Springs',mi:1730,k:'mark',r:'mountains',st:'ID',f:'The water fizzes right out of the ground. Pioneers called it Beer Springs. There is a geyser that goes off every hour on the hour, which is the most reliable clock left in Idaho.',sp:'geyser'},
+  {n:'Fort Hall',mi:1790,k:'town',r:'desert',st:'ID',f:'The trail splits here, the way it always has. A sign points to Oregon. Another sign, hand-painted, points to SOMEWHERE ELSE. Nobody who follows that one writes back.'},
+  {n:'Snake River',mi:1950,k:'river',r:'desert',st:'ID',f:'A deep canyon river. The old ferry crossing at Three Island is still the best place to try. The water is the color of old glass.'},
+  {n:'Boise',mi:2050,k:'town',r:'forest',st:'ID',f:'The City of Trees, and they mean it. The capitol is heated by hot springs. The library stays open all night, for anyone who cannot sleep.'},
+  {n:'Blue Mountains',mi:2220,k:'pass',r:'mountains',st:'OR',f:'Steep and dark with fir trees. Wagons had to be lowered on ropes here. Your van has better brakes, mostly.'},
+  {n:'The Dalles',mi:2310,k:'town',r:'gorge',st:'OR',f:'Cherry orchards on the hills over the Columbia. The end of the overland road. From here you can take the river, or the long way around Mt. Hood.'},
+  {n:'Columbia River',mi:2360,k:'river',r:'gorge',st:'OR',f:'The great river through the Gorge, between cliffs and waterfalls. You can float the van on a raft down to the valley, or take the Barlow Road around the mountain.'},
+  {n:'Portland',mi:2450,k:'end',r:'forest',st:'OR',f:'Rain. Bridges. Lamps in every window. Somewhere on the east side is a lamp shop with your name on a note taped to the door.',sp:'portland'}]},
+ nypo:{n:'New York to Portland',from:'New York City',to:'Portland, Oregon',why:'Your grandfather drove this road in 2037, the year before the Hush. He left you his map, his van and one instruction: "Finish it." Portland is three thousand miles west.',stops:[
+  {n:'New York City',mi:0,k:'town',r:'city',st:'NY',f:'The towers are green now. Gardens on every roof, ivy down every wall. The subway still runs on one line, and everyone rides it just to hear the sound.',sp:'nyc'},
+  {n:'Delaware River',mi:60,k:'river',r:'forest',st:'NJ',f:'Where Washington crossed, a long time ago. The bridge is fine, but the toll collector is a goat. You have to pay the goat.'},
+  {n:'Philadelphia',mi:95,k:'town',r:'city',st:'PA',f:'The Liberty Bell is still cracked. Every New Year someone tries to ring it anyway. The pretzels are the best on the whole road.'},
+  {n:'Allegheny Mountains',mi:290,k:'pass',r:'forest',st:'PA',f:'Long ridges like folded blankets. The old turnpike tunnels drip and echo. Honk in the middle and the echo comes back late, like somebody else is honking.'},
+  {n:'Pittsburgh',mi:370,k:'town',r:'city',st:'PA',f:'Three rivers, four hundred bridges, and inclines that still haul people up the cliffs for a chit. The whole city is yellow and black.'},
+  {n:'Columbus',mi:555,k:'town',r:'plains',st:'OH',f:'A big quiet city of porches. Everyone here waves. If you do not wave back, they wave harder.'},
+  {n:'Indianapolis',mi:730,k:'town',r:'plains',st:'IN',f:'The old speedway is a farm now. They race horses on the oval every May, and the crowd is still enormous.'},
+  {n:'Chicago',mi:910,k:'town',r:'city',st:'IL',f:'The lake looks like an ocean. The silver bean in the park still reflects the sky, and on Ring nights it reflects the Ring.',sp:'chicago'},
+  {n:'Mississippi River',mi:1080,k:'river',r:'plains',st:'IA',f:'The big one. Barges still move down it, slow as clouds. A paddlewheel ferry crosses at the Quad Cities, when the captain feels like it.'},
+  {n:'Des Moines',mi:1250,k:'town',r:'plains',st:'IA',f:'Corn as far as the eye can see, and taller than you remember corn being. Locals say the corn got taller after the Hush. Locals say a lot of things.'},
+  {n:'Missouri River',mi:1375,k:'river',r:'prairie',st:'NE',f:'Muddy and wide. Lewis and Clark came up this river. So did everyone else, eventually.'},
+  {n:'Omaha',mi:1385,k:'town',r:'prairie',st:'NE',f:'Where the old trails jumped off. The outfitters still sell wagon gear, even though almost nobody has a wagon. They sell van gear too, if you ask nicely.'},
+  {n:'Fort Kearny',mi:1580,k:'mark',r:'prairie',st:'NE',f:'Every spring, half a million sandhill cranes land on the Platte River nearby. The sound is like the whole sky talking at once.',sp:'fort'},
+  {n:'Chimney Rock',mi:1780,k:'mark',r:'prairie',st:'NE',f:'A thin spire of clay and ash, the most famous landmark on the Oregon Trail. It is shorter than it was in 1843. It is shorter than it was last year.',sp:'chimney'},
+  {n:'Fort Laramie',mi:1880,k:'town',r:'prairie',st:'WY',f:'A white army fort turned into a trading post turned into a town. The bugle still plays at sunrise. A kid named Wes plays it, badly, every morning.'},
+  {n:'Independence Rock',mi:2030,k:'mark',r:'desert',st:'WY',f:'A granite dome covered in pioneer names. Get here by the Fourth of July, they used to say, or the snow catches you in the mountains.',sp:'dome_rock'},
+  {n:'South Pass',mi:2130,k:'pass',r:'mountains',st:'WY',f:'The gentle saddle over the Continental Divide. On one side the rain runs to the Atlantic. On the other, to the Pacific.'},
+  {n:'Green River',mi:2220,k:'river',r:'desert',st:'WY',f:'Cold and fast. Two brothers run a ferry here and argue the whole way across.'},
+  {n:'Fort Bridger',mi:2300,k:'town',r:'mountains',st:'WY',f:'A blacksmith, a schoolhouse and one working jukebox that only plays songs from 1990.'},
+  {n:'Soda Springs',mi:2430,k:'mark',r:'mountains',st:'ID',f:'The water fizzes out of the ground, and a geyser goes off every hour on the hour.',sp:'geyser'},
+  {n:'Fort Hall',mi:2490,k:'town',r:'desert',st:'ID',f:'The trail splits here. A hand-painted sign points to SOMEWHERE ELSE.'},
+  {n:'Snake River',mi:2640,k:'river',r:'desert',st:'ID',f:'A deep canyon river the color of old glass.'},
+  {n:'Boise',mi:2740,k:'town',r:'forest',st:'ID',f:'The City of Trees. The library stays open all night for anyone who cannot sleep.'},
+  {n:'Blue Mountains',mi:2910,k:'pass',r:'mountains',st:'OR',f:'Steep and dark with fir trees. Wagons were lowered on ropes here.'},
+  {n:'The Dalles',mi:3000,k:'town',r:'gorge',st:'OR',f:'Cherry orchards over the Columbia, and the end of the overland road.'},
+  {n:'Columbia River',mi:3050,k:'river',r:'gorge',st:'OR',f:'Float the van down the Gorge on a raft, or take the Barlow Road around Mt. Hood.'},
+  {n:'Portland',mi:3140,k:'end',r:'forest',st:'OR',f:'Rain, bridges, lamps in every window. Your grandfather\'s map ends here, with a little star drawn on a street called Hawthorne.',sp:'portland'}]},
+ txks:{n:'Texas to Kansas',from:'Austin, Texas',to:'Garden City, Kansas',why:'Your best friend Moss moved to Garden City to work at the zoo with the animals nobody has names for. She sent you a postcard of the Big Pool. On the back it says: "Bring a towel."',stops:[
+  {n:'Austin',mi:0,k:'town',r:'city',st:'TX',f:'Bats still pour out from under the Congress Avenue bridge every summer evening, a million at a time. People bring blankets and watch like it is fireworks.'},
+  {n:'Waco',mi:100,k:'town',r:'plains',st:'TX',f:'An old suspension bridge over the Brazos, and a soda fountain that has been serving the same drink since 1885.'},
+  {n:'Fort Worth',mi:200,k:'town',r:'city',st:'TX',f:'The stockyards still run cattle at noon. The neon cowboy blinks a message nobody remembers.'},
+  {n:'Wichita Falls',mi:315,k:'town',r:'plains',st:'TX',f:'A little waterfall the city built by hand. It is the only waterfall for a long way.'},
+  {n:'Red River',mi:330,k:'river',r:'plains',st:'OK',f:'The river is red because the dirt is red. The border between Texas and Oklahoma, and the two sides still argue about where exactly the middle is.'},
+  {n:'Wichita Mountains',mi:380,k:'mark',r:'mesa',st:'OK',f:'Old pink granite hills with bison and longhorns roaming free. Elk bugle in the fall. The oldest mountains on this road.',sp:'granite'},
+  {n:'Oklahoma City',mi:470,k:'town',r:'plains',st:'OK',f:'Red dirt and wide streets. A field of empty chairs downtown remembers people from long ago. Somebody leaves fresh flowers every morning.'},
+  {n:'Gloss Mountains',mi:610,k:'mark',r:'mesa',st:'OK',f:'Red mesas that sparkle in the sun because of the selenite crystals in the rock. Since the Hush, they sparkle at night too.',sp:'mesa'},
+  {n:'Cimarron River',mi:690,k:'river',r:'prairie',st:'KS',f:'A shallow, sandy, sneaky river. Pioneers feared it more than the deep ones. The sand moves under you.'},
+  {n:'Dodge City',mi:760,k:'town',r:'prairie',st:'KS',f:'Wooden sidewalks on Front Street. The sheriff\'s radio only plays static. He says the static is company.'},
+  {n:'Garden City',mi:810,k:'end',r:'prairie',st:'KS',f:'The Big Pool under the biggest sky. Moss is waiting at the gate of the zoo, holding a towel.',sp:'pool'}]},
+ r66:{n:'Route 66',from:'Chicago, Illinois',to:'Santa Monica, California',why:'You wrote a letter to Marigold, the night voice of KHUSH 105.9, and she read it on the air. A week later a postcard came back: "I broadcast from the end of the Santa Monica pier. Come see the ocean. Bring tapes." Old Route 66 runs the whole way.',stops:[
+  {n:'Chicago',mi:0,k:'town',r:'city',st:'IL',f:'A brown sign on Adams Street still says BEGIN ROUTE 66. People touch it for luck before they leave. The corner of the sign is worn shiny.',sp:'chicago'},
+  {n:'Pontiac',mi:100,k:'town',r:'plains',st:'IL',f:'Every wall in town has a mural, and since the Hush they keep painting new ones over the old. The newest one is a van that looks a lot like yours.'},
+  {n:'Springfield',mi:200,k:'town',r:'plains',st:'IL',f:'A drive-up stand still sells corn dogs on a stick, the same way it has for a hundred and thirty years. The line is long. The line is always long.'},
+  {n:'Mississippi River',mi:300,k:'river',r:'plains',st:'MO',f:'The old Chain of Rocks bridge has a bend in the middle, like it changed its mind halfway across. The river is wide and brown and in no hurry.'},
+  {n:'St. Louis',mi:315,k:'town',r:'city',st:'MO',f:'The great silver arch still stands over the river. On Ring nights it lines up with the Ring exactly, and the whole city comes out to watch the two arches meet.',sp:'arch'},
+  {n:'Meramec Caverns',mi:375,k:'mark',r:'forest',st:'MO',f:'Caves under the Ozarks, with stone curtains and underground rivers. Outlaws hid here once. Now people come down just to hear what real quiet sounds like.',sp:'cave'},
+  {n:'Springfield, Missouri',mi:530,k:'town',r:'forest',st:'MO',f:'The other Springfield. A bait shop the size of a cathedral, and a diner that serves anyone who walks in, day or night.'},
+  {n:'Tulsa',mi:710,k:'town',r:'plains',st:'OK',f:'A giant fiberglass man in a space helmet stands by the road holding a rocket. He has been waiting to take off for a long, long time.'},
+  {n:'Oklahoma City',mi:815,k:'town',r:'plains',st:'OK',f:'A soda shop with a glowing sixty-foot bottle out front sells six hundred kinds of pop. Kids argue about which one is best. Nobody ever wins.'},
+  {n:'Amarillo',mi:1070,k:'town',r:'plains',st:'TX',f:'Helium town. The old tanks hum in the wind. Kids let balloons go to see if the Ring will catch them.'},
+  {n:'Cadillac Ranch',mi:1080,k:'mark',r:'plains',st:'TX',f:'Ten old cars buried nose-down in a field, painted a hundred layers thick with the names of people travelers are trying to find.',sp:'cadillac'},
+  {n:'Tucumcari',mi:1190,k:'town',r:'mesa',st:'NM',f:'A whole street of motels with neon signs, and every one still lit. TONITE, VACANCY, WELCOME, buzzing pink and blue under a flat-topped mountain.'},
+  {n:'Pecos River',mi:1260,k:'river',r:'mesa',st:'NM',f:'A thin green river in a red land. Cottonwoods lean over it like they are trying to get a drink.'},
+  {n:'Albuquerque',mi:1340,k:'town',r:'mesa',st:'NM',f:'Balloon town. Every October hundreds of hot air balloons go up at dawn. People say they go a little higher every year, trying to reach the Ring.'},
+  {n:'Continental Divide',mi:1460,k:'pass',r:'desert',st:'NM',f:'A trading post marks the spot. Rain on the east side of its roof runs to the Atlantic, rain on the west side to the Pacific. The owner stands in the middle when it rains.'},
+  {n:'Gallup',mi:1480,k:'town',r:'desert',st:'NM',f:'Red cliffs, turquoise, and an old hotel where movie stars used to stay. The guest book has signatures from 1937 and from last Tuesday.'},
+  {n:'Petrified Forest',mi:1550,k:'mark',r:'desert',st:'AZ',f:'Whole trees turned to stone, lying in the desert like they just fell asleep. Inside, the logs are striped red, purple and gold. It is bad luck to take a piece. Everyone knows someone who did.',sp:'petrified'},
+  {n:'Meteor Crater',mi:1640,k:'mark',r:'desert',st:'AZ',f:'A hole in the desert almost a mile wide, made by a falling star fifty thousand years ago. Some folks camp on the rim every night, in case another one is coming.',sp:'crater'},
+  {n:'Flagstaff',mi:1680,k:'town',r:'forest',st:'AZ',f:'Pine trees, cold nights, and the old observatory on the hill. The astronomers there never stopped watching the Ring. Their logbook is open to anyone.'},
+  {n:'Kingman',mi:1830,k:'town',r:'desert',st:'AZ',f:'The last big town before the Mojave. Fill everything you have with water. The man at the pump will tell you that, twice.'},
+  {n:'Colorado River',mi:1880,k:'river',r:'desert',st:'CA',f:'A blue-green river at the bottom of a hot canyon, the line between Arizona and California. The water is cold enough to make you yell.'},
+  {n:'Mojave Desert',mi:1980,k:'mark',r:'desert',st:'CA',f:'A ghost town: one café, one sign, and nothing else for fifty miles. The café sign still lights up every night, with nobody around to read it.',sp:'amboy'},
+  {n:'Cajon Pass',mi:2110,k:'pass',r:'mountains',st:'CA',f:'The road squeezes between two mountain ranges and drops toward the sea. On a clear day you can smell the ocean from the top.'},
+  {n:'San Bernardino',mi:2150,k:'town',r:'city',st:'CA',f:'Orange groves, and a motel where every room is a tall white cone. You can sleep in one for three chits.'},
+  {n:'Santa Monica',mi:2230,k:'end',r:'city',st:'CA',f:'The road runs out of land. A sign on the pier says END OF THE TRAIL. Past the Ferris wheel, a little radio shack sits at the very end of the pier, with an antenna and a light on.',sp:'pier'}]}};
+const REGION={city:{n:'city',sky:'#9ec8e8'},plains:{n:'plains'},prairie:{n:'prairie'},desert:{n:'high desert'},mesa:{n:'mesa country'},mountains:{n:'mountains'},forest:{n:'forest'},gorge:{n:'gorge'}};
+const JOBS=[{id:'courier',n:'Courier',chits:1400,mult:1,d:'You carry letters coast to coast. More money, no special skills.'},{id:'mechanic',n:'Mechanic',chits:900,mult:2,d:'Fewer breakdowns, and you can fix things without parts half the time.'},{id:'farmer',n:'Farmer',chits:600,mult:3,d:'Little money, but you find twice the food foraging and hunting.'}];
+const ITEMS={food:{n:'food',u:'lb',p:.5,max:2000},water:{n:'water',u:'gal',p:.2,max:80},fuel:{n:'fuel',u:'gal',p:2.5,max:40},tires:{n:'spare tires',u:'',p:40,max:6},parts:{n:'engine parts',u:'',p:60,max:6},meds:{n:'medicine',u:'kits',p:25,max:12},shells:{n:'shells',u:'',p:.5,max:300},tapes:{n:'cassette tapes',u:'',p:10,max:30}};
+const ITEMAL={food:'food',foods:'food',water:'water',fuel:'fuel',gas:'fuel',gasoline:'fuel',tire:'tires',tires:'tires',part:'parts',parts:'parts',engine:'parts',med:'meds',meds:'meds',medicine:'meds',kit:'meds',kits:'meds',shell:'shells',shells:'shells',ammo:'shells',bullets:'shells',tape:'tapes',tapes:'tapes',cassette:'tapes',cassettes:'tapes'};
+const BILLBOARDS=['LAST GAS 140 MI','MOTEL - CLEAN SHEETS - NO SIGNAL','HAVE YOU WRITTEN YOUR MOTHER','CORN. IT KNOWS.','REMEMBER CALLING? DIAL 0','PIE 2 CHITS','JESUS SAVES / SO DOES A SPARE','WORLDS LARGEST BALL OF TWINE','KHUSH 105.9 FM - THE HUM','DO NOT LOOK AT THE RING','LOST DOG - ANSWERS TO BISCUIT','DRIVE-IN TONIGHT: SAME MOVIE','PEACHES PEACHES PEACHES','WE BUY TAPES','SLOW - CHILDREN - DUCKS','THE ROAD REMEMBERS','REST STOP - ARCADE - PIE','WELCOME HOME, WHOEVER YOU ARE'];
+const TALK={city:['An old man on a stoop tells you the city used to be so loud you could not hear yourself think. "Now I can hear myself think," he says. "It is mostly about lunch."','Kids are playing a game on the sidewalk with chalk squares. They say it is called PHONE. One kid pretends to call another kid, and they both pretend they cannot hear.','A woman sells hand-drawn maps. "The old ones show roads that are gone," she says. "Mine show roads that are here."','A mail carrier with a bag bigger than he is says he has walked letters from here to Ohio and back. "People write more now. They say more, too."'],
+ plains:['A farmer leans on a fence. "Wind took my barn roof in \'71. Wind gave me a new one in \'73. Somebody else\'s. Never found out whose."','A girl selling lemonade charges one chit or one story. You tell her a story. She says it was a good one.','A trucker with a horse trailer full of radios says he is collecting them. "Someday one of them is going to say something," he says.'],
+ prairie:['A woman watches the sky. "When the clouds go green, you get underground. When the Ring goes red, you stay underground."','An old couple has driven this road every year for forty years. "We started out looking for our son," she says. "Now we just like the drive."','A boy shows you a jar of fireflies. Some of them blink blue. "Those are new," he says. "Nobody knows what they are."'],
+ desert:['A woman runs a gas station that has not had gas in years. She sells water, jerky and good advice. "Drink before you are thirsty," she says. "Drive before you are tired."','A rock collector shows you a stone with a perfect ring around it. "They are all like that now, out here," he says. "Every rock."'],
+ mesa:['A sheep rancher tells you the coyotes started singing in harmony a few years back. "Prettiest thing you ever heard. Still steal my sheep, though."','Two sisters run a roadside stand of turquoise and spare tires. Mostly spare tires.'],
+ mountains:['A ranger with a cassette player clipped to her belt says she plays the same tape to the elk every morning. "They like the second song best."','A man fixing a fence says the snow came in July last year. "And it was warm snow. Do not ask me how."'],
+ forest:['A woman picking mushrooms knows every single kind. "Except that one," she says, pointing at a blue one. "That one is new. That one knows *me*."','A kid in a treehouse asks if you are a traveler. You say yes. He says he wants to be one when he grows up. You tell him to bring a spare tire.'],
+ gorge:['A fisherman says the salmon came back thicker than ever after the Hush. "Ocean got quiet," he says. "Fish like quiet."','The wind here is so strong a man is flying a kite made of a bedsheet. He has been flying it for six hours.']};
+const ROADSIDE=['You pass a drive-in theater playing the same movie it has played for forty years. A few cars are parked. Everyone knows the words.','A mail rider on horseback passes you going the other way, waving a bundle of letters.','Wind turbines on a ridge turn slowly backwards. Nobody has fixed them because they still make power.','A town bell rings at noon so everyone can set their clocks. You set yours too.','A field of old satellite dishes, all pointed up, all slightly rusted, all listening.','Somebody painted WELCOME HOME on a water tower. It is not clear who it is for.','A billboard is hand-painted over with a list of names and the words HAVE YOU SEEN.','You pass a payphone in the middle of nowhere. It is ringing. By the time you stop, it stops.','A kid on a bike races the van for a mile. The kid wins.','Two old men are playing chess on a card table beside the highway. One says: "Your move, since 2061."','A herd of horses runs alongside the road for a while, then peels away into the grass.','You see a house where every window has a lamp in it, all lit, in the middle of the day.','The radio picks up a station playing nothing but rain sounds. It is very nice.','You pass a long line of power poles with no wires on them, standing in a row like they are waiting for a bus.'];
+const BROADCASTS=['KHUSH 105.9. This is Marigold, with the night show. A listener asks: what was the Hush, really? Well. On October 9th, 2038, at 2:14 in the morning, every satellite stopped answering at once. No explosions. No falling stars. They just... stopped. Like somebody had asked them a question.',
+ 'KHUSH 105.9. Marigold again. The next night, everyone saw it: a thin pale ring around the Moon. The scientists said it was dust. Then they said it was ice. Then they stopped saying. Most of them took up gardening.',
+ 'KHUSH 105.9. People ask me why the phones never came back. The towers work. The wires work. But every long call fills up with a hum, and the hum gets louder the longer you talk. So we stopped talking long distance. We started writing letters. Honestly? Better letters.',
+ 'KHUSH 105.9. The cities got quiet, and a lot of folks moved back to little towns. Roads got rough. The trucks stopped. But people kept driving, just slower. Turns out you can do almost anything slower.',
+ 'KHUSH 105.9. Some nights the Ring glows. My grandma said it glows when it is listening. She said the satellites did not break. She said they turned around. Away from us. Toward something else. Maybe toward the Ring.',
+ 'KHUSH 105.9. Last thing tonight. If you are out on the road, and you are tired, and you are thinking of turning back: do not. Somebody at the end of your road is still waiting up for you, with the porch light on. That is all I know for sure. Goodnight.'];
+const EPITAPHS=['Gone ahead to scout.','Loved the long way around.','Always had a spare.','Sang off key, on purpose.','Never once complained about the radio.','Kept the porch light on.'];
+const DEFNAMES=['Daisy','Felix','Rosa','Theo','Juniper','Moss','Wren','Otis'];
+// tiny 3×5 pixel font
+const FONT={A:'010101111101101',B:'110101110101110',C:'011100100100011',D:'110101101101110',E:'111100110100111',F:'111100110100100',G:'011100101101011',H:'101101111101101',I:'111010010010111',J:'001001001101010',K:'101101110101101',L:'100100100100111',M:'101111111101101',N:'110101101101101',O:'010101101101010',P:'110101110100100',Q:'010101101110011',R:'110101110101101',S:'011100010001110',T:'111010010010010',U:'101101101101111',V:'101101101101010',W:'101101111111101',X:'101101010101101',Y:'101101010010010',Z:'111001010100111',
+ 0:'111101101101111',1:'010110010010111',2:'110001010100111',3:'110001010001110',4:'101101111001001',5:'111100110001110',6:'011100111101111',7:'111001010010010',8:'111101111101111',9:'111101111001110',' ':'000000000000000','.':'000000000000010',',':'000000000010100','!':'010010010000010','?':'110001010000010','-':'000000111000000',':':'000010000010000',"'":'010010000000000','/':'001001010100100','>':'100010001010100','<':'001010100010001','+':'000010111010000','=':'000111000111000','#':'101111101111101','%':'101001010100101','(':'010100100100010',')':'010001001001010','*':'000101010101000','@':'010101111100011','~':'000011110000000'};
+
+// ---- THE LONG ROAD · pixel screen: a 320×180 framebuffer drawn by hand ----
+const PW=320,PH=180,HZ=104;// horizon line
+let CTX=null,IMG=null,BUF=null;
+function pixInit(cv){CTX=cv.getContext('2d');IMG=CTX.createImageData(PW,PH);BUF=new Uint32Array(IMG.data.buffer)}
+const hex=h=>{h=h.replace('#','');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]};
+const pk=(r,g,b)=>(255<<24)|((b&255)<<16)|((g&255)<<8)|(r&255);
+const CC={};function col(h){return CC[h]||(CC[h]=pk(...hex(h)))}
+const mix3=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+const shade=(c,k)=>c.map(v=>Math.max(0,Math.min(255,v*k)));
+const BAYER=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>(v+.5)/16);
+function px(x,y,c){x|=0;y|=0;if(x<0||y<0||x>=PW||y>=PH)return;BUF[y*PW+x]=c}
+function rect(x,y,w,h,c){x|=0;y|=0;w|=0;h|=0;const x0=Math.max(0,x),y0=Math.max(0,y),x1=Math.min(PW,x+w),y1=Math.min(PH,y+h);for(let j=y0;j<y1;j++){const o=j*PW;for(let i=x0;i<x1;i++)BUF[o+i]=c}}
+// a dithered blend of two colors: the classic way to fake more colors than you have
+function drect(x,y,w,h,a,b,t){x|=0;y|=0;const x0=Math.max(0,x),y0=Math.max(0,y),x1=Math.min(PW,x+w),y1=Math.min(PH,y+h);for(let j=y0;j<y1;j++){const o=j*PW;for(let i=x0;i<x1;i++)BUF[o+i]=BAYER[(j&3)*4+(i&3)]<t?b:a}}
+function line(x0,y0,x1,y1,c){x0|=0;y0|=0;x1|=0;y1|=0;const dx=Math.abs(x1-x0),dy=-Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let e=dx+dy;for(let n=0;n<2000;n++){px(x0,y0,c);if(x0===x1&&y0===y1)break;const e2=2*e;if(e2>=dy){e+=dy;x0+=sx}if(e2<=dx){e+=dx;y0+=sy}}}
+function circ(cx,cy,r,c){for(let y=-r;y<=r;y++){const w=Math.floor(Math.sqrt(r*r-y*y));rect(cx-w,cy+y,w*2+1,1,c)}}
+function text(s,x,y,c,sc){sc=sc||1;s=String(s).toUpperCase();let cx=x;for(const ch of s){const g=FONT[ch]||FONT['?'];for(let i=0;i<15;i++)if(g[i]==='1')rect(cx+(i%3)*sc,y+Math.floor(i/3)*sc,sc,sc,c);cx+=4*sc}return cx}
+const textW=(s,sc)=>String(s).length*4*(sc||1);
+function blit(){CTX.putImageData(IMG,0,0)}
+// smooth value noise for hills and mountains
+function hsh(n){n=Math.sin(n*127.1+311.7)*43758.5453;return n-Math.floor(n)}
+function vn(x,s){const i=Math.floor(x),f=x-i,u=f*f*(3-2*f);return hsh(i+s*57)*(1-u)+hsh(i+1+s*57)*u}
+function ridge(x,s){return vn(x,s)*.6+vn(x*2.3,s+7)*.28+vn(x*5.1,s+13)*.12}
+// ---- palettes for each kind of land, by day ----
+const LAND={city:{far:'#8a9aae',mid:'#6a7a6a',g1:'#7a8a5a',g2:'#5a6a46',road:'#5a5a60'},plains:{far:'#a8b4c4',mid:'#9aa86a',g1:'#b8b26a',g2:'#9a9a54',road:'#6a6460'},prairie:{far:'#b0bcc8',mid:'#a8b070',g1:'#c8b870',g2:'#a8a058',road:'#6e6660'},
+ desert:{far:'#b8a8a4',mid:'#b89a78',g1:'#d0b48a',g2:'#b89a70',road:'#706660'},mesa:{far:'#c08a70',mid:'#b0704e',g1:'#c89a6a',g2:'#a87a52',road:'#6e5e58'},mountains:{far:'#8a98b0',mid:'#5a7a68',g1:'#7a9a5a',g2:'#5a7a46',road:'#5e5e64'},
+ forest:{far:'#6a8898',mid:'#2e5a44',g1:'#4a7a3e',g2:'#365e30',road:'#545458'},gorge:{far:'#7a8aa0',mid:'#4a6a58',g1:'#5a8448',g2:'#40683a',road:'#58585c'}};
+// sky colors through the day: [top, horizon]
+function skyAt(t,wx){// t: 0..1 through the day, 0.5 noon
+  const K=[[0,'#0a0c22','#1a1c3a'],[.2,'#141a3e','#3a2a4a'],[.26,'#3a4a8a','#f0a070'],[.32,'#5a90d0','#c8dcf0'],[.5,'#4a88d8','#c0dcf4'],[.68,'#5a8ad0','#d8d0c0'],[.74,'#4a4a8a','#f08a5a'],[.8,'#1a1c46','#5a3a5a'],[1,'#0a0c22','#1a1c3a']];
+  let i=0;while(i<K.length-2&&t>K[i+1][0])i++;const a=K[i],b=K[i+1],u=(t-a[0])/(b[0]-a[0]);let top=mix3(hex(a[1]),hex(b[1]),u),hor=mix3(hex(a[2]),hex(b[2]),u);
+  if(wx==='storm'||wx==='rain'){top=mix3(top,[70,74,84],.6);hor=mix3(hor,[110,112,120],.6)}else if(wx==='dust'){top=mix3(top,[170,130,90],.55);hor=mix3(hor,[210,170,120],.7)}else if(wx==='snow'||wx==='fog'){top=mix3(top,[180,188,200],.6);hor=mix3(hor,[220,224,230],.7)}else if(wx==='signal'){top=mix3(top,[40,20,70],.5);hor=mix3(hor,[90,40,110],.4)}
+  return [top,hor]}
+function daylight(t){return Math.max(.28,Math.min(1,Math.sin((t-.22)/.56*Math.PI)*1.25))}
+// ---- the scene ----
+// V: {t (time of day), scroll (miles), land, wx, moving, stop (sprite kind or null), stopX, bill (billboard text), van: {x,bounce}, party}
+const STARS=[];for(let i=0;i<90;i++)STARS.push([hsh(i*3.1)*PW,hsh(i*7.7)*HZ*.9,hsh(i*1.3)]);
+const PARTS=[];
+function drawScene(V,T){const L=LAND[V.land]||LAND.plains;const dl=daylight(V.t);const night=1-dl;const dim=c=>pk(...shade(hex(c),.35+dl*.65));
+  // sky with dithered bands
+  const [top,hor]=skyAt(V.t,V.wx);const bands=14;for(let i=0;i<bands;i++){const u=i/bands;const c1=mix3(top,hor,u),c2=mix3(top,hor,(i+1)/bands);const y0=Math.floor(u*HZ),y1=Math.floor((i+1)/bands*HZ);drect(0,y0,PW,y1-y0,pk(...c1),pk(...c2),.5)}
+  if(night>.35){for(const [x,y,b] of STARS){if(b<night-.2)px(x,y,b>.8?col('#ffffff'):col('#a8b0d0'))}}
+  // the Moon and its Ring (the strange part of the sky)
+  const mx=PW*.68,my=34+Math.sin(V.t*6.28)*6;const ringC=V.wx==='signal'?col('#ff8ad8'):col(night>.4?'#e8e0c8':'#dcdcd8');
+  circ(mx,my,6,col(night>.4?'#f4f0e0':'#e8ecf4'));circ(mx+2,my-1,1,col('#c8c8c0'));
+  for(let a=0;a<6.283;a+=.012){const x=mx+Math.cos(a)*58,y=my+Math.sin(a)*7-Math.cos(a)*9;if(Math.sin(a)<-.15&&Math.hypot(x-mx,y-my)<8)continue;if(hsh(Math.floor(a*80))<.18)continue;px(x,y,ringC);if(night>.5&&hsh(a*999)<.3)px(x,y+1,ringC)}
+  if(V.wx==='signal'||(night>.6&&V.aurora)){for(let x=0;x<PW;x+=1){const h=18+Math.sin(x*.05+T*1.3)*8+Math.sin(x*.13-T)*5;for(let y=10;y<10+h;y+=2)if(BAYER[(y&3)*4+(x&3)]<.35)px(x,y+Math.sin(x*.03+T)*6,col(x%40<20?'#7affc8':'#c87aff'))}}
+  // sun
+  if(dl>.3){const sx=PW*(V.t-.2)/.6,sy=HZ-Math.sin((V.t-.2)/.6*Math.PI)*80;if(V.wx==='clear'||V.wx==='hot')circ(sx,sy,8,col(V.t<.3||V.t>.7?'#ffb070':'#fff4c8'))}
+  // far range
+  const far=dim(L.far),mid=dim(L.mid);const s=V.scroll;const seed=V.seed||1;
+  const famp={mountains:46,mesa:24,gorge:40,forest:20,desert:22,city:8,plains:6,prairie:4}[V.land]||10;
+  for(let x=0;x<PW;x++){const w=(x+s*1.5)/70;let h=ridge(w,seed)*famp+4;if(V.land==='mesa')h=Math.round(ridge(w,seed)*3)*famp/3+2;const y=HZ-h;rect(x,y,1,h,far);
+    if(V.land==='mountains'&&h>famp*.62)rect(x,y,1,Math.min(5,h-famp*.62),col(night>.5?'#a8b0c0':'#f4f8ff'))}
+  if(V.land==='city'){for(let i=0;i<26;i++){const bx=((i*29+hsh(i)*13-s*3)%380+380)%380-30;const bh=10+hsh(i*5)*40;const c=dim(i%2?'#7a8696':'#8a96a6');rect(bx,HZ-bh,14+hsh(i)*10,bh,c);
+      for(let wy=HZ-bh+3;wy<HZ-3;wy+=4)for(let wx=bx+2;wx<bx+12;wx+=4)if(hsh(wx*7+wy)<(night>.5?.4:.15))rect(wx,wy,2,2,night>.5?col('#ffd890'):col('#a8c0d8'));
+      if(hsh(i*9)<.5)rect(bx,HZ-bh-2,10,2,dim('#4a8a4a'))}}
+  // mid hills, trees, poles
+  for(let x=0;x<PW;x++){const w=(x+s*6)/40;const h=ridge(w,seed+3)*(famp*.35)+3;rect(x,HZ-h+4,1,h,mid)}
+  rect(0,HZ,PW,PH-HZ,dim(L.g1));
+  for(let y=HZ;y<PH;y+=2)for(let x=((y>>1)&1)*3;x<PW;x+=6){const wx=(x+s*20*(1+(y-HZ)/40))%PW;if(hsh(Math.floor(wx/6)+y*31)<.35)px(wx,y,dim(L.g2))}
+  // trees by land
+  const treeK=V.land==='forest'||V.land==='gorge'?.75:V.land==='mountains'?.5:V.land==='city'?.15:V.land==='desert'?.06:.18;
+  for(let i=-2;i<24;i++){const wx=Math.floor(s*14/16)+i;const seedT=hsh(wx*1.7+seed);if(seedT>treeK)continue;const x=(wx*16-s*14)+hsh(wx)*10;const y=HZ+6+hsh(wx*3)*10;
+    if(V.land==='desert'||V.land==='mesa'){rect(x,y-6,2,6,dim('#5a7a4a'));rect(x-2,y-4,2,2,dim('#5a7a4a'));rect(x+2,y-5,2,2,dim('#5a7a4a'))}
+    else if(V.land==='forest'||V.land==='mountains'||V.land==='gorge'){const h=10+hsh(wx*5)*14;for(let k=0;k<h;k++){const w=Math.floor((h-k)/3);rect(x-w,y-k,w*2+1,1,dim(k%3?'#2a5a3a':'#356a44'))}rect(x,y,1,2,dim('#5a3a2a'))}
+    else{circ(x,y-8,5,dim(V.month>8?'#c8783a':'#4a8a3e'));rect(x,y-3,1,4,dim('#5a3a2a'))}}
+  // telephone poles that remember wires
+  for(let i=-1;i<6;i++){const wx=Math.floor(s*30/70)+i;const x=wx*70-s*30;rect(x,HZ-14,2,30,dim('#5a4030'));rect(x-4,HZ-12,10,1,dim('#5a4030'));if(hsh(wx)<.6){const nx=x+70;for(let k=0;k<70;k+=2){const sag=Math.sin(k/70*Math.PI)*5;px(x+k,HZ-11+sag,dim('#2a2a2a'))}}}
+  // billboard
+  if(V.bill){const bx=V.billX;rect(bx+12,HZ-4,2,14,dim('#5a4030'));rect(bx+60,HZ-4,2,14,dim('#5a4030'));rect(bx,HZ-24,76,20,dim('#f4ecd8'));rect(bx,HZ-24,76,1,dim('#8a7a6a'));
+    const words=V.bill.split(' ');let ln='',ly=HZ-21;const lines=[];for(const w of words){if(textW(ln+' '+w)>72){lines.push(ln);ln=w}else ln=ln?ln+' '+w:w}lines.push(ln);for(const l of lines.slice(0,3)){text(l,bx+38-textW(l)/2,ly,dim('#3a2a2a'));ly+=6}}
+  // the road
+  const ry=140;rect(0,ry-2,PW,2,dim('#8a8070'));rect(0,ry,PW,16,dim(L.road));rect(0,ry+16,PW,2,dim('#8a8070'));
+  for(let x=-40;x<PW+40;x+=26){const dx=((x-s*60)%26+26)%26;rect(x-dx,ry+7,12,2,dim('#e8d880'))}
+  for(let i=0;i<40;i++){const wx=Math.floor(s*60/24)+i;if(hsh(wx*3.3)<.35){const x=wx*24-s*60;line(x,ry+2+hsh(wx)*12,x+5+hsh(wx*2)*8,ry+3+hsh(wx*4)*12,dim('#4a4448'))}}
+  // landmark as you approach it
+  if(V.stop)drawStop(V.stop,V.stopX,dim,night,T);
+  // the van
+  drawVan(V.vanX||110,ry-2+(V.moving?Math.round(Math.sin(T*14))*.6:0),V,dim,night,T);
+  // near grass
+  for(let x=0;x<PW;x+=3){const wx=Math.floor((x+s*90)/3);if(hsh(wx*.37)<.5){const h=2+hsh(wx)*5;rect(x-((s*90)%3),PH-h-((wx%5)),1,h,dim(L.g2))}}
+  // weather
+  weather(V,T,night);
+  // night tint
+  if(night>.1)for(let i=0;i<BUF.length;i++){if(BAYER[((i/PW|0)&3)*4+(i&3)]<night*.18)BUF[i]=pk(12,14,40)}}
+function drawVan(x,y,V,dim,night,T){const body=dim(V.vanCol||'#d8c070'),dark=dim('#3a3a44'),glass=dim(night>.5?'#ffe0a0':'#a8d0e8');
+  rect(x,y-18,46,13,body);rect(x+30,y-14,16,9,body);rect(x+40,y-13,8,4,glass);rect(x+4,y-16,8,6,glass);rect(x+14,y-16,8,6,glass);rect(x+24,y-16,6,6,glass);
+  if(V.dog){rect(x+25,y-14,4,4,dim('#b88a50'));rect(x+25,y-16,1,3,dim('#6a4a2a'));rect(x+28,y-16,1,2,dim('#6a4a2a'));px(x+29,y-12,dim('#1a1a1a'));px(x+27,y-13,dim('#1a1a1a'))}// Biscuit at the window
+  rect(x,y-19,46,1,dim('#f4e4a8'));rect(x+2,y-22,36,3,dim('#3a5a8a'));for(let i=0;i<6;i++)rect(x+3+i*6,y-22,1,3,dim('#8ab0e0'));// solar panel
+  rect(x,y-9,48,2,dim('#a87a3a'));rect(x+46,y-9,3,3,dim('#d8d8d8'));
+  if(night>.5){for(let i=0;i<14;i++)drect(x+49+i*2,y-10-i/4,2,3+i/3,dim('#2a2a30'),col('#fff0b0'),.4-i*.025)}
+  for(const wx of [x+9,x+37]){circ(wx,y-4,4,dark);circ(wx,y-4,2,dim('#9a9aa0'));const a=V.moving?T*12:0;px(wx+Math.cos(a)*2,y-4+Math.sin(a)*2,dark)}
+  // roof bags and a spare
+  rect(x+6,y-25,10,3,dim('#7a5a3a'));rect(x+18,y-24,8,2,dim('#3a6a4a'));circ(x-2,y-12,3,dark);
+  if(V.moving&&T%0.5<.25)PARTS.push({x:x-2,y:y-6,vx:-12-Math.random()*8,vy:-4,l:.8,c:'#8a8a8a'})}
+function drawStop(k,x,dim,night,T){const g=HZ+2;
+  if(k==='town'||k==='end'){for(let i=0;i<7;i++){const h=10+hsh(i*3+x)*22;const w=14+hsh(i)*10;const bx=x+i*18-60;rect(bx,g-h,w,h,dim(['#c8a888','#a8b8c8','#d8c0a0','#b88a6a'][i%4]));rect(bx-1,g-h-2,w+2,2,dim('#6a4a3a'));for(let wy=g-h+4;wy<g-4;wy+=5)for(let wx=bx+3;wx<bx+w-3;wx+=5)rect(wx,wy,2,3,night>.5&&hsh(wx+wy)<.6?col('#ffd890'):dim('#4a5a6a'))}
+    rect(x+60,g-38,4,38,dim('#8a8a8a'));circ(x+62,g-42,7,dim('#c8c8d0'));text(k==='end'?'HOME':'TOWN',x+52,g-44,dim('#3a3a44'))}
+  else if(k==='river'){rect(x-90,g+4,200,30,dim('#3a7aa8'));for(let i=0;i<30;i++)rect(x-90+((i*13+T*20)%200),g+8+(i%5)*5,6,1,dim('#8ac8e8'))}
+  else if(k==='pass'){for(let i=0;i<60;i++){const h=50-Math.abs(i-30)*1.4;rect(x-60+i*2,g-h,2,h,dim('#7a8aa0'));if(h>32)rect(x-60+i*2,g-h,2,6,col(night>.5?'#a8b0c0':'#ffffff'))}}
+  else if(k==='cadillac'){for(let i=0;i<10;i++){const cx=x-50+i*11;const c=['#ff5a8a','#5ac8ff','#ffd040','#8aff6a','#c87aff'][i%5];for(let j=0;j<12;j++)rect(cx+j*.3,g-12+j,6,1,dim(c));rect(cx+3,g-14,3,3,dim('#ffffff'))}}
+  else if(k==='chimney'){rect(x-20,g-10,40,10,dim('#c8a888'));for(let j=0;j<40;j++)rect(x-3+Math.sin(j*.3),g-10-j,6-j*.08,1,dim('#c8a888'))}
+  else if(k==='dome_rock'){for(let i=-30;i<=30;i++){const h=Math.sqrt(900-i*i)*.8;rect(x+i,g-h,1,h,dim('#9a8a7a'))}text('NAMES',x-10,g-14,dim('#5a4a3a'))}
+  else if(k==='fort'){rect(x-30,g-14,60,14,dim('#c8a070'));for(let i=0;i<8;i++)rect(x-30+i*8,g-17,4,3,dim('#c8a070'));rect(x-4,g-8,8,8,dim('#5a3a2a'));rect(x+20,g-32,1,18,dim('#5a4a3a'));rect(x+21,g-32,8,5,dim('#d84a3a'))}
+  else if(k==='geyser'){const h=(T%6)<2?30+Math.sin(T*20)*4:4;for(let i=0;i<h;i++)rect(x-2-i*.1,g-i,4+i*.2,1,col('#e8f4ff'))}
+  else if(k==='pool'){rect(x-50,g+2,100,14,dim('#4ac8e8'));rect(x-50,g,100,2,dim('#f4f4f4'));text('BIG POOL',x-16,g-8,dim('#3a3a44'))}
+  else if(k==='dome'){rect(x-24,g-16,48,16,dim('#e8e0d0'));rect(x-6,g-26,12,10,dim('#e8e0d0'));circ(x,g-28,7,dim('#e8c040'))}
+  else if(k==='nyc'||k==='chicago'||k==='portland'){for(let i=0;i<12;i++){const h=20+hsh(i*7+x)*50;rect(x-80+i*13,g-h,11,h,dim(k==='portland'?'#7a8a9a':'#6a7a8a'));if(k==='nyc')rect(x-80+i*13,g-h,11,3,dim('#4a9a4a'))}if(k==='portland'){circ(x+70,g-40,16,dim('#e8eef4'));rect(x+54,g-40,32,40,dim(LAND.forest.g1))}}
+  else if(k==='granite'||k==='mesa'){for(let i=-40;i<40;i++){const h=k==='mesa'?(Math.abs(i)<26?22:0):20+Math.sin(i*.2)*8-Math.abs(i)*.3;if(h>0)rect(x+i,g-h,1,h,dim(k==='mesa'?'#b8604a':'#c88a7a'))}if(night>.5&&k==='mesa')for(let i=0;i<12;i++)px(x-25+hsh(i)*50,g-4-hsh(i*3)*16,col('#ffffff'))}
+  else if(k==='arch'){const c=dim('#dfe4ee'),hA=i=>66*(1-(i*i)/(36*36));for(let i=-36;i<36;i++){line(x+i,g-hA(i),x+i+1,g-hA(i+1),c);line(x+i,g-hA(i)+1,x+i+1,g-hA(i+1)+1,c)}if(night>.5)px(x,g-66,col('#ff4a4a'))}
+  else if(k==='cave'){for(let i=-44;i<=44;i++){const h=26-Math.abs(i)*.55+Math.sin(i*.4)*2;rect(x+i,g-h,1,h,dim('#4a6a3e'))}for(let yy=-9;yy<=0;yy++){const w=Math.floor(Math.sqrt(81-yy*yy));rect(x-w,g+yy,w*2+1,1,dim('#1a1410'))}if(night>.5)px(x,g-3,col('#ffd890'))}
+  else if(k==='petrified'){for(let i=0;i<6;i++){const lx=x-56+i*19+hsh(i)*6,ly=g+2+(i%2)*6,c=['#c86a5a','#a87ac8','#d8a84a'][i%3];rect(lx,ly,15,4,dim(c));rect(lx,ly+1,15,1,dim('#e8c8a8'));rect(lx,ly,1,4,dim('#f0e0d0'));rect(lx+14,ly,1,4,dim('#f0e0d0'))}}
+  else if(k==='crater'){for(let i=-58;i<=58;i++){const a=Math.abs(i);const h=a>42?Math.max(0,(58-a)*.7):a>32?(a-32)*1.1:0;if(h>0)rect(x+i,g-h,1,h+1,dim('#b89a70'));if(a<36)rect(x+i,g,1,2+(36-a)*.14,dim('#7a5a3e'))}}
+  else if(k==='amboy'){rect(x-34,g-12,40,12,dim('#e8e4d8'));rect(x-36,g-14,44,2,dim('#4ab8c8'));for(let i=0;i<4;i++)rect(x-30+i*9,g-9,5,4,night>.5?col('#ffd890'):dim('#5a7a8a'));rect(x+28,g-40,2,40,dim('#8a8a8a'));rect(x+12,g-52,36,12,dim('#e8e0c8'));text('CAFE',x+22,g-49,night>.5&&(T%2)<1.6?col('#ff6a8a'):dim('#c83a4a'))}
+  else if(k==='pier'){rect(x-120,g+4,260,30,dim('#3a7aa8'));for(let i=0;i<30;i++)rect(x-120+((i*17+T*14)%260),g+8+(i%5)*5,6,1,dim('#8ac8e8'));rect(x-90,g-1,180,3,dim('#8a6a4a'));for(let i=0;i<15;i++)rect(x-86+i*12,g+2,2,10,dim('#5a4030'));
+    const wx=x-40,wy=g-24,wr=20,rot=T*.3;for(let a=0;a<6.283;a+=.05)px(wx+Math.cos(a)*wr,wy+Math.sin(a)*wr,dim('#e8e8f0'));for(let s=0;s<8;s++){const a=rot+s*.785,ex=wx+Math.cos(a)*wr,ey=wy+Math.sin(a)*wr;line(wx,wy,ex,ey,dim('#b8b8c8'));rect(ex-1,ey-1,3,3,night>.5?col(['#ff6a8a','#ffd84a','#6ae8ff'][s%3]):dim(['#d84a5a','#e8b83a','#4aa8d8'][s%3]))}line(wx,wy,wx-12,g-1,dim('#b8b8c8'));line(wx,wy,wx+12,g-1,dim('#b8b8c8'));
+    rect(x+50,g-11,16,10,dim('#c8b8a0'));rect(x+48,g-13,20,2,dim('#7a5a4a'));rect(x+55,g-7,4,6,night>.5?col('#ffd890'):dim('#5a4a3a'));rect(x+62,g-30,1,19,dim('#8a8a8a'));if(night>.5||T%1.4<.7)px(x+62,g-31,col('#ff4a4a'))}
+  else text('?',x,g-10,dim('#3a3a44'))}
+function weather(V,T,night){const w=V.wx;
+  if(w==='rain'||w==='storm'){for(let i=0;i<120;i++){const x=(hsh(i)*PW+T*40*(1+hsh(i*3)))%PW,y=(hsh(i*7)*PH+T*220*(1+hsh(i*2)))%PH;line(x,y,x-2,y+5,col('#a8b8d0'))}if(w==='storm'&&T%5<.12)for(let i=0;i<BUF.length;i+=2)BUF[i]=col('#ffffff')}
+  if(w==='snow'){for(let i=0;i<140;i++){const x=(hsh(i)*PW+Math.sin(T+i)*6+T*10)%PW,y=(hsh(i*7)*PH+T*24*(1+hsh(i*2)))%PH;px(x,y,col('#ffffff'))}}
+  if(w==='dust'||w==='fog'){const c=col(w==='dust'?'#c8a070':'#d8dce0');for(let y=40;y<PH;y++)for(let x=(y&1);x<PW;x+=2)if(BAYER[(y&3)*4+(x&3)]<(w==='dust'?.38:.45)*(y/PH+.3))BUF[y*PW+x]=c}
+  if(w==='hail'){for(let i=0;i<70;i++){const x=(hsh(i)*PW+T*20)%PW,y=(hsh(i*7)*PH+T*300)%PH;rect(x,y,2,2,col(i%3?'#e8f8ff':'#ff8ad8'))}}
+  if(w==='signal'){for(let i=0;i<40;i++){const y=(hsh(i*3)*PH+T*60)%PH;if(hsh(i+Math.floor(T*10))<.3)for(let x=0;x<PW;x+=3)px(x,y,col('#c8a8ff'))}}
+  for(let i=PARTS.length-1;i>=0;i--){const p=PARTS[i];p.l-=1/30;p.x+=p.vx/30;p.y+=p.vy/30;if(p.l<=0){PARTS.splice(i,1);continue}rect(p.x,p.y,2,2,col(p.c))}if(PARTS.length>200)PARTS.splice(0,PARTS.length-200)}
+
+// ---- THE LONG ROAD · the game: terminal, travel, supplies, people, trouble ----
+const SAVEK='longroad-v1',GRAVEK='longroad-graves',SECK='longroad-secrets',SPRAYK='longroad-spray';
+const ls={get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const rnd=Math.random,ri=(a,b)=>a+Math.floor(rnd()*(b-a+1)),pick=a=>a[Math.floor(rnd()*a.length)],clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const SECRETS={xyzzy:'A hollow voice',plugh:'Plugh',tape1982:'The tape labeled 1982',underroad:'The Under-Road',listener:'The Listener',arcade:'Glass Breaker',khush:'All six KHUSH broadcasts',ring:'The light on the Ring',dial:'A voice on the line',spray:'Your name on the cars',clover:'A postcard from Clover Bay',elk:'The glass elk',somewhere:'Somewhere Else',sing:'A song by the fire',biscuit:'A good dog named Biscuit'};
+let MARKQ=[];
+function addLog(s){if(S){(S.log||(S.log=[])).push(`${dateStr()}: ${s}`);if(S.log.length>80)S.log.shift()}}
+function addInv(id,n){S.inv[id]=Math.min(ITEMS[id].max,S.inv[id]+n)}
+let S=null,ROOT=null,OUT=null,INP=null,HUD=null,OPT={},RAF=0,MODE='trail',T0=0,TT=0,LASTT=0,AUD=null,SND=true;
+let TRAVEL=null,Q=null,HIST=[],HI=-1,PRINTQ=[],PRINTING=false;
+function sec(){return ls.get(SECK,{})}
+function found(id,quiet){const s=sec();if(s[id])return false;s[id]=Date.now();ls.set(SECK,s);if(S&&S.phase==='road')addLog('Found a secret: '+SECRETS[id]+'.');if(!quiet){say(`★ SECRET FOUND: ${SECRETS[id]} (${Object.keys(s).length}/${Object.keys(SECRETS).length})`,'sec');beep(880,.1);setTimeout(()=>beep(1320,.15),110)}return true}
+// ---- sound: tiny beeps, an engine hum, a heartbeat ----
+function aud(){if(AUD||!SND)return AUD;try{AUD=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}return AUD}
+function beep(f,d,type,v){const a=aud();if(!a||!SND)return;const o=a.createOscillator(),g=a.createGain();o.type=type||'square';o.frequency.value=f;g.gain.value=v||.04;g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d);o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}
+function thump(){beep(60,.12,'sine',.3);setTimeout(()=>beep(52,.1,'sine',.22),140)}
+// ---- terminal ----
+function say(s,cls){PRINTQ.push([String(s),cls||''])}
+function pumpPrint(){if(!PRINTQ.length){PRINTING=false;return}PRINTING=true;const [s,cls]=PRINTQ.shift();const d=document.createElement('div');d.className='lr-l'+(cls?' lr-'+cls:'');OUT.appendChild(d);let i=0;const step=Math.max(2,Math.ceil(s.length/40));
+  const go=()=>{i+=step;d.textContent=s.slice(0,i);OUT.scrollTop=OUT.scrollHeight;if(i%12<step&&cls!=='dim')beep(1800+rnd()*400,.008,'square',.012);if(i<s.length)setTimeout(go,8);else{while(OUT.children.length>400)OUT.firstChild.remove();setTimeout(pumpPrint,30)}};go()}
+function flushNow(){while(PRINTQ.length){const [s,cls]=PRINTQ.shift();const d=document.createElement('div');d.className='lr-l'+(cls?' lr-'+cls:'');d.textContent=s;OUT.appendChild(d)}OUT.scrollTop=OUT.scrollHeight}
+function ask(prompt,handler,chips){if(prompt)say(prompt,'q');Q={handler};setChips(chips)}
+function setChips(list){const el=ROOT.querySelector('.lr-chips');list=list||(MODE==='trail'&&S&&S.phase==='road'?(S.at!=null?(stopHere().k==='town'||stopHere().k==='end'?['GO','LOOK','STORE','TALK','WORK','STATUS','REST','MAP','HELP']:['GO','LOOK','TALK','STATUS','REST','MAP','HELP']):['GO','STATUS','HUNT','FORAGE','REST','MAP','HELP']):[]);el.innerHTML='';for(const c of list){const b=document.createElement('button');b.textContent=c;b.onclick=()=>{submit(c);INP.focus()};el.appendChild(b)}}
+// ---- state ----
+function stops(){return ROUTES[S.route].stops}
+function stopHere(){return S.at!=null?stops()[S.at]:null}
+function nextStop(){return stops()[S.next]}
+function alive(){return S.party.filter(p=>p.hp>0)}
+function dateStr(){return MONTHS[S.m].slice(0,3)+' '+S.d+', '+YEAR}
+function regionNow(){const st=nextStop()||stops()[stops().length-1];return st.r}
+function hpWord(h){return h>70?'good':h>45?'fair':h>22?'poor':'very poor'}
+function partyHealth(){const a=alive();return a.length?a.reduce((s,p)=>s+p.hp,0)/a.length:0}
+function prices(){const k=1+S.next*.05;const o={};for(const id in ITEMS)o[id]=ITEMS[id].p*k;return o}
+function save(){if(S)ls.set(SAVEK,S)}
+// ---- start ----
+function title(){MODE='trail';S=null;Q=null;OUT.innerHTML='';
+  say('T H E   L O N G   R O A D','big');say('a road trip across an America that went quiet · v1.1','dim');say(' ');
+  say('Forty-one years ago, on October 9th, 2038, every satellite stopped answering. The next night there was a ring around the Moon. Nothing exploded. The phones just went quiet. People went back to letters, porches, and long drives.','');
+  say(' ');say('Type START to begin'+(ls.get(SAVEK,null)?', LOAD to continue your trip':'')+', or HELP.','q');setChips(['START'].concat(ls.get(SAVEK,null)?['LOAD']:[]).concat(['HELP']))}
+function newTrip(){S={v:1,route:null,job:null,party:[],m:3,d:1,day:0,mi:0,next:1,at:0,pace:'steady',ration:'filling',chits:0,inv:{food:0,water:20,fuel:20,tires:0,parts:0,meds:0,shells:0,tapes:1},van:100,morale:70,wx:'clear',t:.42,phase:'setup',ill:{},log:[],tape82:false,heard:[],lookups:0,deaths:[],dungeon:null,seed:ri(1,999),miles0:0,dog:null};MARKQ=[];TRAVEL=null;
+  say(' ');say('WHICH ROAD?','q');say('  1. Texas to Oregon      (2,450 miles, through Kansas and the Rockies)');say('  2. New York to Portland (3,140 miles, the whole country)');say('  3. Texas to Kansas      (810 miles, tornado country)');say('  4. Route 66             (2,230 miles, Chicago to the Pacific)  NEW');
+  ask(null,c=>{const r={1:'txor',2:'nypo',3:'txks',4:'r66'}[c[0]]||(/66|CHI|ROUTE|SANTA/.test(c.join(' '))?'r66':/TEX.*OR/.test(c.join(' '))?'txor':/NEW|YORK/.test(c[0])?'nypo':/KAN/.test(c.join(' '))?'txks':null);if(!r){say('Type 1, 2, 3 or 4.','dim');return false}S.route=r;const R=ROUTES[r];say(R.why);chooseJob();return true},['1','2','3','4'])}
+function chooseJob(){say(' ');say('WHAT DO YOU DO FOR WORK?','q');JOBS.forEach((j,i)=>say(`  ${i+1}. ${j.n.padEnd(9)} ${j.chits} chits. ${j.d}`));
+  ask(null,c=>{const j=JOBS[+c[0]-1]||JOBS.find(j=>j.id.toUpperCase().startsWith(c[0]));if(!j){say('Type 1, 2 or 3.','dim');return false}S.job=j.id;S.chits=j.chits;names();return true},['1','2','3'])}
+function names(){const D=DEFNAMES.slice();say(' ');ask('WHAT IS YOUR NAME? (Enter for "'+D[0]+'")',c=>{const n=nameOf(c,D[0]);S.party=[{n,hp:100}];say('Who is riding with you? Name three friends, one at a time.');more(1);return true},[D[0]]);
+  function more(i){ask(`FRIEND ${i}? (Enter for "${D[i]}")`,c=>{S.party.push({n:nameOf(c,D[i]),hp:100});if(i<3)more(i+1);else month();return true},[D[i]])}}
+function nameOf(c,d){const raw=(c.raw||'').trim();return raw?raw.slice(0,12).replace(/[^\w '\-]/g,'').replace(/\b\w/g,m=>m.toUpperCase())||d:d}
+function month(){say(' ');say('WHICH MONTH DO YOU LEAVE?','q');say('  1. March   2. April   3. May   4. June   5. July   6. August');say('Too early and the passes are snowy. Too late and you will race the winter.','dim');
+  ask(null,c=>{const k=+c[0];if(!(k>=1&&k<=6)){say('Type 1 to 6.','dim');return false}S.m=k+1;S.d=1;S.wx=wxFor();start();return true},['1','2','3','4','5','6'])}
+function start(){const R=ROUTES[S.route];S.phase='road';S.at=0;S.next=1;say(' ');say(`${dateStr()}. ${R.from}.`,'big');say(stops()[0].f);say(' ');
+  say(`You have ${S.chits} chits, the Wagon (a 1994 minivan with a solar roof), ${S.inv.fuel} gallons of fuel and ${S.inv.water} gallons of water.`);say('Stock up at the store before you leave. Type STORE to see prices, then BUY FOOD 300 (or any amount). Type GO when you are ready.','q');addLog(`Left ${R.from}, headed for ${R.to}.`);setChips();save()}
+// ---- the store ----
+function store(){const st=stopHere();if(!st||(st.k!=='town'&&st.k!=='end'))return say('There is no store here. Stores are in towns.','dim');const P=prices();
+  say(`${st.n.toUpperCase()} GENERAL STORE · you have ${Math.floor(S.chits)} chits`,'q');for(const id in ITEMS){const I=ITEMS[id];say(`  ${I.n.padEnd(14)} ${String(P[id]<1?P[id].toFixed(2):Math.round(P[id])).padStart(5)} · have ${Math.floor(S.inv[id])}${I.u?' '+I.u:''}`)}
+  say('BUY FOOD 200 · BUY TIRES 2 · SELL TAPES 3 · prices go up as you go west.','dim');
+  if(S.day===0)say('Suggested: 300 lb food, 40 gal water, fill the fuel tank (40 gal), 2 spare tires, 2 engine parts, 3 medicine kits, 40 shells.','dim');setChips(['BUY FOOD 300','BUY FUEL 20','BUY TIRES 2','BUY PARTS 2','BUY MEDS 3','BUY SHELLS 40','GO'])}
+function buy(c,sell){const st=stopHere();if(!st||(st.k!=='town'&&st.k!=='end'))return say('You can only trade at a store in town.','dim');const id=ITEMAL[(c[1]||'').toLowerCase()];let n=parseInt(c[2]||c[1+(id?1:0)]||'1');if(!id)return say('Buy what? Try BUY FOOD 200.','dim');if(!(n>0))n=1;const I=ITEMS[id],P=prices()[id];
+  if(sell){n=Math.min(n,Math.floor(S.inv[id]));if(n<=0)return say(`You do not have any ${I.n}.`,'dim');const v=Math.floor(n*P*.6);S.inv[id]-=n;S.chits+=v;beep(660,.08);return say(`Sold ${n} ${I.n} for ${v} chits.`)}
+  n=Math.min(n,I.max-Math.floor(S.inv[id]));if(n<=0)return say(`You cannot carry any more ${I.n}.`,'dim');const cost=Math.ceil(n*P);if(cost>S.chits){const can=Math.floor(S.chits/P);return say(`That costs ${cost} chits. You have ${Math.floor(S.chits)}. You can afford ${can}.`,'dim')}
+  S.chits-=cost;S.inv[id]+=n;beep(660,.06);beep(990,.06);say(`Bought ${n}${I.u?' '+I.u:''} ${I.n} for ${cost} chits. ${Math.floor(S.chits)} chits left.`);save()}
+// ---- status ----
+function status(){say(`${dateStr()} · day ${S.day} · ${Math.floor(S.mi)} of ${stops()[stops().length-1].mi} miles · ${REGION[regionNow()].n}`,'q');
+  say(`Weather: ${wxName()} · Pace: ${S.pace} · Rations: ${S.ration} · Morale: ${S.morale>70?'high':S.morale>40?'okay':'low'}`);
+  say(`Party: `+S.party.map(p=>p.hp>0?`${p.n} (${hpWord(p.hp)}${S.ill[p.n]?', '+S.ill[p.n]:''})`:`${p.n} (gone)`).join(', ')+(S.dog?`, and ${S.dog} (good dog)`:''));
+  inventory();const ns=nextStop();if(ns&&S.at==null)say(`Next: ${ns.n}, ${Math.ceil(ns.mi-S.mi)} miles.`,'dim')}
+function inventory(){const v=S.van;say(`Wagon: ${v>75?'running well':v>45?'rattling':v>20?'struggling':'barely running'} (${Math.round(v)}%) · ${Math.floor(S.chits)} chits`);
+  say('Supplies: '+Object.keys(ITEMS).map(id=>`${Math.floor(S.inv[id])}${ITEMS[id].u?' '+ITEMS[id].u:''} ${ITEMS[id].n}`).join(' · '))}
+function map(){const st=stops(),total=st[st.length-1].mi;const W=40;let line='';for(let i=0;i<=W;i++){const m=i/W*total;const s=st.find(x=>Math.abs(x.mi-m)<total/W/2);line+=Math.abs(S.mi-m)<total/W/2?'@':s?(s.k==='river'?'~':s.k==='pass'?'^':s.k==='mark'?'*':'#'):'-'}
+  say(`MAP · ${ROUTES[S.route].n}`,'q');say(line,'mono');say('@ you   # town   * landmark   ~ river   ^ mountain pass','dim');for(const s of st)say(`${s.mi<=S.mi?'  ✓':'   '} ${String(s.mi).padStart(4)} mi  ${s.n}${s.st?', '+s.st:''}`,s.mi<=S.mi?'dim':'')}
+function look(){const st=stopHere();if(st){say(`${st.n}${st.st?', '+st.st:''}`,'q');say(st.f);if(st.k==='town'||st.k==='end')say('There is a general store (STORE), people to TALK to, and a payphone (DIAL).','dim');if(st.sp==='cadillac'){const sp=ls.get(SPRAYK,[]);if(sp.length)say('Among the names painted on the cars you find: '+sp.slice(-6).join(', ')+'.','dim')}
+    if(st.n==='Fort Hall')say('The hand-painted sign says SOMEWHERE ELSE, and points at nothing.','dim');return}
+  say(pick(ROADSIDE));if(isNight())say('The Ring is out tonight. You could LOOK UP.','dim')}
+function isNight(){return S.t<.24||S.t>.78}
+function talk(){const st=stopHere();const r=regionNow();if(st&&st.k!=='town'&&st.k!=='end'&&rnd()<.4)return say('Nobody is around but the wind.');if(!st&&rnd()<.5)return say('There is nobody out here to talk to. Just road.');
+  say(pick(TALK[r]||TALK.plains));S.morale=clamp(S.morale+2,0,100);
+  if(rnd()<.18&&!S.tape82&&!sec().tape1982){say('Before you go, they press a cassette into your hand. It is labeled, in marker, 1982. "Play it at night," they say. "Not before."','q');S.tape82=true;found('tape1982')}}
+// ---- weather ----
+function wxFor(){const r=regionNow(),m=S.m;const cold=m<=2||m>=10,hot=m>=5&&m<=7;const x=rnd();
+  if(rnd()<.04)return 'signal';if(rnd()<.025)return 'hail';
+  if(r==='mountains'||r==='forest'&&cold){if(cold&&x<.45)return 'snow';if(x<.6)return 'rain'}
+  if(r==='desert'||r==='mesa'){if(hot&&x<.4)return 'hot';if(x<.55&&m<=5)return 'dust'}
+  if(r==='prairie'||r==='plains'){if(m>=3&&m<=7&&x<.15)return 'storm';if(x<.25&&m<=5)return 'dust';if(hot&&x<.45)return 'hot';if(cold&&x<.3)return 'snow'}
+  if(r==='gorge'||r==='forest'){if(x<.4)return 'rain';if(x<.5)return 'fog'}
+  if(x<.15)return 'rain';if(x<.2)return 'fog';return 'clear'}
+function wxName(){return {clear:'clear',hot:'very hot',rain:'rain',storm:'thunderstorms',snow:'snow',dust:'dust storm',fog:'fog',hail:'glass hail',signal:'signal weather (the Ring is humming)'}[S.wx]||S.wx}
+// ---- days ----
+function advanceDate(n){for(let i=0;i<n;i++){S.d++;S.day++;if(S.d>MDAYS[S.m]){S.d=1;S.m=(S.m+1)%12}}}
+function dailyNeeds(rest){const a=alive();const per={bare:1,meager:2,filling:3}[S.ration];const need=a.length*per;let ate=true;if(S.inv.food>=need)S.inv.food-=need;else{S.inv.food=0;ate=false}
+  const wn=a.length*(S.wx==='hot'||regionNow()==='desert'?1.5:1);let drank=true;if(S.inv.water>=wn)S.inv.water-=wn;else{S.inv.water=0;drank=false}
+  if(S.dog){S.inv.food=Math.max(0,S.inv.food-1);S.morale=clamp(S.morale+.5,0,100)}
+  const msgs=[];for(const p of a){let d=0;d+={bare:-3,meager:0,filling:2}[S.ration];if(!rest)d+={slow:1,steady:0,fast:-3}[S.pace];else d+=6;if(!ate)d-=8;if(!drank)d-=11;if(S.wx==='hot'&&!rest)d-=2;if(S.wx==='snow')d-=2;if(S.ill[p.n])d-=5;if(S.morale<30)d-=1;if(S.morale>75)d+=1;
+    p.hp=clamp(p.hp+d,0,100);if(S.ill[p.n]&&rnd()<(rest?.3:.12)){msgs.push(`${p.n} is feeling better.`);delete S.ill[p.n]}
+    if(p.hp<=0)die(p,S.ill[p.n]||(!drank?'thirst':!ate?'hunger':'exhaustion'))}
+  if(!ate)msgs.push('You have run out of food. Everyone is hungry.');if(!drank)msgs.push('You are out of water. This is dangerous.');
+  if(S.inv.food>0&&S.inv.food<alive().length*per*3)msgs.push('Food is running low.');return msgs}
+function die(p,why){p.hp=0;TRAVEL=null;S.deaths.push({n:p.n,why,mi:S.mi,day:S.day});say(`${p.n} has died of ${why}.`,'bad');thump();S.morale=clamp(S.morale-25,0,100);addLog(`${p.n} died of ${why}.`);
+  if(!alive().length){checkEnd();return}MARKQ.push(p);if(!(Q&&Q.marker))askMarker()}
+// one marker prompt at a time, even if two people are lost on the same day
+function askMarker(){const p=MARKQ[0];if(!p)return;ask(`Write a few words for ${p.n}'s marker (or press Enter):`,c=>{const t=(c.raw||'').trim().slice(0,60)||pick(EPITAPHS);const g=ls.get(GRAVEK,[]);g.push({route:S.route,mi:Math.round(S.mi),n:p.n,t,y:YEAR});ls.set(GRAVEK,g.slice(-60));say(`Here lies ${p.n}. "${t}"`,'dim');MARKQ.shift();if(MARKQ.length)askMarker();else{setChips();checkEnd()}return true},[pick(EPITAPHS)]);Q.marker=true}
+function checkEnd(){if(S.phase==='over')return true;if(!alive().length){S.phase='over';Q=null;MARKQ=[];TRAVEL=null;say(' ');say('Everyone in the Wagon is gone. The van sits by the road with the radio still on, playing the hum.','bad');say('Type START to try the long road again.','q');ls.set(SAVEK,null);setChips(['START']);return true}return false}
+// ---- traveling ----
+function go(){if(S.phase!=='road')return;if(alive().length===0)return;if(TRAVEL)return say('You are already driving. Type STOP to pull over.','dim');
+  const st=stopHere();if(st&&st.k==='river'&&!S.crossed)return river();if(st&&st.k==='end')return finish();
+  if(S.day===0&&S.inv.food<50)say('You are leaving with very little food. Type STORE first, unless you like adventure.','dim');
+  S.at=null;S.crossed=false;TRAVEL={t:0};say(`You pull onto the road. ${nextStop().n} is ${Math.ceil(nextStop().mi-S.mi)} miles ahead.`,'dim');setChips(['STOP','STATUS','PACE SLOW','PACE FAST']);beep(110,.3,'sawtooth',.03)}
+function stopTravel(why){if(!TRAVEL)return;TRAVEL=null;S.t=.66;if(why)say(why,'dim');setChips();save()}
+function travelDay(){// called once per animated day
+  const pwx=S.wx;S.wx=rnd()<.6?S.wx:wxFor();if(S.wx!==pwx)S.aurora=false;if(S.wx==='hot'&&!['desert','mesa','plains','prairie'].includes(regionNow()))S.wx='clear';
+  let mpd={slow:42,steady:62,fast:88}[S.pace];const ns=nextStop();const r=ns.r;
+  if(ns.k==='pass'&&ns.mi-S.mi<160)mpd*=.6;if(S.wx==='snow')mpd*=.5;if(S.wx==='dust'||S.wx==='fog')mpd*=.7;if(S.wx==='storm')mpd*=.8;mpd*=.55+S.van/220;mpd*=.85+partyHealth()/700;
+  let walking=false;const mpg={slow:15,steady:13,fast:10}[S.pace];let fuelNeed=mpd/mpg;if(S.inv.fuel<fuelNeed){mpd=S.inv.fuel*mpg+(S.inv.fuel*mpg<10?8:0);walking=S.inv.fuel*mpg<10;S.inv.fuel=0}else S.inv.fuel-=fuelNeed;
+  if(S.wx==='clear'||S.wx==='hot')S.inv.fuel=Math.min(40,S.inv.fuel+.6);// the solar roof trickles in
+  const before=S.mi;S.mi=Math.min(ns.mi,S.mi+mpd);advanceDate(1);S.van=clamp(S.van-{slow:.2,steady:.5,fast:1.3}[S.pace]-(walking?0:.1),0,100);
+  const msgs=dailyNeeds(false);if(checkEnd()){TRAVEL=null;return}if(S.inv.fuel<8&&S.inv.fuel>0)msgs.push('Fuel is low. Buy more at the next town, or REST in the sun to let the solar roof trickle some in.');
+  say(`${dateStr()} · ${Math.round(S.mi-before)} mi · ${wxName()} · food ${Math.floor(S.inv.food)} · fuel ${S.inv.fuel.toFixed(0)} · water ${Math.floor(S.inv.water)}${walking?' · out of fuel, pushing the van':''}`,'dim');for(const m of msgs)say(m,'warn');
+  // markers left by other travelers on this road
+  for(const g of ls.get(GRAVEK,[]))if(g.route===S.route&&g.mi>before&&g.mi<=S.mi)say(`You pass a small roadside marker: HERE LIES ${g.n.toUpperCase()}. "${g.t}"`,'dim');
+  if(S.mi>=ns.mi){arrive();return}
+  if(rnd()<.06)say(pick(ROADSIDE),'');
+  const E=rollEvent();if(E){stopTravel();E();return}}
+function arrive(){TRAVEL=null;S.t=.7;S.at=S.next;S.next++;const st=stopHere();S.inv.water=Math.min(80,S.inv.water+(st.k==='town'||st.k==='river'?80:0));
+  say(' ');say(`${st.k==='end'?'You made it. ':'You have reached '}${st.n}${st.st?', '+st.st:''}.`,'big');beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.2),260);say(st.f);addLog(`Reached ${st.n}${st.st?', '+st.st:''}.`);
+  if(st.k==='town'){say('You refill your water at the town pump. STORE, TALK, WORK, REST or GO.','dim');S.worked=0;if(S.job==='courier'){const pay=ri(30,70);S.chits+=pay;say(`You deliver a bundle of letters to the post office. ${pay} chits.`,'good')}}if(st.k==='river')say('Type GO to look at the crossing.','dim');if(st.k==='pass')say('The road climbs. Watch your brakes and your blankets.','dim');
+  if(st.k==='end'){finish();return}setChips();save()}
+function finish(){S.phase='done';const a=alive();const j=JOBS.find(j=>j.id===S.job);let sc=a.length*600+Math.floor(S.chits/5)+Math.floor(S.inv.food/10)+S.inv.parts*20+S.inv.tires*20+Math.round(S.van*2)+(S.morale>60?200:0)+(S.dog?150:0);sc*=j.mult;
+  say(' ');const R=ROUTES[S.route];const ends={txor:`Juniper's lamp shop is on a corner on the east side, every window lit. She is waiting on the step with an umbrella that is not big enough for everyone. It does not matter. You all stand in the rain anyway.`,nypo:`The little star on your grandfather's map is a house on Hawthorne with a porch light on. There is a note on the door in handwriting you know from the map: "Knew you would finish it." The key is under the mat. The tea is still warm.`,txks:`Moss is waiting at the gate of the zoo, holding a towel for each of you. The Big Pool is lit up under the biggest sky you have ever seen. Somewhere in the zoo, an animal nobody has named yet calls out, like it is saying hello.`,r66:`At the very end of the pier, the radio shack door is open. Marigold is smaller than her voice, with silver hair and headphones around her neck. "There you are," she says, like you are only a little late. That night she puts all of you on the air, and you say hello to everyone still out on the road.`};
+  say(ends[S.route],'big');if(S.dog)say(`${S.dog} runs ahead of everyone, tail going like a windshield wiper, like this was the plan all along.`,'good');addLog(`Made it to ${R.to}.`);say(' ');say(`${a.length} of ${S.party.length} made it, in ${S.day} days. ${S.deaths.length?'You remember '+S.deaths.map(d=>d.n).join(' and ')+'.':''}`);say(`Score: ${sc} (${j.n} bonus ×${j.mult}). Secrets found: ${Object.keys(sec()).length}/${Object.keys(SECRETS).length}.`,'q');
+  if(OPT.onFinish)OPT.onFinish(sc);const hs=ls.get('longroad-best',{});if(!hs[S.route]||sc>hs[S.route]){hs[S.route]=sc;ls.set('longroad-best',hs);say('A new best for this road!','sec')}ls.set(SAVEK,null);say('Type START to take another road, or JOURNAL to read back over this one.','dim');setChips(['START','JOURNAL','SECRETS'])}
+// ---- rivers and passes ----
+function river(){const st=stopHere();const m=S.m;const depth=+(1.5+rnd()*4+(m>=3&&m<=5?2:0)).toFixed(1),width=ri(200,900);S.rv={depth,width};
+  say(`${st.n}: the water is about ${width} feet across and ${depth} feet deep. The current is ${depth>5?'strong':depth>3?'steady':'slow'}.`,'q');say('FORD it (drive through), FLOAT it (seal the van and float), take the FERRY ('+Math.round(20+S.next*3)+' chits), or WAIT a day for the water to change.','');
+  ask(null,c=>{const a=c[0];if(a==='FORD')cross('ford');else if(a==='FLOAT'||a==='CAULK')cross('float');else if(a==='FERRY')cross('ferry');else if(a==='WAIT'){advanceDate(1);dailyNeeds(true);say('You wait a day by the water.','dim');Q=null;river()}else if(a==='LOOK'){say(st.f);return false}else{say('FORD, FLOAT, FERRY or WAIT?','dim');return false}return true},['FORD','FLOAT','FERRY','WAIT'])}
+function cross(how){Q=null;const {depth}=S.rv;let bad=0;if(how==='ford')bad=depth<2.5?.03:depth<3.5?.3:.65;if(how==='float')bad=depth<2.5?.25:depth>5?.3:.12;if(how==='ferry'){const fee=Math.round(20+S.next*3);if(S.chits<fee){say('You cannot afford the ferry.','dim');return river()}S.chits-=fee;bad=.03;const w=ri(0,2);if(w){advanceDate(w);say(`You wait ${w} day${w>1?'s':''} for your turn on the ferry.`,'dim')}}
+  beep(200,.3,'sine',.1);if(rnd()<bad){const lose=pick(['food','fuel','parts','tapes','meds']);const n=Math.ceil(S.inv[lose]*(.2+rnd()*.4));S.inv[lose]-=n;S.van=clamp(S.van-ri(5,20),0,100);say(`The current tips the van sideways! You lose ${n} ${ITEMS[lose].n}${n===1?'':''}, and the engine takes on water.`,'bad');
+    if(rnd()<.15){const p=pick(alive());if(rnd()<.35&&p.hp<50)die(p,'the river');else{p.hp-=25;say(`${p.n} was swept off their feet and nearly lost. They are cold and bruised.`,'warn')}}}
+  else say(how==='ferry'?'The ferry brothers argue the whole way across, but you make it safely.':how==='float'?'You seal the doors with tarps and float across. Slowly, wetly, safely.':'You ease the Wagon into the water. It churns, coughs, and climbs out the other side.','');
+  S.crossed=true;addLog(`Crossed the ${stopHere().n} (${how}).`);if(!(Q&&Q.marker))setChips(['GO','STATUS']);save()}
+// ---- trouble on the road ----
+function rollEvent(){const r=regionNow(),m=S.m;const E=[];
+  const add=(w,f)=>{if(w>0)E.push([w,f])};
+  add(.04*(S.pace==='fast'?2:1),flat);add(.035*(S.van<50?2:1)*(S.job==='mechanic'?.5:1),engine);add(.02,()=>{const p=pick(alive());const ill=pick(['the static','a bad cough','dust lung','a fever','a broken arm','food poisoning']);S.ill[p.n]=ill;p.hp-=10;say(`${p.n} has ${ill}.`,'warn');say('Rest helps. MEDICINE '+p.n.toUpperCase()+' uses a kit.','dim')});
+  add(.025,()=>{if(S.dog&&rnd()<.7){say(`Something rustles at the food bin in the night. ${S.dog} barks it all the way back into the woods. Good dog.`,'good');return}const n=ri(10,45);S.inv.food=Math.max(0,S.inv.food-n);say(`Raccoons got into the food in the night. You lost ${n} lb.`,'warn')});
+  add(r==='desert'||r==='mesa'?.03:0,()=>{advanceDate(1);say('The engine overheats in the afternoon heat. You wait for it to cool, and lose a day.','warn')});
+  add(['prairie','plains'].includes(r)&&m>=3&&m<=7?.03:0,tornado);
+  add(['prairie','plains'].includes(r)?.025:0,()=>{say('A bison herd is crossing the road. Thousands of them. You wait for hours.','');advanceDate(1);ask('You could HUNT while you wait, or just WAIT.',c=>{if(c[0]==='HUNT'){startHunt(true);return true}say('You watch them go by. It is one of the most beautiful things you have ever seen.','');S.morale=clamp(S.morale+8,0,100);setChips();return true},['HUNT','WAIT'])});
+  add(.02,()=>{say('A road crew of volunteers waves you around a collapsed bridge. The detour adds miles.','warn');S.mi=Math.max(0,S.mi-ri(15,40))});
+  add(.018,()=>{S.wx='hail';const d=ri(4,12);S.van=clamp(S.van-d,0,100);say('Glass hail! Little shards of clear ice, some of them faintly pink, rattle the roof for ten minutes. Nobody knows where it comes from. The solar panel has a crack now.','warn')});
+  add(.018,()=>{S.wx='signal';say('Signal weather. The Ring hums, the radio sings by itself, and the compass spins. You drive in circles half the day.','warn');S.mi=Math.max(0,S.mi-ri(10,30));if(isNight()||rnd()<.3)S.aurora=true});
+  add(.025,stranger);add(.02,trader);add(.02,()=>{const g=ri(20,60);addInv('food',g);say(`You find a wild plum thicket by the road and pick ${g} lb of fruit.`,'good')});
+  add(.015,()=>{say('You find an abandoned car in the ditch.','');ask('SCAVENGE it, or LEAVE it?',c=>{if(c[0]==='SCAVENGE'||c[0]==='YES'||c[0]==='Y'){if(rnd()<.2){const p=pick(alive());p.hp-=20;say(`A rattlesnake was sleeping under the seat. ${p.n} is bitten.`,'bad');S.ill[p.n]='a snakebite'}else{const k=pick(['fuel','parts','tires','tapes','meds']);const n=k==='fuel'?ri(4,12):1;S.inv[k]=Math.min(ITEMS[k].max,S.inv[k]+n);say(`You find ${n} ${ITEMS[k].n} inside.`,'good')}}else say('You leave it be.','dim');setChips();return true},['SCAVENGE','LEAVE'])});
+  add(.012,()=>{if(S.dog&&rnd()<.7){say(`In the middle of the night ${S.dog} growls low at the window. Footsteps hurry away across the gravel. Nothing is missing.`,'good');return}const n=Math.min(Math.floor(S.chits),ri(20,90));S.chits-=n;say(`Someone went through the van while you slept. ${n} chits are gone${S.inv.tapes>0?', and a tape':''}.`,'bad');if(S.inv.tapes>0)S.inv.tapes--});
+  add(r==='mountains'&&(m<=3||m>=9)?.05:0,()=>{S.wx='snow';advanceDate(ri(1,2));say('Snow in the pass. You put chains on the tires and crawl along, losing time.','warn');for(const p of alive())p.hp-=4});
+  // Biscuit, the dog from the billboard
+  add(!S.dog&&!S.dogSeen?.035:0,()=>{S.dogSeen=true;say('A scruffy brown dog is sitting by a mile marker, like it has been waiting for a ride. The tag on its collar says BISCUIT. You remember a billboard somewhere back there: LOST DOG - ANSWERS TO BISCUIT.','');
+    ask('Call out BISCUIT, or LEAVE?',c=>{if(['BISCUIT','CALL','TAKE','YES','Y','PET'].includes(c[0])){S.dog='Biscuit';say('You say "Biscuit?" and both ears go straight up. The dog races over, jumps into the van, and curls up on the back seat like it has always lived there.','good');S.morale=clamp(S.morale+15,0,100);addLog('Biscuit the dog joined the Wagon.');found('biscuit')}else say('You drive on. In the mirror, the dog watches you go, then trots off the other way.','dim');setChips();return true},['BISCUIT','LEAVE'])});
+  // a stranger for an empty seat
+  add(S.party.length>alive().length&&!S.hitch?.02:0,()=>{S.hitch=true;const used=S.party.map(p=>p.n);const n=pick(['June','Sol','Ivy','Hank','Pearl','Cass','Ezra','Lu'].filter(x=>!used.includes(x)));const what=pick(['a guitar case covered in stickers','a sack of letters to deliver','a birdcage with no bird in it','a backpack and a very good hat']);
+    say(`A hitchhiker named ${n} is standing by the road with ${what}. There is an empty seat in the Wagon.`,'');
+    ask('PICK UP, or PASS?',c=>{if(['PICK','YES','Y','TAKE'].includes(c[0])){S.party.push({n,hp:70});S.morale=clamp(S.morale+8,0,100);say(`${n} climbs in and says thanks. They are quiet for the first hundred miles, then tell the best stories you have ever heard.`,'good');addLog(`Picked up a hitchhiker named ${n}.`)}else say('You wave and drive on.','dim');setChips();return true},['PICK UP','PASS'])});
+  add(.03,()=>{say(pick(['The radio catches a station playing a whole album from 1990. Everyone sings.','A kid at a farm stand gives you a bag of peaches for free. "You look like you are going far," she says.','A clear spring by the road. Everyone drinks, washes their face, and feels new.','A perfect day. The sky is enormous. Nobody says anything for a hundred miles, and it is good.']),'good');S.morale=clamp(S.morale+10,0,100);S.inv.water=Math.min(80,S.inv.water+20)});
+  const tot=E.reduce((s,e)=>s+e[0],0);if(rnd()>tot*1.05)return null;let x=rnd()*tot;for(const [w,f] of E){x-=w;if(x<=0)return f}return E[0][1]}
+function flat(){if(S.inv.tires>0){S.inv.tires--;say('A tire blows out on the cracked road. You put on a spare. Half a day lost.','warn');return}
+  say('A tire blows out, and you have no spare. The Wagon limps along at a crawl.','bad');S.van=clamp(S.van-15,0,100);ask('WAIT for someone to come by (1 to 3 days), or keep DRIVING on the rim?',c=>{if(c[0]==='WAIT'){const d=ri(1,3);advanceDate(d);dailyNeeds(true);say(`After ${d} day${d>1?'s':''} a pickup stops. The driver sells you a tire for 50 chits${S.chits<50?', and since you are short, takes what you have':''}.`,'');S.chits=Math.max(0,S.chits-50)}else{S.van=clamp(S.van-20,0,100);say('The rim grinds. The van hates you a little.','warn')}setChips();return true},['WAIT','DRIVE'])}
+function engine(){const free=S.job==='mechanic'&&rnd()<.5;if(free){say('The engine starts knocking. You know exactly what it is, and fix it with a bent paperclip and a hair tie.','good');return}
+  if(S.inv.parts>0){S.inv.parts--;S.van=clamp(S.van+10,0,100);say('The fuel pump dies. You swap in a spare part. Back on the road by evening.','warn');advanceDate(1);return}
+  S.van=clamp(S.van-25,0,100);advanceDate(ri(1,2));say('The engine dies and you have no spare parts. You coax it back to life with tape and hope, but it is not happy.','bad')}
+function tornado(){S.wx='storm';say('The sky turns green. A wall cloud hangs over the fields, and a siren starts up somewhere far away. A funnel is dropping.','bad');beep(440,.6,'sine',.08);setTimeout(()=>beep(330,.6,'sine',.08),600);
+  ask('TAKE SHELTER in the ditch culvert, or OUTRUN it?',c=>{if(c[0]==='TAKE'||c[0]==='SHELTER'||c[0]==='HIDE'){advanceDate(1);say('You crawl into a concrete culvert and hold on. The roar passes over like a train. When you climb out, the van is twenty feet from where you left it, but upright.','');S.van=clamp(S.van-10,0,100)}
+    else{if(rnd()<.5){say('You floor it down a farm road. The funnel passes behind you, close enough to rattle the windows. You made it.','good');S.morale=clamp(S.morale+5,0,100)}else{const p=pick(alive());S.van=clamp(S.van-30,0,100);const lose=Math.ceil(S.inv.food*.3);S.inv.food-=lose;p.hp-=35;say(`The wind catches the van. Windows burst, and ${lose} lb of food is gone. ${p.n} is hurt.`,'bad');if(p.hp<=0)die(p,'the tornado')}}if(!(Q&&Q.marker))setChips();return true},['TAKE SHELTER','OUTRUN'])}
+function stranger(){const who=pick(['a woman with a broken-down truck','a boy walking to the next town to find his dog','an old man whose horse threw a shoe','a family whose car ran out of fuel']);say(`You come across ${who}. They ask if you can spare some food.`,'');
+  ask('HELP them, or KEEP going?',c=>{if(c[0]==='HELP'||c[0]==='YES'||c[0]==='Y'){const n=Math.min(Math.floor(S.inv.food),25);S.inv.food-=n;S.morale=clamp(S.morale+12,0,100);say(`You give them ${n} lb of food. They thank you, and write their address in your map. "If you ever come back this way."`,'good');S.kind=(S.kind||0)+1;if(S.kind===3){say('A few days later a rider catches up to you with a package: a spare tire, a can of fuel, and a note: "From the people you helped. Word travels."','good');S.inv.tires++;S.inv.fuel=Math.min(40,S.inv.fuel+10)}}else say('You drive on. Nobody talks for a while.','dim');setChips();return true},['HELP','KEEP GOING'])}
+function trader(){const wants=pick(['food','fuel','tapes','meds','shells']),gives=pick(['tires','parts','fuel','food','meds'].filter(x=>x!==wants));const wn={food:60,fuel:8,tapes:2,meds:1,shells:30}[wants],gn={tires:1,parts:1,fuel:10,food:80,meds:2}[gives];
+  say(`A traveler going east flags you down. They offer ${gn} ${ITEMS[gives].n} for ${wn} ${ITEMS[wants].n}.`,'');ask('TRADE, or NO?',c=>{if(c[0]==='TRADE'||c[0]==='YES'||c[0]==='Y'){if(S.inv[wants]<wn)say(`You do not have ${wn} ${ITEMS[wants].n}.`,'dim');else{S.inv[wants]-=wn;addInv(gives,gn);say('A fair trade. They tell you the road ahead is rough but passable.','good')}}else say('You wave and move on.','dim');setChips();return true},['TRADE','NO'])}
+// ---- resting, foraging, healing ----
+function rest(n){n=clamp(parseInt(n)||1,1,9);if(TRAVEL)stopTravel();for(let i=0;i<n;i++){advanceDate(1);S.wx=wxFor();S.aurora=false;if(S.wx==='clear'||S.wx==='hot')S.inv.fuel=Math.min(40,S.inv.fuel+1.6);const m=dailyNeeds(true);for(const x of m)say(x,'warn');if(checkEnd())return}
+  S.morale=clamp(S.morale+4*n,0,100);S.t=.88;say(`You rest for ${n} day${n>1?'s':''}. Everyone feels better. The solar roof trickles some fuel back into the tank (${S.inv.fuel.toFixed(0)} gal).`,'');if(isNight()||n>1)say('At night, around the fire, someone suggests you SING.','dim');save()}
+function forage(){if(stopHere()&&stopHere().k==='town')return say('You are in town. Try the STORE.','dim');advanceDate(1);dailyNeeds(true);const r=regionNow();const k=S.job==='farmer'?2:1;let f=Math.round(({forest:30,gorge:28,mountains:18,plains:15,prairie:14,city:10,desert:5,mesa:6}[r]||10)*k*(.4+rnd()));const w=r==='desert'||r==='mesa'?ri(0,4):ri(5,15);
+  addInv('food',f);S.inv.water=Math.min(80,S.inv.water+w);say(`You spend the day foraging. You gather ${f} lb of ${pick(r==='forest'||r==='gorge'?['mushrooms and berries','fiddleheads and blackberries']:r==='desert'?['pinyon nuts and prickly pear','sagebrush tea and cactus fruit']:['wild onions and plums','sunflower seeds and greens'])}, and find ${w} gal of water.`,'good');save()}
+function medicine(c){const p=S.party.find(p=>p.hp>0&&p.n.toUpperCase()===(c[1]||''))||alive().find(p=>S.ill[p.n])||alive().sort((a,b)=>a.hp-b.hp)[0];if(!p)return;if(S.inv.meds<1)return say('You have no medicine kits.','dim');S.inv.meds--;p.hp=clamp(p.hp+25,0,100);if(S.ill[p.n]){say(`You treat ${p.n}'s ${S.ill[p.n]}. They will be okay.`,'good');delete S.ill[p.n]}else say(`You patch up ${p.n}.`,'good')}
+function repair(){if(S.inv.parts<1&&S.job!=='mechanic')return say('You need engine parts to repair the Wagon.','dim');if(S.job==='mechanic'&&rnd()<.5){S.van=clamp(S.van+25,0,100);say('You fix the van with what you have on hand.','good')}else{if(S.inv.parts<1)return say('You need engine parts.','dim');S.inv.parts--;S.van=clamp(S.van+35,0,100);say('You spend the evening under the van. It sounds much better now.','good')}advanceDate(1);dailyNeeds(true)}
+function work(){const st=stopHere();if(!st||st.k!=='town')return say('There is work in towns.','dim');if((S.worked||0)>=3)return say('Nobody here needs more help today. Try the next town.','dim');S.worked=(S.worked||0)+1;advanceDate(1);dailyNeeds(true);
+  const j={courier:['You run letters across town all day.',35],mechanic:['You fix a tractor, two trucks and a very old bicycle.',60],farmer:['You help bring in a field of something green and tall.',40]}[S.job];const pay=Math.round(j[1]*(.7+rnd()*.6));S.chits+=pay;say(`${j[0]} You earn ${pay} chits.`,'good');save()}
+
+// ---- THE LONG ROAD · commands, secrets, and the hidden games ----
+const HELP=['GO (G) drive on · STOP pull over · LOOK (L) · STATUS (S) · MAP (M) · INVENTORY (I)','STORE · BUY FOOD 200 · SELL TAPES 2 · TALK · WORK · DIAL (number) at a payphone','REST 3 · FORAGE · HUNT · REPAIR · MEDICINE (name) · PLAY TAPE · JOURNAL','PACE SLOW / STEADY / FAST · RATIONS BARE / MEAGER / FILLING','SAVE · LOAD · SOUND OFF · CLEAR · NEW','Some words are not on this list. The road rewards the curious.'];
+function submit(raw){raw=String(raw);if(!raw.trim()&&!Q)return;flushNow();const show=raw.trim()||'(enter)';const d=document.createElement('div');d.className='lr-l lr-you';d.textContent='> '+show;OUT.appendChild(d);OUT.scrollTop=OUT.scrollHeight;
+  if(raw.trim()){HIST.unshift(raw);HIST=HIST.slice(0,40)}HI=-1;aud();beep(1200,.02);
+  const c=raw.trim().toUpperCase().replace(/[^A-Z0-9 \-\.']/g,' ').split(/\s+/).filter(Boolean);c.raw=raw;
+  if(MODE==='dungeon')return dungeonCmd(c);if(MODE==='arcade'){if(c[0]==='EXIT'||c[0]==='QUIT')arcadeEnd();return}
+  if(MODE==='hunt'){if(['STOP','EXIT','QUIT','END','DONE'].includes(c[0]))huntEnd();if(!PRINTING)pumpPrint();return}
+  // checking your supplies never cancels the question you are being asked
+  if(Q&&S&&S.phase==='road'&&c.length===1&&['STATUS','S','INVENTORY','I','INV','MAP','M','HELP','JOURNAL','SECRETS'].includes(c[0])){command(c);if(!PRINTING)pumpPrint();return}
+  if(Q){const h=Q.handler;Q=null;const ok=h(c);if(ok===false)Q={handler:h};if(!PRINTING)pumpPrint();return}
+  command(c);if(!PRINTING)pumpPrint()}
+function command(c){const v=c[0]||'';const st=S&&S.phase==='road';
+  // things that work anywhere
+  if(v==='HELP'||v==='?'||v==='H'){say('COMMANDS','q');for(const h of HELP)say(h,'dim');return}
+  if(v==='CLEAR'||v==='CLS'){OUT.innerHTML='';return}
+  if(v==='SOUND'){SND=c[1]!=='OFF';say('Sound '+(SND?'on':'off')+'.','dim');return}
+  if(v==='START'||v==='NEW'||v==='BEGIN'){newTrip();return}
+  if(v==='LOAD'||v==='CONTINUE'&&!st){const s=ls.get(SAVEK,null);if(!s)return say('There is no trip saved on this device.','dim');S=s;S.log=S.log||[];MARKQ=[];TRAVEL=null;Q=null;say(`Back on the road. ${dateStr()}, ${Math.floor(S.mi)} miles from ${ROUTES[S.route].from}.`,'big');look();setChips();return}
+  if(v==='SECRETS'){const s=sec();say(`SECRETS FOUND: ${Object.keys(s).length}/${Object.keys(SECRETS).length}`,'q');for(const k in SECRETS)say((s[k]?'★ ':'· ')+(s[k]?SECRETS[k]:'???'),s[k]?'sec':'dim');return}
+  if(v==='XYZZY'){say('A hollow voice says "Fool."','sec');found('xyzzy');return}
+  if(v==='PLUGH'){say('Nothing happens here. But somewhere, very far under the road, a door you have never seen clicks open.','sec');found('plugh');S&&(S.tape82=true);return}
+  if(v==='DAGGORATH'||v==='UNDERROAD'||v==='UNDER-ROAD'){dungeonStart();return}
+  if(v==='INSERT'&&c[1]==='COIN'||v==='ARCADE'){arcadeStart();return}
+  if(v==='CLOVER'){say('A postcard falls out of the glovebox. On the front: a harbor town on the Pacific, a hall with a clover on the door, floating islands in the sky. On the back: "Wish you were here. There is a house with your name on it." It is signed with a four-leaf clover.','sec');found('clover');if(S)S.morale=clamp(S.morale+15,0,100);return}
+  if(!S||S.phase==='setup'){say(S?'Answer the question above first.':'Type START to begin.','dim');return}
+  if(v==='SAVE'){save();return say('Saved on this device.','dim')}
+  if(v==='STATUS'||v==='S'||v==='ST'){status();return}
+  if(v==='INVENTORY'||v==='I'||v==='INV'||v==='SUPPLIES'){inventory();return}
+  if(v==='MAP'||v==='M'){map();return}
+  if(v==='JOURNAL'||v==='LOG'||v==='DIARY'){journal();return}
+  if(v==='PET'||v==='HUG'||v==='DOG'||v==='BISCUIT'){if(!S.dog)return say(v==='HUG'?'Everyone in the Wagon gets a hug. It helps.':'There is nobody here to pet. Maybe someday.','dim');S.morale=clamp(S.morale+3,0,100);return say(pick([`${S.dog} rolls over for a belly rub.`,`${S.dog} puts a chin on your knee and sighs, very content.`,`You scratch behind ${S.dog}'s ears. One back leg thumps the seat.`,`${S.dog} licks your whole face. Okay. Fair.`]),'good')}
+  if(v==='LOOK'||v==='L'||v==='EXAMINE'){if(c[1]==='UP'||c[1]==='SKY'||c[1]==='RING'||v==='LOOK'&&c[1]==='AT'&&c[2]==='RING'){lookUp();return}look();return}
+  if(S.phase!=='road'){say('This trip is over. Type START to take another road.','dim');return}
+  if(v==='GO'||v==='G'||v==='DRIVE'||v==='CONTINUE'||v==='TRAVEL'||v==='LEAVE'){go();return}
+  if(v==='STOP'||v==='HALT'||v==='WAIT'&&TRAVEL){stopTravel('You pull over onto the shoulder.');return}
+  if(v==='WAIT'){if(isNight()){S.t=.3;advanceDate(1);dailyNeeds(true);say('You sleep in the van until morning.','dim')}else{S.t=.88;say('You wait by the road until it gets dark. The Ring comes out.','dim')}return}
+  if(v==='PACE'){const p={SLOW:'slow',STEADY:'steady',FAST:'fast',NORMAL:'steady'}[c[1]];if(!p)return say('PACE SLOW, STEADY or FAST.','dim');S.pace=p;return say(`Pace set to ${p}. ${p==='fast'?'Harder on everyone, and on the van.':p==='slow'?'Easy on everyone. The road is long either way.':''}`)}
+  if(v==='RATIONS'||v==='RATION'){const p={BARE:'bare',MEAGER:'meager',FILLING:'filling',FULL:'filling'}[c[1]];if(!p)return say('RATIONS BARE, MEAGER or FILLING.','dim');S.ration=p;return say(`Rations set to ${p}.`)}
+  if(v==='STORE'||v==='SHOP'){store();return}
+  if(v==='BUY'||v==='PURCHASE'){buy(c,false);return}if(v==='SELL'){buy(c,true);return}
+  if(v==='TALK'||v==='ASK'||v==='CHAT'){talk();return}
+  if(v==='WORK'||v==='JOB'){work();return}
+  if(v==='REST'||v==='CAMP'||v==='SLEEP'){rest(c[1]);return}
+  if(v==='FORAGE'||v==='GATHER'){if(TRAVEL)stopTravel();forage();return}
+  if(v==='HUNT'||v==='SHOOT'){if(TRAVEL)stopTravel();startHunt();return}
+  if(v==='REPAIR'||v==='FIX'){repair();return}
+  if(v==='MEDICINE'||v==='HEAL'||v==='MEDS'||v==='TREAT'){medicine(c);return}
+  if(v==='FORD'||v==='FLOAT'||v==='FERRY'){const st=stopHere();if(st&&st.k==='river'&&!S.crossed){if(!S.rv)river();Q=null;cross(v==='FORD'?'ford':v==='FLOAT'?'float':'ferry')}else say('There is no river to cross here.','dim');return}
+  // secrets on the road
+  if(v==='PLAY'&&(c[1]==='TAPE'||c[1]==='MUSIC'||c[1]==='RADIO')||v==='TAPE'){playTape();return}
+  if(v==='LISTEN'||v==='TUNE'||v==='RADIO'){radio(c);return}
+  if(v==='DIAL'||v==='CALL'||v==='PHONE'){dial(c);return}
+  if(v==='DIG'){dig();return}
+  if(v==='SPRAY'||v==='PAINT'||v==='WRITE'||v==='CARVE'){spray(c);return}
+  if(v==='SING'){sing();return}
+  if(v==='WISH'){say('You make a wish on the Ring. It does not twinkle, exactly. But it does not not twinkle.','dim');return}
+  if(v==='HONK'){beep(330,.25,'sawtooth',.06);say(stopHere()&&/Allegheny/.test(stopHere().n)?'The echo comes back a full second late, and it is not your honk. It is a different car horn, far away, honking back.':'HONK.','dim');return}
+  if(v==='FOLLOW'||v==='TURN'&&c[1]==='SOMEWHERE'||(v==='SOMEWHERE'&&c[1]==='ELSE')){somewhereElse();return}
+  if(v==='UP'&&c[1]==='UP'&&c[2]==='DOWN'){say('↑↑↓↓←→←→ B A. The radio plays a little fanfare. Everyone gets 30 lives. (Just kidding. But everyone feels great.)','sec');for(const p of alive())p.hp=100;return}
+  if(v==='HELLO'||v==='HI'){say(pick(['Hello.','The road says hello back, in its way.','Hi! Nobody answers, but the wind picks up a little.']),'dim');return}
+  say(pick(['I do not understand that. Type HELP for commands.','The road does not know that word. Yet.','Hmm? Type HELP to see what you can do.']),'dim')}
+function journal(){const L=S.log||[];if(!L.length)return say('The journal is empty so far. Go make some memories.','dim');say(`TRIP JOURNAL · ${ROUTES[S.route].n}`,'q');for(const l of L.slice(-25))say('  '+l,'dim');if(L.length>25)say(`(${L.length-25} older entries not shown)`,'dim')}
+function lookUp(){if(!isNight()){say('It is daytime. The Ring is a faint white arc near the Moon, if you squint.','dim');return}S.lookups=(S.lookups||0)+1;
+  const L=['The Ring is bright tonight, a thin pale band around the Moon. Everybody stops talking for a minute.','You look up at the Ring. Tonight there is a single bright spot on it, like a bead on a string.','The bright spot on the Ring is moving. Slowly, steadily, along the band. Like something walking.'];say(L[Math.min(L.length-1,S.lookups-1)]);if(S.lookups>=3)found('ring')}
+function playTape(){if(S.tape82&&isNight()){say('You slide the tape labeled 1982 into the deck. Hiss. A heartbeat. Then a voice, very old and very calm: "YOU HAVE ENTERED THE DUNGEONS UNDER THE ROAD." The dashboard lights go green. The road outside is gone.','sec');setTimeout(dungeonStart,1800);return}
+  if(S.tape82)say('You hold up the tape labeled 1982. "Play it at night," they said. "Not before."','dim');
+  if(S.inv.tapes<1)return say('You have no tapes to play.','dim');say(pick(['You play a mixtape somebody made in 1997. It is mostly love songs and one very loud song about a truck.','You play a tape of whale songs. Everybody gets very quiet.','You play a tape called ROAD TRIP #4. Track one is just somebody laughing for ninety seconds. It is contagious.','You play a tape of a high school band. They are not good. They are trying so hard. Everyone loves it.']),'good');S.morale=clamp(S.morale+10,0,100)}
+function radio(c){if(!isNight()){say('In the daytime the radio is mostly static, farm reports and one station that plays polka.','dim');return}const n=S.heard.length;if(S.lastListen===S.day&&n<BROADCASTS.length){say('Marigold is playing slow songs now. The next part of her story will be on another night.','dim');return}S.lastListen=S.day;if(n>=BROADCASTS.length){say('KHUSH plays soft music now. Every so often, Marigold says goodnight to someone by name. Tonight she says yours.','dim');return}
+  say(BROADCASTS[n],'radio');S.heard.push(n);S.morale=clamp(S.morale+3,0,100);if(S.heard.length===BROADCASTS.length)found('khush');else say(`(Broadcast ${S.heard.length} of ${BROADCASTS.length}. Listen again another night.)`,'dim')}
+function dial(c){const st=stopHere();if(!st||(st.k!=='town'&&st.k!=='end'))return say('There is no payphone here. Towns have payphones.','dim');const num=c.slice(1).join('').replace(/\D/g,'');
+  if(!num)return say('DIAL what? (Long distance just hums. Try a local number, or 0.)','dim');
+  if(num==='0'){say('An operator picks up. "Number please." You do not have one. "That is all right, honey. Most folks just call to hear a voice. Drive safe."','');found('dial');return}
+  if(num==='8675309'){say('"Jenny?" you ask. A tired voice says, "There is no Jenny. There has never been a Jenny. Every day for forty years. Please stop calling."','sec');found('dial');return}
+  if(num==='1059'||num==='5551059'){say('You reach the KHUSH request line. Marigold herself answers. "You are on the road? Listen tonight. I have something for you."','');return}
+  if(num==='911'){say('A calm voice says the sheriff is out on a horse somewhere, but he will get there eventually. "Is anybody hurt?" No. "Then rest and drink some water."','');return}
+  beep(400,.3,'sine',.05);setTimeout(()=>beep(400,.3,'sine',.05),500);say('It rings. And rings. Then a hum, low and growing, fills the line. You hang up.','dim')}
+function dig(){const st=stopHere();if(st&&st.sp==='cadillac'){if(S.tape82)return say('You dig some more. Just dirt and spray paint caps.','dim');S.tape82=true;say('You dig in the dirt under the tenth car. Your shovel hits a metal lunchbox. Inside: a cassette in a plastic case, labeled in marker: 1982. And a note: PLAY AT NIGHT.','sec');found('tape1982');return}
+  if(st&&st.sp==='dome_rock'){say('Under a loose stone at the base of the rock you find a tin of old letters, never sent, from 1847 and 2047. You read a few. You put them back.','');return}
+  say(pick(['You dig a hole. It is a nice hole. There is nothing in it.','You find a bottle cap from a soda that has not existed in fifty years.','You dig until you hit a layer of glass. Clear, smooth, very old. You fill the hole back in.']),'dim')}
+function spray(c){const st=stopHere();const name=(c.raw||'').trim().split(/\s+/).slice(1).join(' ').slice(0,16)||S.party[0].n;
+  if(st&&(st.sp==='cadillac'||st.sp==='dome_rock')){const L=ls.get(SPRAYK,[]);L.push(name.toUpperCase());ls.set(SPRAYK,L.slice(-40));say(`You ${st.sp==='cadillac'?'paint':'carve'} ${name.toUpperCase()} ${st.sp==='cadillac'?'on the cars in bright letters':'into the granite, under the pioneers'}. Anyone who comes this way after you will see it.`,'sec');found('spray');return}
+  say('There is nothing here to write on that would last.','dim')}
+function sing(){if(!isNight())return say('You sing in the van. Everyone joins in on the chorus.','dim');say(pick(['Around the fire you sing a song nobody remembers all the words to. You make up the rest. It is better that way.','You sing an old road song. Far away, coyotes join in, in harmony.']),'sec');S.morale=clamp(S.morale+15,0,100);found('sing')}
+function somewhereElse(){const st=stopHere();if(!st||st.n!=='Fort Hall')return say('Follow what?','dim');say('You turn the Wagon toward the hand-painted sign. The road gets narrow, then smooth, then very quiet. The fields on both sides are the wrong color, a kind of soft silver. You drive for an hour that takes no time at all.','sec');
+  say('At the end of the road is a diner with all its lights on. Everyone inside looks up and smiles like they have been expecting you. A waitress pours coffee. "Long road?" she asks. You say yes. "It always is," she says. "Drink up. Then go back. You have someplace to be."','sec');
+  say('When you step outside, you are back at Fort Hall, and the sign is gone. Everyone in the Wagon feels completely rested.','good');for(const p of alive()){p.hp=100;delete S.ill[p.n]}found('somewhere')}
+// ---- HUNT: a little shooting gallery on the pixel screen ----
+let HUNT=null;
+function startHunt(bison){if(stopHere()&&stopHere().k==='town')return say('No hunting in town.','dim');if(S.inv.shells<1)return say('You have no shells.','dim');
+  MODE='hunt';HUNT={t:20,x:160,y:110,an:[],got:0,shots:0,bison,cool:0,miss:0};say('HUNTING. Move with the arrow keys (or move your mouse / finger). Fire with SPACE (or tap). You have 20 seconds.','q');setChips(['STOP HUNT'])}
+function huntTick(dt){const H=HUNT;H.t-=dt;H.cool-=dt;const r=regionNow();const kinds=H.bison?['bison','bison','pronghorn']:r==='forest'||r==='gorge'||r==='mountains'?['deer','rabbit','elk','deer']:r==='desert'||r==='mesa'?['rabbit','pronghorn','rabbit']:['pronghorn','rabbit','deer','bison'];
+  if(rnd()<dt*1.4&&H.an.length<5){const k=rnd()<.03?'glass':pick(kinds);const dir=rnd()<.5?1:-1;H.an.push({k,x:dir>0?-20:PW+20,y:HZ+12+rnd()*50,v:dir*({rabbit:70,pronghorn:90,deer:55,bison:28,elk:45,glass:60}[k]),hop:rnd()*6})}
+  for(const a of H.an){a.x+=a.v*dt;a.hop+=dt*8}H.an=H.an.filter(a=>a.x>-30&&a.x<PW+30&&!a.dead);
+  if(KEYS.ArrowLeft)H.x-=150*dt;if(KEYS.ArrowRight)H.x+=150*dt;if(KEYS.ArrowUp)H.y-=110*dt;if(KEYS.ArrowDown)H.y+=110*dt;H.x=clamp(H.x,0,PW);H.y=clamp(H.y,30,PH-4);
+  if(H.t<=0)huntEnd()}
+function huntShoot(){const H=HUNT;if(!H||H.cool>0||S.inv.shells<1)return;H.cool=.35;S.inv.shells--;H.shots++;beep(120,.1,'sawtooth',.1);PARTS.push({x:H.x,y:H.y,vx:0,vy:-8,l:.4,c:'#ffffff'});
+  for(const a of H.an){const sz={rabbit:5,pronghorn:9,deer:10,bison:14,elk:12,glass:11}[a.k];if(Math.abs(a.x-H.x)<sz&&Math.abs(a.y-6-H.y)<sz*.8){a.dead=1;if(a.k==='glass'){H.glass=1;say('The glass elk turns to look at you. The shot passes right through it, ringing like a bell. It walks away, unhurt, into the light. You are not sure it was ever there.','sec');found('elk');return}
+    const lb={rabbit:4,pronghorn:45,deer:60,bison:400,elk:200}[a.k]*(S.job==='farmer'?1.3:1)*(S.dog?1.2:1);H.got+=lb;beep(520,.1);return}}H.miss++;if(S.inv.shells<1)huntEnd()}
+function huntEnd(){const H=HUNT;if(!H)return;HUNT=null;MODE='trail';const keep=Math.min(Math.round(H.got),200);addInv('food',keep);if(S.dog&&H.got)say(`${S.dog} helped flush the game out of the grass.`,'dim');advanceDate(1);dailyNeeds(true);
+  say(H.got?`You shot ${Math.round(H.got)} lb of meat${H.got>keep?', but you can only carry 200 lb back to the van':''}. ${H.shots} shells used.`:`You came back empty-handed. ${H.shots} shells used.`,H.got?'good':'dim');setChips();save()}
+function drawHunt(V,T){drawScene(V,T);const H=HUNT;for(const a of H.an){const x=a.x,y=a.y+Math.abs(Math.sin(a.hop))*-2,d=a.v>0?1:-1;const c=col({rabbit:'#b8a080',pronghorn:'#d8a060',deer:'#a8703a',bison:'#4a3020',elk:'#8a5a30',glass:'#e8f8ff'}[a.k]);const s={rabbit:.5,pronghorn:.9,deer:1,bison:1.5,elk:1.25,glass:1.2}[a.k];
+    rect(x-6*s,y-8*s,12*s,6*s,c);rect(x+d*5*s,y-12*s,4*s,5*s,c);for(const lx of [-5,-2,2,5])rect(x+lx*s,y-2*s,1,3*s+1,c);if(a.k==='deer'||a.k==='elk'||a.k==='glass'){line(x+d*6*s,y-12*s,x+d*4*s,y-17*s,c);line(x+d*7*s,y-12*s,x+d*9*s,y-17*s,c)}if(a.k==='bison')rect(x+d*2*s-4,y-11*s,8*s,4*s,col('#3a2414'))}
+  const cx=H.x|0,cy=H.y|0,w=col('#ff4a4a');for(let i=3;i<8;i++){px(cx+i,cy,w);px(cx-i,cy,w);px(cx,cy+i,w);px(cx,cy-i,w)}text(`TIME ${Math.ceil(H.t)}  SHELLS ${S.inv.shells}  MEAT ${Math.round(H.got)}`,4,4,col('#ffffff'))}
+// ---- THE UNDER-ROAD: a wireframe dungeon in the old style ----
+let DG=null;
+function mazeOf(n,seed){let s=seed;const r=()=>{s=(s*16807)%2147483647;return s/2147483647};const W=[];for(let i=0;i<n*n;i++)W.push(15);const seen=new Set([0]);const st=[0];const D=[[0,-1,1,4],[1,0,2,8],[0,1,4,1],[-1,0,8,2]];
+  while(st.length){const c=st[st.length-1];const x=c%n,y=(c/n)|0;const opts=D.filter(([dx,dy])=>{const nx=x+dx,ny=y+dy;return nx>=0&&ny>=0&&nx<n&&ny<n&&!seen.has(ny*n+nx)});if(!opts.length){st.pop();continue}const [dx,dy,b,ob]=opts[Math.floor(r()*opts.length)];const nc=(y+dy)*n+x+dx;W[c]&=~b;W[nc]&=~ob;seen.add(nc);st.push(nc)}
+  for(let i=0;i<n*2;i++){const c=Math.floor(r()*n*n),k=Math.floor(r()*4);const [dx,dy,b,ob]=D[k];const x=c%n+dx,y=((c/n)|0)+dy;if(x>=0&&y>=0&&x<n&&y<n){W[c]&=~b;W[y*n+x]&=~ob}}return W}
+function dungeonStart(){if(!S){say('You need to be on a trip first. Type START.','dim');return}if(TRAVEL)stopTravel();MODE='dungeon';found('underroad');const lv=1;DG={lv,hp:100,x:0,y:0,d:1,n:8,beat:0,gold:0,mob:[],chest:[],ladder:null,msg:'',seen:{}};dgLevel(1);
+  say('THE UNDER-ROAD','big');say('Wireframe corridors under the highway, like an old game from 1982. Commands: MOVE (or M), BACK, TURN LEFT/RIGHT/AROUND (TL, TR, TA), ATTACK (A), LOOK, CLIMB, EXIT. Arrow keys work too. Listen to your heartbeat.','q');setChips(['M','TL','TR','TA','A','CLIMB','LOOK','EXIT'])}
+function dgLevel(lv){const D=DG;D.lv=lv;D.W=mazeOf(D.n,(S.seed||7)*31+lv*977);D.x=0;D.y=0;D.d=1;D.mob=[];D.chest=[];const cells=[];for(let i=1;i<D.n*D.n;i++)cells.push(i);cells.sort(()=>rnd()-.5);
+  D.ladder=cells.pop();for(let i=0;i<3+lv*2;i++){const c=cells.pop();D.mob.push({c,k:pick(lv===1?['spider','blob']:lv===2?['blob','knight','bat']:['knight','wraith','bat']),hp:lv*12+ri(4,12)})}for(let i=0;i<3;i++)D.chest.push(cells.pop());
+  if(lv===3)D.mob.push({c:D.ladder,k:'listener',hp:90});say(lv===3?'LEVEL 3. The air hums. Something very large is listening.':`LEVEL ${lv}.`,'q')}
+const DDX=[0,1,0,-1],DDY=[-1,0,1,0],DBIT=[1,2,4,8];
+function dgOpen(c,d){return !(DG.W[c]&DBIT[d])}
+function dgCell(x,y){return y*DG.n+x}
+function dungeonCmd(c){const D=DG;const v=c[0]||'';let moved=false;
+  if(v==='EXIT'||v==='QUIT'||v==='LEAVE'){if(D.lv===1&&D.x===0&&D.y===0||v==='QUIT'){dungeonEnd(false);return}say('The way out is the ladder where you started, on level 1. (Or QUIT to wake up.)','dim');return}
+  if(v==='HELP')return say('MOVE, BACK, TURN LEFT/RIGHT/AROUND, ATTACK, LOOK, CLIMB, EXIT/QUIT','dim');
+  if(v==='TURN'||v==='T'||v==='TL'||v==='TR'||v==='TA'||v==='LEFT'||v==='RIGHT'||v==='AROUND'){const w=v==='TL'||v==='LEFT'||c[1]==='LEFT'?3:v==='TR'||v==='RIGHT'||c[1]==='RIGHT'?1:2;D.d=(D.d+w)%4;beep(300,.03)}
+  else if(v==='MOVE'||v==='M'||v==='FORWARD'||v==='F'||v==='W'||v==='BACK'||v==='B'){const back=v==='BACK'||v==='B';const d=back?(D.d+2)%4:D.d;const cc=dgCell(D.x,D.y);if(!dgOpen(cc,d)){say('A wall.','dim');beep(80,.05)}else{const nx=D.x+DDX[d],ny=D.y+DDY[d];if(D.mob.some(m=>m.c===dgCell(nx,ny)))say('Something is in the way.','warn');else{D.x=nx;D.y=ny;moved=true;beep(200,.02)}}}
+  else if(v==='ATTACK'||v==='A'||v==='HIT'||v==='FIGHT'){const fc=dgFront();const m=fc!=null&&D.mob.find(m=>m.c===fc);if(!m){say('You swing at the dark.','dim')}else{const dmg=ri(8,18);m.hp-=dmg;beep(150,.08,'sawtooth',.08);if(m.hp<=0){D.mob=D.mob.filter(x=>x!==m);const g=ri(10,30)*D.lv;D.gold+=g;say(m.k==='listener'?'The Listener folds up like a paper lantern and goes quiet. Behind it is a ladder of light leading up.':`The ${m.k} crumbles into green dust. You find ${g} chits.`,m.k==='listener'?'sec':'good');if(m.k==='listener'){found('listener');D.won=1}}else say(`You hit the ${m.k}.`,'')}}
+  else if(v==='LOOK'||v==='L'){const fc=dgFront();const m=fc!=null&&D.mob.find(m=>m.c===fc);say(m?`A ${m.k} blocks the corridor ahead.`:dgCell(D.x,D.y)===D.ladder?'There is a ladder here.':D.chest.includes(dgCell(D.x,D.y))?'There is an old crate here.':'Stone walls, faintly green.','')}
+  else if(v==='CLIMB'||v==='C'||v==='UP'||v==='DOWN'){if(dgCell(D.x,D.y)!==D.ladder&&!(D.lv===1&&D.x===0&&D.y===0))return say('There is no ladder here.','dim');if(D.lv===1&&D.x===0&&D.y===0)return dungeonEnd(false);if(D.lv<3){dgLevel(D.lv+1)}else if(D.won)return dungeonEnd(true);else return say('The Listener is in the way.','warn')}
+  else if(v==='GET'||v==='OPEN'||v==='TAKE'){const cc=dgCell(D.x,D.y);if(D.chest.includes(cc)){D.chest=D.chest.filter(x=>x!==cc);const k=pick(['parts','meds','tires','fuel']);const n=k==='fuel'?10:1;S.inv[k]=Math.min(ITEMS[k].max,S.inv[k]+n);say(`Inside the crate: ${n} ${ITEMS[k].n}. You stash it for the Wagon.`,'good')}else say('Nothing to take.','dim')}
+  else return say('The dungeon does not understand. Try MOVE, TURN LEFT, ATTACK, CLIMB.','dim');
+  if(moved){const cc=dgCell(D.x,D.y);if(D.chest.includes(cc))say('There is an old crate here. GET it.','dim');if(cc===D.ladder)say('There is a ladder here. CLIMB it.','dim')}
+  // the things in the dark creep closer and bite
+  for(const m of D.mob){const mx=m.c%D.n,my=(m.c/D.n)|0;const dist=Math.abs(mx-D.x)+Math.abs(my-D.y);if(dist===1){const dmg=ri(3,8)*(m.k==='listener'?2:1)+D.lv;D.hp-=dmg;thump();say(`The ${m.k} ${pick(['bites','claws','slams into'])} you.`,'warn')}else if(dist<5&&rnd()<.5&&m.k!=='listener'){for(let d=0;d<4;d++){if(!dgOpen(m.c,d))continue;const nx=mx+DDX[d],ny=my+DDY[d];if(Math.abs(nx-D.x)+Math.abs(ny-D.y)<dist&&!(nx===D.x&&ny===D.y)&&!D.mob.some(o=>o.c===dgCell(nx,ny))){m.c=dgCell(nx,ny);break}}}}
+  if(D.hp<=0){say('Your heart pounds, then stops. You wake up with a gasp in the driver\'s seat. The tape has ended. Everyone is staring at you.','bad');S.party[0].hp=Math.max(10,S.party[0].hp-30);dungeonEnd(false,true);return}
+  if(!PRINTING)pumpPrint()}
+function dgFront(){const D=DG;const cc=dgCell(D.x,D.y);if(!dgOpen(cc,D.d))return null;return dgCell(D.x+DDX[D.d],D.y+DDY[D.d])}
+function dungeonEnd(won,dead){const D=DG;MODE='trail';if(won){S.chits+=D.gold+500;say(`You climb the ladder of light and come out through the van's sunroof, into a sky full of stars. The tape clicks off. Your pockets are heavy with ${D.gold+500} chits from the Under-Road.`,'sec')}else if(!dead){S.chits+=D.gold;say(`You climb out. The tape clicks off. ${D.gold} chits came back with you.`,'')}DG=null;setChips();save();if(!PRINTING)pumpPrint()}
+function drawDungeon(T){const D=DG;rect(0,0,PW,PH,col('#000000'));const g=col('#3aff6a'),g2=col('#1a8a3a');const cx=PW/2,cy=PH/2-8;
+  const sz=k=>[[150,80],[96,52],[60,32],[38,20],[24,12]][k];let cc=dgCell(D.x,D.y);
+  for(let k=0;k<4;k++){const [w0,h0]=sz(k),[w1,h1]=sz(k+1);const x=cc%D.n,y=(cc/D.n)|0;const L=(D.d+3)%4,R=(D.d+1)%4;
+    const lc=!dgOpen(cc,L),rc=!dgOpen(cc,R);if(lc){line(cx-w0,cy-h0,cx-w1,cy-h1,g);line(cx-w0,cy+h0,cx-w1,cy+h1,g)}else{line(cx-w0,cy-h1,cx-w1,cy-h1,g2);line(cx-w0,cy+h1,cx-w1,cy+h1,g2);line(cx-w0,cy-h1,cx-w0,cy+h1,g2)}
+    if(rc){line(cx+w0,cy-h0,cx+w1,cy-h1,g);line(cx+w0,cy+h0,cx+w1,cy+h1,g)}else{line(cx+w0,cy-h1,cx+w1,cy-h1,g2);line(cx+w0,cy+h1,cx+w1,cy+h1,g2);line(cx+w0,cy-h1,cx+w0,cy+h1,g2)}
+    line(cx-w1,cy-h1,cx-w1,cy+h1,g);line(cx+w1,cy-h1,cx+w1,cy+h1,g);
+    if(k>0||true){const m=D.mob.find(m=>m.c===cc);if(m&&k>0){}}
+    const fm=k>0?D.mob.find(m=>m.c===cc):null;if(fm)dgMonster(fm,cx,cy,w0,h0,T);if(k>0&&cc===D.ladder){line(cx-w0*.2,cy-h0,cx-w0*.2,cy+h0,g);line(cx+w0*.2,cy-h0,cx+w0*.2,cy+h0,g);for(let r=-h0;r<h0;r+=h0/4)line(cx-w0*.2,cy+r,cx+w0*.2,cy+r,g)}
+    if(!dgOpen(cc,D.d)){rect(cx-w1,cy-h1,w1*2,1,g);rect(cx-w1,cy+h1,w1*2,1,g);break}
+    cc=dgCell(x+DDX[D.d],y+DDY[D.d]);if(k===3)break}
+  // heartbeat and status
+  const rate=1.2-(100-D.hp)/120;const b=(T%rate)/rate;if(b<.05&&!D.lastBeat){D.lastBeat=1;thump()}if(b>.1)D.lastBeat=0;const r=b<.12?6:4;circ(16,PH-14,r,col('#ff3a4a'));
+  text(`LEVEL ${D.lv}  HEART ${Math.max(0,D.hp)}  CHITS ${D.gold}  FACING ${'NESW'[D.d]}`,30,PH-16,g);
+  // a tiny map in the corner of what is nearby
+  for(let yy=-2;yy<=2;yy++)for(let xx=-2;xx<=2;xx++){const X=D.x+xx,Y=D.y+yy;if(X<0||Y<0||X>=D.n||Y>=D.n)continue;const c=dgCell(X,Y);const bx=PW-36+xx*6,by=18+yy*6;const w=D.W[c];if(w&1)rect(bx,by,6,1,g2);if(w&4)rect(bx,by+5,6,1,g2);if(w&8)rect(bx,by,1,6,g2);if(w&2)rect(bx+5,by,1,6,g2)}rect(PW-34,20,2,2,g)}
+function dgMonster(m,cx,cy,w,h,T){const c=col(m.k==='listener'?'#ff8ad8':'#ff4a4a');const s=w/150;const bob=Math.sin(T*4)*3*s;
+  if(m.k==='spider'){circ(cx,cy+h*.4+bob,Math.max(2,18*s),c);for(let i=-3;i<=3;i++)if(i)line(cx,cy+h*.4,cx+i*20*s,cy+h*.8,c)}
+  else if(m.k==='blob'){for(let i=0;i<20;i++){const a=i/20*6.28;px(cx+Math.cos(a)*30*s*(1+Math.sin(T*3+i)*.1),cy+h*.5+Math.sin(a)*20*s+bob,c)}}
+  else if(m.k==='bat'){line(cx-40*s,cy-20*s+bob,cx,cy+bob,c);line(cx+40*s,cy-20*s+bob,cx,cy+bob,c);circ(cx,cy+bob,Math.max(1,5*s),c)}
+  else if(m.k==='listener'){for(let i=0;i<5;i++){const r=(20+i*12)*s;for(let a=0;a<6.28;a+=.08)px(cx+Math.cos(a)*r,cy+Math.sin(a)*r*.3+bob,c)}circ(cx,cy+bob,Math.max(2,10*s),col('#ffffff'))}
+  else{rect(cx-12*s,cy-h*.5+bob,24*s,h*1.2,c);rect(cx-6*s,cy-h*.7+bob,12*s,14*s,c);if(m.k==='wraith')for(let i=0;i<5;i++)line(cx-12*s+i*6*s,cy+h*.7,cx-12*s+i*6*s+3,cy+h*.9,c)}}
+// ---- GLASS BREAKER: the arcade at the end of the road ----
+let AR=null;
+function arcadeStart(){const st=S&&stopHere();if(S&&!(st&&(st.k==='town'||st.k==='end')))return say('You need an arcade. Every town has one in the back of the diner.','dim');MODE='arcade';found('arcade');
+  AR={px:160,bx:160,by:140,vx:70,vy:-90,lives:3,score:0,bricks:[],lv:1,stuck:1};arLevel();say('GLASS BREAKER. Left and right arrows (or your mouse / finger) move the paddle. SPACE or tap launches. Type EXIT to leave. Score turns into chits.','q');setChips(['EXIT'])}
+function arLevel(){AR.bricks=[];const cs=['#ff5a8a','#ffa04a','#ffd84a','#6ae87a','#4ac8ff','#a87aff'];for(let j=0;j<6;j++)for(let i=0;i<14;i++)AR.bricks.push({x:12+i*21,y:24+j*9,c:cs[j],hp:j===0&&AR.lv>1?2:1});AR.stuck=1}
+function arcadeTick(dt){const A=AR;if(KEYS.ArrowLeft)A.px-=220*dt;if(KEYS.ArrowRight)A.px+=220*dt;A.px=clamp(A.px,20,PW-20);if(A.stuck){A.bx=A.px;A.by=150;return}
+  A.bx+=A.vx*dt;A.by+=A.vy*dt;if(A.bx<3||A.bx>PW-3){A.vx*=-1;A.bx=clamp(A.bx,3,PW-3);beep(500,.02)}if(A.by<12){A.vy=Math.abs(A.vy);beep(500,.02)}
+  if(A.by>152&&A.by<158&&Math.abs(A.bx-A.px)<20&&A.vy>0){A.vy=-Math.abs(A.vy)*1.02;A.vx=(A.bx-A.px)*5;beep(300,.03)}
+  if(A.by>PH){A.lives--;thump();A.stuck=1;A.vx=70;A.vy=-90;if(A.lives<=0)arcadeEnd()}
+  for(const b of A.bricks){if(b.hp>0&&A.bx>b.x&&A.bx<b.x+19&&A.by>b.y&&A.by<b.y+7){b.hp--;A.vy*=-1;A.score+=10*A.lv;beep(800+b.y*4,.03);break}}
+  if(A.bricks.every(b=>b.hp<=0)){A.lv++;A.vx*=1.1;A.vy*=1.1;arLevel()}}
+function arcadeLaunch(){if(AR&&AR.stuck){AR.stuck=0;AR.vy=-90-AR.lv*10}}
+function drawArcade(T){const A=AR;rect(0,0,PW,PH,col('#0a0a1a'));for(let i=0;i<40;i++)px(hsh(i)*PW,(hsh(i*3)*PH+T*10)%PH,col('#3a3a6a'));
+  for(const b of A.bricks)if(b.hp>0){rect(b.x,b.y,19,7,col(b.c));rect(b.x,b.y,19,1,col('#ffffff'));if(b.hp>1)rect(b.x+8,b.y+2,3,3,col('#ffffff'))}
+  rect(A.px-18,154,36,4,col('#e8e8ff'));circ(A.bx,A.by,2,col('#ffffff'));text(`SCORE ${A.score}  LIVES ${A.lives}  LEVEL ${A.lv}`,6,6,col('#ffffff'));const hs=ls.get('longroad-arcade',0);text(`BEST ${Math.max(hs,A.score)}`,PW-60,6,col('#ffd84a'));if(A.stuck)text('PRESS SPACE',PW/2-22,110,col('#ffd84a'))}
+function arcadeEnd(){const A=AR;if(!A)return;MODE='trail';const hs=ls.get('longroad-arcade',0);if(A.score>hs)ls.set('longroad-arcade',A.score);const ch=Math.floor(A.score/40);if(S&&S.phase==='road'){S.chits+=ch;save()}AR=null;say(`GAME OVER. Score ${A.score}${A.score>hs?' (new best!)':''}. ${S&&ch?`The owner pays out ${ch} chits in tickets.`:''}`,'q');setChips();if(!PRINTING)pumpPrint()}
+// ---- main loop and wiring ----
+const KEYS={};
+function frame(now){RAF=requestAnimationFrame(frame);const dt=Math.min(.1,(now-(LASTT||now))/1000);LASTT=now;TT+=dt;
+  if(MODE==='dungeon'&&DG){drawDungeon(TT);blit();return}if(MODE==='arcade'&&AR){arcadeTick(dt);drawArcade(TT);blit();return}
+  const V=viewState(dt);if(MODE==='hunt'&&HUNT){huntTick(dt);if(HUNT)drawHunt(V,TT);else drawScene(V,TT)}else drawScene(V,TT);blit();
+  if(S&&HUD)HUD.textContent=S.phase==='road'||S.phase==='done'?`${dateStr()}  ·  ${Math.floor(S.mi)} / ${stops()[stops().length-1].mi} mi  ·  ${alive().length} aboard  ·  ${Math.floor(S.chits)} chits`:'';
+  if(TRAVEL){TRAVEL.t+=dt;if(TRAVEL.t>.85){TRAVEL.t=0;travelDay();if(!PRINTING)pumpPrint()}}}
+let VIEW={scroll:0,t:.4,bill:null,billX:400};
+function viewState(dt){const V=VIEW;if(!S||!S.route){V.t=(.3+TT*.01)%1;V.scroll+=dt*.6;Object.assign(V,{land:'prairie',wx:'clear',moving:true,stop:null,vanX:110,seed:3,dog:false});return V}
+  // time of day drifts toward the trip's clock
+  const target=TRAVEL?((TRAVEL.t/.85)*.55+.25):S.t;S.t=TRAVEL?target:S.t;V.t+=(S.t-V.t)*Math.min(1,dt*2);if(Math.abs(S.t-V.t)>.5)V.t=S.t;
+  if(TRAVEL)V.scroll+=dt*({slow:.6,steady:.9,fast:1.3}[S.pace]);V.moving=!!TRAVEL;V.land=regionNow();V.wx=S.wx;V.month=S.m;V.seed=S.seed+S.next*13;V.aurora=S.aurora;V.vanX=110;V.dog=!!S.dog;
+  // billboards drift past
+  if(V.bill){V.billX-=TRAVEL?dt*60*({slow:.6,steady:.9,fast:1.3}[S.pace]):0;if(V.billX<-90)V.bill=null}else if(TRAVEL&&rnd()<dt*.08){V.bill=pick(BILLBOARDS);V.billX=PW+10}
+  const st=stopHere();const ns=nextStop();if(st){V.stop=st.sp||st.k;V.stopX=230}else if(ns&&ns.mi-S.mi<60){V.stop=ns.sp||ns.k;V.stopX=230+(ns.mi-S.mi)*3}else V.stop=null;return V}
+const CSS=`.lr{position:absolute;inset:0;display:flex;flex-direction:column;background:#07080c;color:#cfe8c0;font:15px/1.45 ui-monospace,"SF Mono",Menlo,Consolas,monospace;overflow:hidden}
+.lr-scr{position:relative;flex:0 0 auto;width:100%;max-height:56vh;aspect-ratio:16/9;margin:0 auto;background:#000;display:flex;justify-content:center}
+.lr-scr canvas{height:100%;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+.lr-scr:after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(transparent 0 2px,rgba(0,0,0,.18) 2px 3px);mix-blend-mode:multiply}
+.lr-hud{position:absolute;left:0;right:0;bottom:0;padding:3px 10px;font-size:12px;color:#ffe8a0;background:linear-gradient(transparent,rgba(0,0,0,.6));text-align:center;letter-spacing:.04em}
+.lr-term{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;border-top:2px solid #2a3a2a;background:radial-gradient(ellipse at 50% 0,#0d1a10,#06080a 70%)}
+.lr-out{flex:1 1 auto;overflow-y:auto;padding:10px 14px 4px;text-shadow:0 0 6px rgba(120,255,140,.25)}
+.lr .lr-l{white-space:pre-wrap;margin:1px 0;max-width:900px}.lr .lr-l.lr-you{color:#8affa0}.lr .lr-l.lr-q{color:#ffe08a}.lr .lr-l.lr-dim{color:#7a9a7a}.lr .lr-l.lr-warn{color:#ffb86a}.lr .lr-l.lr-bad{color:#ff7a7a}.lr .lr-l.lr-good{color:#9ae8ff}.lr .lr-l.lr-sec{color:#ff9ae8}.lr .lr-l.lr-big{color:#ffffff;font-weight:700;letter-spacing:.06em;margin-top:6px}.lr .lr-l.lr-radio{color:#c8b8ff;font-style:italic}.lr .lr-l.lr-mono{letter-spacing:.1em}
+.lr-in{display:flex;align-items:center;gap:6px;padding:6px 14px;border-top:1px solid #1a2a1a}.lr-in span{color:#8affa0}.lr-in input{flex:1;background:transparent;border:0;outline:0;color:#e8ffe0;font:inherit;caret-color:#8affa0;min-width:0}
+.lr-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 10px}.lr-chips button{background:#122014;color:#bfffc8;border:1px solid #2e5a34;border-radius:6px;font:12px ui-monospace,Menlo,monospace;padding:6px 9px;cursor:pointer}.lr-chips button:active{background:#2e5a34}
+.lr-x{position:absolute;top:8px;right:8px;z-index:3;background:rgba(0,0,0,.6);color:#fff;border:1px solid #555;border-radius:8px;font:14px ui-monospace,monospace;padding:6px 10px;cursor:pointer}
+@media (max-width:600px){.lr{font-size:13.5px}.lr-hud{font-size:10px}.lr-out{padding:8px 10px 2px}}`;
+function LongRoad(root,opt){OPT=opt||{};if(!document.getElementById('lr-css')){const s=document.createElement('style');s.id='lr-css';s.textContent=CSS;document.head.appendChild(s)}
+  ROOT=document.createElement('div');ROOT.className='lr';ROOT.innerHTML=`<div class="lr-scr"><canvas width="${PW}" height="${PH}" aria-label="The road"></canvas><div class="lr-hud"></div></div><div class="lr-term"><div class="lr-out" role="log" aria-live="polite"></div><div class="lr-in"><span>&gt;</span><input autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type a command" placeholder="type a command"></div><div class="lr-chips"></div></div>${OPT.onClose?'<button class="lr-x" aria-label="Close">✕ close</button>':''}`;
+  root.appendChild(ROOT);OUT=ROOT.querySelector('.lr-out');INP=ROOT.querySelector('input');HUD=ROOT.querySelector('.lr-hud');pixInit(ROOT.querySelector('canvas'));
+  INP.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){const v=INP.value;INP.value='';submit(v)}else if(e.key==='ArrowUp'&&MODE==='trail'){if(HIST.length){HI=Math.min(HIST.length-1,HI+1);INP.value=HIST[HI];e.preventDefault()}}else if(e.key==='ArrowDown'&&MODE==='trail'){HI=Math.max(-1,HI-1);INP.value=HI>=0?HIST[HI]:''}});
+  const kd=e=>{if(!ROOT.isConnected)return;KEYS[e.key]=1;if(MODE==='hunt'||MODE==='arcade'){if(e.key.startsWith('Arrow'))e.preventDefault();if(e.key===' '||e.key==='Enter'){e.preventDefault();if(MODE==='hunt')huntShoot();else arcadeLaunch()}if(e.key==='Escape'){if(MODE==='hunt')huntEnd();else arcadeEnd()}}
+    else if(MODE==='dungeon'&&document.activeElement!==INP||MODE==='dungeon'&&!INP.value){const m={ArrowUp:'M',ArrowDown:'BACK',ArrowLeft:'TL',ArrowRight:'TR'}[e.key];if(m){e.preventDefault();submit(m)}}};
+  const ku=e=>{KEYS[e.key]=0};addEventListener('keydown',kd,true);addEventListener('keyup',ku,true);
+  const cv=ROOT.querySelector('canvas');const toPix=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)/r.width*PW,(e.clientY-r.top)/r.height*PH]};
+  cv.addEventListener('pointermove',e=>{const [x,y]=toPix(e);if(HUNT){HUNT.x=x;HUNT.y=y}if(AR)AR.px=x});cv.addEventListener('pointerdown',e=>{const [x,y]=toPix(e);if(HUNT){HUNT.x=x;HUNT.y=y;huntShoot()}if(AR){AR.px=x;arcadeLaunch()}});
+  ROOT.addEventListener('click',e=>{if(e.target===OUT||e.target.closest('.lr-out'))INP.focus()});
+  if(OPT.onClose)ROOT.querySelector('.lr-x').onclick=()=>{save();destroy();OPT.onClose()};
+  if(MODE!=='trail'){MODE='trail'}title();pumpPrint();RAF=requestAnimationFrame(frame);setTimeout(()=>INP.focus(),50);
+  function destroy(){cancelAnimationFrame(RAF);removeEventListener('keydown',kd,true);removeEventListener('keyup',ku,true);TRAVEL=null;HUNT=null;AR=null;DG=null;MODE='trail';PRINTQ.length=0;ROOT.remove()}
+  return {destroy}}
+
+window.LongRoad=LongRoad;})();
+LongRoad(document.getElementById('lr-root'),{});
+</script>
+</html>
