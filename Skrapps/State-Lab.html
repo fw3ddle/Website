@@ -1,7 +1,285 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ꟻX · Packed State Laboratory</title><style>
-:root{color-scheme:dark;--mint:#b4ffd6;--bg:#060c16;--ink:#e0f5ef;--mut:#8aa5a6;--line:#28413f;--violet:#b6a8ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 73% 0%,#162b2a,#060c16 58%);font:14px/1.55 system-ui,sans-serif;color:var(--ink)}.wrap{max-width:1220px;margin:auto;padding:22px}header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:1px solid var(--line);padding-bottom:18px}h1{font-size:clamp(24px,4vw,38px);margin:4px 0;line-height:1.1;font-weight:780;letter-spacing:-.04em}h2{font-size:17px;margin:0 0 12px;color:var(--mint)}p{color:var(--mut);margin:3px 0 12px}small{color:var(--mut)}.sig{letter-spacing:.26em;font-size:10px;color:#78c5ae}.badge{color:#9ee5d4;border:1px solid #3f7b6d;border-radius:99px;padding:5px 10px;font-size:11px}.grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,.7fr);gap:14px;margin-top:16px}@media(max-width:790px){.grid{grid-template-columns:1fr}}.panel{background:#0c1721dc;border:1px solid var(--line);border-radius:15px;padding:18px;min-width:0}.controls{display:flex;gap:14px;flex-wrap:wrap;margin:12px 0}label{display:flex;gap:5px;flex-direction:column;color:var(--mut);font-size:12px}select,input[type=number],button{background:#14272c;color:var(--ink);border:1px solid #41675d;border-radius:9px;padding:9px;font:inherit}select,button{cursor:pointer}button:hover{border-color:var(--mint)}button.primary{background:#9deec7;color:#09271d;font-weight:700}canvas{display:block;width:100%;background:#07131a;border:1px solid #214b44;border-radius:9px}.cells{display:flex;flex-wrap:wrap;gap:5px;margin:12px 0}.cell{min-width:36px;min-height:36px;text-align:center;font-size:12px;border-radius:8px;border:1px solid #395b50;transition:background .15s}.nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.num{background:#12232a;border-radius:9px;padding:10px}.num b{font-size:20px;display:block;color:var(--mint)}.legend{display:flex;justify-content:space-between;color:var(--mut);font-size:11px}.toolbar{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}input[type=range]{width:100%;accent-color:#9deec7}code{color:#b5f2d9}.note{border-left:3px solid #bdabff;padding:8px 12px;background:#171727;color:#c7c4e7;margin:10px 0;font-size:12px}.chip{padding:3px 7px;border-radius:7px;background:#1b302e;color:#9fd9bb;font:12px ui-monospace,monospace}.foot{font-size:12px;color:var(--mut);padding:15px 0}.muted{color:var(--mut)}
-</style></head><body><div class="wrap"><header><div><div class="sig">FWEDDLE / ꟻX COMPUTATIONAL SYSTEMS / 0.21</div><h1>Packed State Laboratory <span style="color:var(--mint)">✦</span></h1><p>Radix · information density · exact state arithmetic · illustrative electrical noise</p></div><div class="badge">OFFLINE · BINARY CPU · RESEARCH MODEL</div></header>
-<div class="grid"><section class="panel"><h2>01 / State field</h2><div class="controls"><label>Number of states / radix<select id="radix"><option value="2">2 · Binary</option><option value="3" selected>3 · Ternary</option><option value="4">4 · Quaternary</option><option value="8">8 · Octal</option><option value="16">16 · Hexadecimal</option></select></label><label>Notation<select id="notation"><option value="normal">0..R−1</option><option value="balanced">Balanced trit: −1, 0, +1</option></select></label><label>Samples<input id="count" type="number" value="36" min="1" max="1024"></label></div><div class="toolbar"><button class="primary" id="random">Regenerate</button><button id="succ">Successor +1</button><button id="pred">Predecessor −1</button><button id="not">Invert states</button><button id="restore">Restore initial</button></div><small>Click a cell to advance its value. Algebra is exact integer software logic, not physical voltage switching.</small><div class="cells" id="cells"></div><h2>02 / Encoded information</h2><div class="nums"><div class="num"><small>Logical information</small><b id="entropy"></b><small>bits / symbol (maximum)</small></div><div class="num"><small>Compact payload</small><b id="bytes"></b><small>bytes, no file header</small></div><div class="num"><small>Byte-array baseline</small><b id="saved"></b><small>space saved</small></div></div><div class="note">Ternary codec: five base-3 digits fit into one byte because 3⁵ = 243 ≤ 256. This is an exact data encoding, NOT a 3-voltage memory cell. Long 8-bit arrays remain faster for some operations.</div><div class="legend"><span>Selected values</span><span id="checksum">Exact state preview</span></div><canvas id="bars" width="700" height="150" aria-label="State distribution histogram"></canvas></section>
-<section class="panel"><h2>03 / Voltage threshold experiment</h2><p>The physical ideas in the uploaded CNTFET / GNRFET papers motivate this model. It uses idealized equally spaced states; it is <strong>not</strong> a transistor-level circuit simulation.</p><canvas id="volts" width="570" height="235" aria-label="Voltage thresholds for each multistate value"></canvas><div class="controls" style="display:block"><label>Gaussian noise (fraction of total voltage span) <span id="noiseN" class="chip">0.055</span><input type="range" id="noise" min="0" max="0.25" step="0.005" value="0.055"></label><label>Trials <span class="muted">10,000 seeded, reproducible</span></label></div><div class="nums"><div class="num"><small>Detection error</small><b id="errors"></b><small>simulated</small></div><div class="num"><small>Nominal levels</small><b id="levels"></b><small>evenly spaced</small></div><div class="num"><small>Ideal separation</small><b id="spacing"></b><small>relative VDD</small></div></div><h2>04 / Interpretation</h2><p>With more states in the same voltage span, adjacent thresholds get closer. At a fixed noise level the decoder becomes more error-prone. This is why real multilevel storage requires calibration, read-margin design, and error correction.</p><div class="note">No actual hardware voltage, power consumption or error-correction rates have been measured here. The model is for conceptual comparison only.</div></section></div><div class="foot">ꟻX 0.21 Packed States · Source-compatible studio · Reference operations: successor, predecessor, complement, min/max · Inspired by Simonetta et al., Zhao et al., Pendashteh &amp; Hosseini, and Jo et al.</div></div><script>
-'use strict';const $=id=>document.getElementById(id);let vals=[],initial=[],R=3,balanced=false;const rnd=(()=>{let x=0xF021;return ()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return (x>>>0)/4294967296}})();function fmt(v){return balanced?String(v-1):v.toString(R===16?16:10).toUpperCase()};function fresh(){R=+$('radix').value;balanced=$('notation').value==='balanced'&&R===3;$('notation').value=balanced?'balanced':'normal';$('notation').querySelector('option[value="balanced"]').disabled=R!==3;let n=Math.max(1,Math.min(1024,Number($('count').value)||36));$('count').value=n;vals=Array.from({length:n},()=>Math.floor(rnd()*R));initial=vals.slice();paint()};function paint(){const root=$('cells');root.textContent='';for(let i=0;i<vals.length;i++){if(i>=96){const el=document.createElement('small');el.textContent=`+ ${vals.length-96} additional cells omitted from display`;root.append(el);break;}const el=document.createElement('button');el.className='cell';el.style.background=`hsl(${(155+vals[i]*250/Math.max(1,R-1))%360} 42% ${16+23*vals[i]/Math.max(1,R-1)}%)`;el.textContent=fmt(vals[i]);el.title=`Cell ${i}: click to advance`;el.onclick=()=>{vals[i]=(vals[i]+1)%R;paint()};root.append(el)}const bits=Math.log2(R),n=vals.length,p=R===3?Math.ceil(n/5):Math.ceil(n*bits/8);$('entropy').textContent=bits.toFixed(3);$('bytes').textContent=p;$('saved').textContent=((1-p/n)*100).toFixed(1)+'%';$('checksum').textContent=vals.slice(0,12).map(fmt).join(' ')+(n>12?' …':'');$('levels').textContent=R;$('spacing').textContent=(1/(R-1)).toFixed(3);drawBars();noiseTest()};function drawBars(){const c=$('bars'),g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);const counts=Array(R).fill(0);vals.forEach(x=>counts[x]++);const max=Math.max(1,...counts);for(let i=0;i<R;i++){const ww=c.width/R,x=i*ww,h=counts[i]/max*112;g.fillStyle=`hsl(${(155+i*250/Math.max(1,R-1))%360} 80% 68%)`;g.fillRect(x+5,c.height-25-h,ww-10,h);g.fillStyle='#e7fff0';g.font='12px monospace';g.fillText(String(i),x+ww/2-4,c.height-8)}}function noiseTest(){let seed=0x521f;const localRnd=()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return (seed>>>0)/4294967296};const gaussian=()=>{const u=Math.max(1e-12,localRnd()),v=localRnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};const sigma=Number($('noise').value);$('noiseN').textContent=sigma.toFixed(3);const trials=10000;let bad=0;for(let i=0;i<trials;i++){let truth=Math.floor(localRnd()*R),v=truth/(R-1)+gaussian()*sigma;let guess=Math.max(0,Math.min(R-1,Math.round(v*(R-1))));bad+=+(truth!==guess)}$('errors').textContent=(100*bad/trials).toFixed(2)+'%';const c=$('volts'),g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);for(let i=0;i<R;i++){let x=24+i/(R-1)*(c.width-48);g.strokeStyle='#5b857e';g.setLineDash([3,5]);g.beginPath();g.moveTo(x,14);g.lineTo(x,c.height-36);g.stroke();g.setLineDash([]);g.fillStyle=`hsl(${(155+i*250/Math.max(1,R-1))%360} 80% 68%)`;g.beginPath();g.arc(x,95,7,0,7);g.fill();g.fillStyle='#d7eee5';g.font='11px monospace';g.fillText(String(i),x-4,c.height-16)}g.strokeStyle='#bacbd0';g.beginPath();g.moveTo(24,125);g.lineTo(c.width-24,125);g.stroke();const spread=Math.max(.8,sigma*(c.width-48));g.globalAlpha=.25;for(let i=0;i<R;i++){let x=24+i/(R-1)*(c.width-48);let grad=g.createRadialGradient(x,95,2,x,95,spread*2.2);grad.addColorStop(0,'#83f4c2');grad.addColorStop(1,'transparent');g.fillStyle=grad;g.fillRect(x-spread*2.2,30,spread*4.4,135)}g.globalAlpha=1;g.fillStyle='#8baaaa';g.font='11px sans-serif';g.fillText('0 V',13,c.height-2);g.fillText('VDD',c.width-39,c.height-2)}$('radix').onchange=fresh;$('notation').onchange=()=>{balanced=$('notation').value==='balanced'&&R===3;paint()};$('count').onchange=fresh;$('random').onclick=fresh;$('restore').onclick=()=>{vals=initial.slice();paint()};$('succ').onclick=()=>{vals=vals.map(v=>(v+1)%R);paint()};$('pred').onclick=()=>{vals=vals.map(v=>(v+R-1)%R);paint()};$('not').onclick=()=>{vals=vals.map(v=>R-1-v);paint()};$('noise').oninput=noiseTest;fresh();
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ꟻX · State Laboratory</title>
+<style>
+:root{color-scheme:dark;--bg:#060c14;--card:#0b1620;--line:#25423f;--mint:#a9ffd2;--ink:#ddf5ec;--mut:#8ea9a8;--lime:#d5ff84;--violet:#c3b5ff;--warn:#ffcf8a;--bad:#ff8f8f}
+*{box-sizing:border-box}html,body{margin:0}body{background:radial-gradient(ellipse at 70% -10%,#163331 0%,#060c14 60%) fixed,#060c14;color:var(--ink);font:14px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1240px;margin:auto;padding:22px 16px 40px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:16px}
+.eyebrow{letter-spacing:.26em;font-size:11px;color:var(--lime);text-transform:uppercase}
+h1{margin:4px 0 2px;font-size:clamp(26px,4.4vw,44px);line-height:1.05;letter-spacing:-.03em;font-weight:800;color:var(--mint)}h1 span{color:var(--violet)}
+h2{margin:0 0 10px;font-size:16px;color:var(--mint);letter-spacing:.01em}h2 b{color:var(--lime);font-weight:600;margin-right:8px;font-family:ui-monospace,monospace}
+p{color:var(--mut);margin:4px 0 10px;max-width:78ch}small{color:var(--mut);font-size:12px}code,.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{color:#bff3da}
+.badge{border:1px solid #3c7366;border-radius:99px;padding:6px 11px;font-size:11px;color:#a7e9d5}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 4px}nav button{border-radius:99px;padding:7px 13px}nav button[aria-selected=true]{background:var(--mint);color:#062118;border-color:var(--mint);font-weight:700}
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;margin-top:14px}@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:#0b1620e0;border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:10px 0}
+label{display:flex;flex-direction:column;gap:4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+select,input,button,textarea{font:inherit;color:var(--ink);background:#122429;border:1px solid #3d665c;border-radius:8px;padding:8px 10px}
+input[type=number]{width:110px}input.wide{width:min(320px,100%)}button{cursor:pointer}button:hover{border-color:var(--mint)}button.primary{background:#9ff0c8;color:#08261b;font-weight:700;border-color:#9ff0c8}
+input[type=range]{accent-color:#9ff0c8;width:100%;padding:0}
+textarea{width:100%;min-height:120px;font:12px/1.45 ui-monospace,monospace;resize:vertical}
+.cells{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0}.cell{width:34px;height:34px;padding:0;border-radius:7px;font:600 12px ui-monospace,monospace;border:1px solid #33574e;color:#04130e}
+.nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}@media(max-width:520px){.nums{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.num{background:#102027;border-radius:10px;padding:9px 10px}.num b{display:block;font-size:20px;color:var(--mint);font-variant-numeric:tabular-nums}
+.note{border-left:3px solid var(--violet);background:#15152a;color:#cbc6ee;padding:8px 12px;border-radius:4px;font-size:12.5px;margin:10px 0}
+.ok{color:var(--mint)}.err{color:var(--bad)}.warnc{color:var(--warn)}
+canvas{display:block;width:100%;background:#07131a;border:1px solid #1f4740;border-radius:9px}
+table.tt{border-collapse:collapse;font:12px ui-monospace,monospace;margin:6px 0}table.tt td,table.tt th{width:30px;height:28px;text-align:center;border:1px solid #1e3a37}table.tt th{color:var(--mut);font-weight:500;background:#0d1b20}
+.scroll{overflow-x:auto;max-width:100%}
+.adder{font:13px/1.25 ui-monospace,monospace;overflow-x:auto;white-space:pre;background:#08141a;border:1px solid #1f4740;border-radius:9px;padding:10px}
+.adder .c{color:var(--warn)}.adder .s{color:var(--mint);font-weight:700}.adder .hi{background:#2b4f45;border-radius:3px}
+.kv{font:12px/1.5 ui-monospace,monospace;background:#08141a;border:1px solid #1f4740;border-radius:9px;padding:10px;white-space:pre-wrap;word-break:break-all;margin:8px 0}
+section[hidden]{display:none}
+footer{margin-top:18px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:12px}
+</style></head><body><main>
+<header><div><div class="eyebrow">ꟻX computational laboratory · 0.22 Tri-Wire</div><h1>STATE <span>LABORATORY</span></h1>
+<p>Multi-valued logic on an ordinary binary CPU: radix, packing, the operators from the supplied papers, a ternary adder, and a file bridge to <code>fxc states</code> and to packed ꟻX arrays.</p></div>
+<div class="badge">OFFLINE · EXACT INTEGER LOGIC · NOT A CIRCUIT SIMULATOR</div></header>
+<nav role="tablist">
+<button role="tab" data-tab="field" aria-selected="true">01 State field</button>
+<button role="tab" data-tab="ops">02 Operator atlas</button>
+<button role="tab" data-tab="adder">03 Ternary adder</button>
+<button role="tab" data-tab="bridge">04 File bridge</button>
+<button role="tab" data-tab="noise">05 Threshold model</button>
+</nav>
+
+<section id="tab-field"><div class="grid"><div class="panel">
+<h2><b>01</b>State field</h2>
+<div class="row"><label>Radix<select id="radix"><option value="2">2 · binary</option><option value="3" selected>3 · ternary</option><option value="4">4 · quaternary</option><option value="8">8 · octal</option><option value="16">16 · hex</option></select></label>
+<label>Notation<select id="notation"><option value="normal">0 … R−1</option><option value="balanced">balanced −1 0 +1</option></select></label>
+<label>States<input id="count" type="number" min="1" max="4096" value="40"></label>
+<label>Constant k<input id="kconst" type="number" min="0" max="15" value="1"></label></div>
+<div class="row"><button class="primary" id="regen">Regenerate</button><button data-op="succ">succ</button><button data-op="pred">pred</button><button data-op="not">not</button><button data-op="os">os ↑</button><button data-op="ps">ps ↓</button><button data-op="min">min k</button><button data-op="max">max k</button><button data-op="add">+k mod R</button><button id="restore">Restore</button></div>
+<small>Click a cell to advance it. Every operator here is the same one <code>fxc states map --op=…</code> applies to a packed file.</small>
+<div class="cells" id="cells"></div>
+<canvas id="hist" width="720" height="130" aria-label="State histogram"></canvas>
+</div><div class="panel">
+<h2><b>·</b>Encoded size</h2>
+<div class="nums"><div class="num"><small>Information</small><b id="bits"></b><small>bits per state (log₂ R)</small></div><div class="num"><small>FXST21 payload</small><b id="payload"></b><small>bytes (+64 header)</small></div><div class="num"><small>vs one byte each</small><b id="saved"></b><small>smaller</small></div>
+<div class="num"><small>Packing efficiency</small><b id="eff"></b><small>information ÷ storage bits</small></div><div class="num"><small>States per byte</small><b id="per"></b><small>in a packed array</small></div><div class="num"><small>ꟻX element type</small><b id="etype" class="mono"></b><small>native packed array</small></div></div>
+<div class="note">Five trits fit in a byte because 3⁵ = 243 ≤ 256: 7.92 of every 8 bits carry information (99.06%). That is a data encoding, not a three-voltage memory cell; the CPU still switches binary transistors.</div>
+<h2 style="margin-top:14px"><b>·</b>Radix economy</h2>
+<canvas id="econ" width="520" height="190" aria-label="Radix economy curve"></canvas>
+<small>Cost of writing numbers in radix r if a digit costs r: proportional to r / ln r. The ideal is e ≈ 2.718, and 3 is the closest integer (5.6% better than 2). It is a classic argument for ternary hardware (Setun, 1958), not a property of binary CPUs.</small>
+</div></div></section>
+
+<section id="tab-ops" hidden><div class="grid"><div class="panel">
+<h2><b>02</b>Operator atlas</h2>
+<div class="row"><label>Radix <span id="rlab" class="mono">3</span><input id="orad" type="range" min="2" max="10" value="3"></label>
+<label>Two-input operator<select id="bop"><option value="min">min (MVL AND)</option><option value="max">max (MVL OR)</option><option value="add">sum digit (a+b) mod R</option><option value="carry">carry (a+b ≥ R)</option><option value="mul">product mod R</option><option value="eq">equality (R−1 / 0)</option></select></label></div>
+<div class="scroll"><table class="tt" id="btab"></table></div>
+<h2 style="margin-top:12px"><b>·</b>Unary operators</h2>
+<div class="scroll"><table class="tt" id="utab"></table></div>
+</div><div class="panel">
+<h2><b>·</b>What each one is</h2>
+<p><b class="mono">succ / pred</b>: cyclic successor and predecessor; Pendashteh &amp; Hosseini build them from four CNTFETs. In ꟻX: <code>succ(x, R)</code>, <code>pred(x, R)</code>.</p>
+<p><b class="mono">os / ps</b>: optimism and pessimism steps, one level up or down that stop at the ends (Mokhtari &amp; Kabiri). In ꟻX: <code>os(x, R)</code>, <code>ps(x, R)</code>.</p>
+<p><b class="mono">min / max</b>: the MVL AND and OR. They form a lattice, not a field: there is no additive inverse, which is why the "field" claim in one supplied paper is not adopted.</p>
+<p><b class="mono">sum digit / carry</b>: the two outputs of a radix-R half adder; add a carry input and you have Zhao et al.'s ternary full adder (tab 03).</p>
+<p><b class="mono">not</b>: R−1−x, the standard MVL complement; on balanced trits it is negation.</p>
+<div class="note">In compiled ꟻX these operators are branch-free x86-64 (compare + conditional move, or vector min/max across 8–16 lanes in vectorized loops). They run on binary transistors; MVL energy savings need MVL hardware.</div>
+<h2><b>·</b>ꟻX snippet</h2><div class="kv" id="osnip"></div>
+</div></div></section>
+
+<section id="tab-adder" hidden><div class="grid"><div class="panel">
+<h2><b>03</b>Ternary ripple-carry adder</h2>
+<p>Zhao et al. (2024): a ternary full adder takes digits a, b and a carry c ∈ {0, 1} and gives sum = (a+b+c) mod 3, carry = ⌊(a+b+c)/3⌋. Step through the ripple from the least significant trit.</p>
+<div class="row"><label>A (decimal)<input id="ad1" class="wide" value="1234567890123"></label><label>B (decimal)<input id="ad2" class="wide" value="987654321098"></label></div>
+<div class="row"><button class="primary" id="adrun">Add</button><button id="adstep">Step</button><button id="adreset">Reset</button></div>
+<div class="adder" id="adview"></div>
+<div id="adres" style="margin-top:8px"></div>
+</div><div class="panel">
+<h2><b>·</b>Same adder, compiled</h2>
+<p>This is <code>examples/mvl/ternary-adder.fx</code>. It keeps the numbers in packed <code>[trit; 39]</code> arrays (8 bytes each), and the native program checks itself against binary addition.</p>
+<div class="kv">let u = a[i] + b[i] + c;
+s[i] = u;      // trit store wraps mod 3: the sum digit
+c = u / 3;     // the carry digit</div>
+<h2><b>·</b>Balanced ternary</h2>
+<p>Digits −1, 0, +1 (written −, 0, +) represent negative numbers with no sign bit; negating is flipping every digit. Setun (Moscow, 1958) computed this way. ꟻX's <code>[btrit; N]</code> stores these digits, five per byte.</p>
+<div class="kv" id="balview"></div>
+</div></div></section>
+
+<section id="tab-bridge" hidden><div class="grid"><div class="panel">
+<h2><b>04</b>FXST21 file bridge</h2>
+<p>Exports the state field as a <code>.fxstates</code> file (64-byte header, SHA-256, canonical payload), byte-identical to <code>fxc states pack</code>. It also imports and verifies one, with the same checks as <code>fxc states verify</code>.</p>
+<div class="row"><button class="primary" id="exp">Export state field (.fxstates)</button><label class="mono" style="text-transform:none;letter-spacing:0">Import<input type="file" id="imp" accept=".fxstates,application/octet-stream"></label></div>
+<div class="kv" id="inspect">(no file yet)</div>
+<h2><b>·</b>Header layout</h2>
+<div class="kv">0  8  magic "FXST21\0\0"     12 8  element count (LE)
+8  1  version 1             20 8  payload bytes (LE)
+9  1  radix 2|3|4|8|16      28 32 SHA-256 of [0,28) + [60,end)
+10 1  balanced (radix 3)    60 4  reserved, zero
+11 1  bits/state, 5 = trits 64 …  payload</div>
+</div><div class="panel">
+<h2><b>·</b>As ꟻX source</h2>
+<p>A packed ꟻX array stores exactly the payload bytes above, so this declaration compiles to the same bytes in the program's data. <code>fxc states source FILE.fxstates</code> prints the same thing.</p>
+<textarea id="src" readonly></textarea>
+<div class="row"><button id="copysrc">Copy</button><span id="copied" class="ok"></span></div>
+<div class="note">SHA-256 detects damage, not origin: anyone can recompute it. Treat a verified file as intact data, never as permission to run anything.</div>
+</div></div></section>
+
+<section id="tab-noise" hidden><div class="grid"><div class="panel">
+<h2><b>05</b>Voltage threshold model</h2>
+<p>An idealized toy: R levels evenly spaced between 0 V and VDD, Gaussian noise, nearest-level decoding, 10,000 seeded trials. It is not a transistor-level circuit simulation (the CNTFET/GNRFET papers use HSPICE device models).</p>
+<canvas id="volts" width="600" height="230" aria-label="Voltage levels with noise"></canvas>
+<div class="row"><label style="flex:1">Noise σ (fraction of VDD) <span id="sig" class="mono">0.055</span><input type="range" id="noise" min="0" max="0.25" step="0.005" value="0.055"></label>
+<label>Levels<select id="nrad"><option>2</option><option selected>3</option><option>4</option><option>8</option><option>16</option></select></label></div>
+<div class="nums"><div class="num"><small>Decode errors</small><b id="nerr"></b><small>of 10,000 reads</small></div><div class="num"><small>Level spacing</small><b id="nsp"></b><small>× VDD</small></div><div class="num"><small>Errors at radix 2</small><b id="nbin"></b><small>same noise</small></div></div>
+</div><div class="panel"><h2><b>·</b>Reading it</h2>
+<p>More levels in the same voltage span put the thresholds closer together, so the same noise causes more misreads. Real multilevel memory (MLC/TLC flash) pays for density with calibration, read-margin design and error correction.</p>
+<div class="note">No hardware voltage, power or error rate was measured. The model only compares radices at equal noise.</div>
+<p>Credit: OpenAI's ꟻX 0.21 "Packed States" introduced this model and the State Lab. 0.22 keeps it unchanged in spirit and adds tabs 02–04.</p>
+</div></div></section>
+
+<footer>ꟻX 0.22 Tri-Wire · Felix "Fweddle" Weddle · Sources: Pendashteh &amp; Hosseini 2024 (successor/predecessor) · Mokhtari &amp; Kabiri 2026 (decenary min/max/OS/PS) · Zhao et al. 2024 (ternary arithmetic circuits) · Simonetta et al. 2022 (MVL computer architecture) · Jo, Kang &amp; Cho 2021 (MVL gates review) · Nabi &amp; Rezai 2026 (nano inverters)</footer>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+// ---------- tabs
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x===b));
+  document.querySelectorAll('section[id^=tab-]').forEach(s=>s.hidden=s.id!=='tab-'+b.dataset.tab);
+});
+// ---------- shared operators (same definitions as fxc states / ꟻX builtins)
+function unary(op,v,R,k){switch(op){
+  case'succ':return (v+1)%R;case'pred':return (v+R-1)%R;case'not':return R-1-v;
+  case'os':return Math.min(v+1,R-1);case'ps':return Math.max(v-1,0);
+  case'min':return Math.min(v,k);case'max':return Math.max(v,k);case'add':return (v+k)%R;}return v}
+function binary(op,a,b,R){switch(op){
+  case'min':return Math.min(a,b);case'max':return Math.max(a,b);case'add':return (a+b)%R;
+  case'carry':return a+b>=R?1:0;case'mul':return (a*b)%R;case'eq':return a===b?R-1:0}return 0}
+const hue=(v,R)=>(160+v*250/Math.max(1,R-1))%360;
+// ---------- 01 state field
+let R=3,bal=false,vals=[],init=[],seed=0xF022;
+function rnd(){seed^=seed<<13;seed>>>=0;seed^=seed>>>17;seed^=seed<<5;seed>>>=0;return seed/4294967296}
+function fmt(v){return bal?(v===0?'−':v===1?'0':'+'):v.toString(R>10?16:10).toUpperCase()}
+function fresh(){R=+$('radix').value;const bo=$('notation').querySelector('[value=balanced]');bo.disabled=R!==3;
+  if(R!==3)$('notation').value='normal';bal=$('notation').value==='balanced';
+  const n=Math.max(1,Math.min(4096,+$('count').value||40));$('count').value=n;
+  vals=Array.from({length:n},()=>Math.floor(rnd()*R));init=vals.slice();paint()}
+function perByte(R){return R===3?5:R===2?8:R===4?4:R===16?2:8/3}
+function payloadBytes(R,n){return R===3?Math.ceil(n/5):Math.ceil(n*Math.log2(R)/8)}
+function paint(){const root=$('cells');root.textContent='';
+  vals.slice(0,160).forEach((v,i)=>{const b=document.createElement('button');b.className='cell';b.textContent=fmt(v);
+    b.style.background=`hsl(${hue(v,R)} 70% ${40+30*v/Math.max(1,R-1)}%)`;b.title=`state ${i}`;
+    b.onclick=()=>{vals[i]=(vals[i]+1)%R;paint()};root.append(b)});
+  if(vals.length>160){const s=document.createElement('small');s.textContent=`+ ${vals.length-160} more (not drawn)`;root.append(s)}
+  const n=vals.length,bits=Math.log2(R),p=payloadBytes(R,n);
+  $('bits').textContent=bits.toFixed(3);$('payload').textContent=p.toLocaleString();
+  $('saved').textContent=((1-p/n)*100).toFixed(1)+'%';$('eff').textContent=(100*n*bits/(8*p)).toFixed(2)+'%';
+  $('per').textContent=R===8?'2⅔':perByte(R);$('etype').textContent=bal?'btrit':{2:'u1',3:'trit',4:'u2',8:'u8',16:'u4'}[R];
+  drawHist();refreshBridge()}
+function drawHist(){const c=$('hist'),g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);
+  const cnt=Array(R).fill(0);vals.forEach(v=>cnt[v]++);const mx=Math.max(1,...cnt),w=c.width/R;
+  cnt.forEach((k,i)=>{const h=k/mx*92;g.fillStyle=`hsl(${hue(i,R)} 75% 64%)`;g.fillRect(i*w+4,c.height-22-h,w-8,h);
+    g.fillStyle='#cfeee2';g.font='12px ui-monospace,monospace';g.textAlign='center';g.fillText(fmt(i)+' ×'+k,i*w+w/2,c.height-6)})}
+document.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>{const k=Math.max(0,Math.min(R-1,+$('kconst').value||0));
+  vals=vals.map(v=>unary(b.dataset.op,v,R,k));paint()});
+$('regen').onclick=fresh;$('restore').onclick=()=>{vals=init.slice();paint()};
+$('radix').onchange=fresh;$('count').onchange=fresh;$('notation').onchange=()=>{bal=$('notation').value==='balanced'&&R===3;paint()};
+function drawEcon(){const c=$('econ'),g=c.getContext('2d'),W=c.width,H=c.height;g.clearRect(0,0,W,H);
+  const f=r=>r/Math.log(r),x=r=>30+(r-1.5)/(10.5-1.5)*(W-45),y=v=>H-26-(v-2.6)/(4.6-2.6)*(H-46);
+  g.strokeStyle='#28504a';g.beginPath();g.moveTo(30,H-26);g.lineTo(W-10,H-26);g.stroke();
+  g.strokeStyle='#9ff0c8';g.lineWidth=2;g.beginPath();for(let r=1.6;r<=10.5;r+=.02){const X=x(r),Y=y(f(r));r<1.62?g.moveTo(X,Y):g.lineTo(X,Y)}g.stroke();g.lineWidth=1;
+  g.font='11px ui-monospace,monospace';g.textAlign='center';
+  for(let r=2;r<=10;r++){g.fillStyle=r===3?'#d5ff84':'#8ea9a8';g.beginPath();g.arc(x(r),y(f(r)),r===3?5:3,0,7);g.fill();g.fillText(r,x(r),H-10)}
+  g.fillStyle='#c3b5ff';g.fillText('e',x(Math.E),y(f(Math.E))-10);g.textAlign='left';g.fillStyle='#8ea9a8';g.fillText('r / ln r',34,14)}
+// ---------- 02 operator atlas
+function atlas(){const r=+$('orad').value,op=$('bop').value;$('rlab').textContent=r;
+  let h='<tr><th>a\\b</th>'+Array.from({length:r},(_,j)=>`<th>${j}</th>`).join('')+'</tr>';
+  for(let a=0;a<r;a++){h+=`<tr><th>${a}</th>`;for(let b=0;b<r;b++){const v=binary(op,a,b,r),m=op==='carry'?1:r-1;
+    h+=`<td style="background:hsl(${hue(v,m+1)} 55% ${18+40*v/Math.max(1,m)}%)">${v}</td>`}h+='</tr>'}
+  $('btab').innerHTML=h;
+  let u='<tr><th>x</th>'+Array.from({length:r},(_,j)=>`<th>${j}</th>`).join('')+'</tr>';
+  for(const o of['succ','pred','not','os','ps']){u+=`<tr><th class="mono">${o}</th>`;for(let x=0;x<r;x++){const v=unary(o,x,r,0);
+    u+=`<td style="background:hsl(${hue(v,r)} 55% ${18+40*v/Math.max(1,r-1)}%)">${v}</td>`}u+='</tr>'}
+  $('utab').innerHTML=u;
+  const ex={min:`min(a, b)`,max:`max(a, b)`,add:`(a + b) % ${r}`,carry:`(a + b) / ${r}   // a, b in 0..${r-1}`,mul:`(a * b) % ${r}`,eq:`if a == b { e = ${r-1}; } else { e = 0; }`}[op];
+  const L=[['let x  = 0t1201;','ternary literal = 46'],[`let up = succ(x, ${r});`,'cyclic successor'],[`let hi = os(x, ${r});`,'saturating step up'],['let d  = digit(x, 2, 3);','third trit of x'],[`let v  = ${ex};`,'']];
+  $('osnip').textContent=L.map(([c,k])=>k?c.padEnd(26)+'// '+k:c).join('\n')}
+$('orad').oninput=atlas;$('bop').onchange=atlas;
+// ---------- 03 ternary adder
+let ad=null;
+function toTrits(n){const t=[];if(n===0n)t.push(0);while(n>0n){t.push(Number(n%3n));n/=3n}return t}
+function toBal(n){const t=[];let neg=n<0n;if(neg)n=-n;if(n===0n)t.push(0);while(n>0n){let d=Number(n%3n);n/=3n;if(d===2){d=-1;n+=1n}t.push(d)}return neg?t.map(d=>-d):t}
+function adSetup(){let A,B;try{A=BigInt($('ad1').value.trim());B=BigInt($('ad2').value.trim())}catch(e){$('adres').innerHTML='<span class="err">Enter two whole numbers.</span>';return null}
+  if(A<0n||B<0n){$('adres').innerHTML='<span class="warnc">The unbalanced adder takes non-negative numbers (balanced view below handles signs).</span>';return null}
+  const a=toTrits(A),b=toTrits(B),n=Math.max(a.length,b.length)+1;while(a.length<n)a.push(0);while(b.length<n)b.push(0);
+  return {A,B,a,b,n,i:0,c:[0],s:[]}}
+function adStep(){if(!ad)ad=adSetup();if(!ad||ad.i>=ad.n)return;const i=ad.i,u=ad.a[i]+ad.b[i]+ad.c[i];ad.s[i]=u%3;ad.c[i+1]=Math.floor(u/3);ad.i++;adDraw()}
+function adDraw(){if(!ad){$('adview').textContent='';return}const n=ad.n;
+  const cell=(v,cls,hi)=>`<span class="${cls}${hi?' hi':''}">${v===undefined?'·':v}</span> `;
+  let row=(lab,arr,cls)=>lab+Array.from({length:n},(_,k)=>{const i=n-1-k;return cell(arr[i],cls,i===ad.i-1)}).join('');
+  let h=row('carry  ',ad.c.slice(0,n),'c')+'\n'+row('A      ',ad.a,'')+'\n'+row('B      ',ad.b,'')+'\n'+'       '+'── '.repeat(n)+'\n'+row('sum    ',ad.s,'s');
+  $('adview').innerHTML=h;
+  if(ad.i>=n){let r=0n;for(let i=n-1;i>=0;i--)r=r*3n+BigInt(ad.s[i]);const ok=r===ad.A+ad.B;
+    $('adres').innerHTML=`<span class="${ok?'ok':'err'}">${r} ${ok?'= A + B ✓':'≠ A + B'}</span> <small>${n} trits, ${Math.ceil(n/5)} packed bytes per number</small>`}
+  else $('adres').innerHTML=`<small>trit ${ad.i} of ${n}: the next step adds column ${ad.i} and passes its carry left</small>`;
+  const A=ad.A,show=v=>v<0?'−':v>0?'+':'0';$('balview').textContent=`A  = ${A}\n A balanced: ${toBal(A).slice().reverse().map(show).join('')}\n−A balanced: ${toBal(-A).slice().reverse().map(show).join('')}\n(−A flips every digit of A)`}
+$('adrun').onclick=()=>{ad=adSetup();if(!ad)return;while(ad.i<ad.n)adStep()};$('adstep').onclick=adStep;$('adreset').onclick=()=>{ad=adSetup();adDraw()};
+// ---------- 04 FXST21 bridge (SHA-256 in plain JS so it also works from file://)
+const K256=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+function sha256(msg){const l=msg.length,nb=((l+9+63)>>6)<<6,m=new Uint8Array(nb);m.set(msg);m[l]=0x80;const bl=l*8;
+  for(let i=0;i<8;i++)m[nb-1-i]=Math.floor(bl/2**(8*i))&255;
+  const H=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]),w=new Uint32Array(64),r=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let o=0;o<nb;o+=64){for(let i=0;i<16;i++)w[i]=(m[o+4*i]<<24)|(m[o+4*i+1]<<16)|(m[o+4*i+2]<<8)|m[o+4*i+3];
+    for(let i=16;i<64;i++){const s0=r(w[i-15],7)^r(w[i-15],18)^(w[i-15]>>>3),s1=r(w[i-2],17)^r(w[i-2],19)^(w[i-2]>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)|0}
+    let[a,b,c,d,e,f,g,h]=H;for(let i=0;i<64;i++){const t1=(h+(r(e,6)^r(e,11)^r(e,25))+((e&f)^(~e&g))+K256[i]+w[i])|0,t2=((r(a,2)^r(a,13)^r(a,22))+((a&b)^(a&c)^(b&c)))|0;h=g;g=f;f=e;e=(d+t1)|0;d=c;c=b;b=a;a=(t1+t2)|0}
+    H[0]+=a;H[1]+=b;H[2]+=c;H[3]+=d;H[4]+=e;H[5]+=f;H[6]+=g;H[7]+=h}
+  const out=new Uint8Array(32);for(let i=0;i<8;i++)for(let j=0;j<4;j++)out[4*i+j]=(H[i]>>>(24-8*j))&255;return out}
+const WIDTH={2:1,3:5,4:2,8:3,16:4};
+function packPayload(v,R){const n=v.length,p=new Uint8Array(payloadBytes(R,n));
+  if(R===3){const pw=[1,3,9,27,81];v.forEach((d,i)=>p[(i/5)|0]+=d*pw[i%5])}
+  else{const w=WIDTH[R];v.forEach((d,i)=>{const bit=i*w;p[bit>>3]|=(d<<(bit&7))&255;if((bit&7)+w>8)p[(bit>>3)+1]|=d>>(8-(bit&7))})}return p}
+function u64(b,o,x){for(let i=0;i<8;i++){b[o+i]=Number(BigInt(x)>>BigInt(8*i)&255n)}}
+function digestOf(b){const t=new Uint8Array(28+b.length-60);t.set(b.subarray(0,28));t.set(b.subarray(60),28);return sha256(t)}
+function makeFile(v,R,balanced){const p=packPayload(v,R),b=new Uint8Array(64+p.length);b.set([70,88,83,84,50,49,0,0]);b[8]=1;b[9]=R;b[10]=balanced?1:0;b[11]=WIDTH[R];
+  u64(b,12,v.length);u64(b,20,p.length);b.set(p,64);b.set(digestOf(b),28);return b}
+const hex=a=>Array.from(a,x=>x.toString(16).padStart(2,'0')).join('');
+function parseFile(b){const fail=m=>({err:m});if(b.length<64)return fail('truncated header');
+  if(String.fromCharCode(...b.subarray(0,6))!=='FXST21'||b[6]||b[7]||b[8]!==1)return fail('not an FXST21 v1 file');
+  const R=b[9],balanced=b[10]===1;if(!(R in WIDTH))return fail('radix '+R+' unsupported');if(b[10]>1||(balanced&&R!==3))return fail('invalid signedness flag');
+  if(b[11]!==WIDTH[R])return fail('wrong storage geometry');if(b[60]|b[61]|b[62]|b[63])return fail('reserved header bytes must be zero');
+  let n=0,pl=0;for(let i=7;i>=0;i--){n=n*256+b[12+i];pl=pl*256+b[20+i]}if(n>64*2**20)return fail('element count exceeds the 64-million limit');
+  if(pl!==payloadBytes(R,n)||b.length!==64+pl)return fail('payload length mismatch');
+  if(hex(digestOf(b))!==hex(b.subarray(28,60)))return fail('SHA-256 integrity check failed');
+  const p=b.subarray(64),v=new Array(n);
+  if(R===3){for(let i=0;i<pl;i++)if(p[i]>=243)return fail(`invalid trit byte ${p[i]} at ${i}`);
+    if(n%5&&pl&&p[pl-1]>=3**(n%5))return fail('nonzero trailing ternary digits');
+    for(let i=0;i<n;i++)v[i]=Math.floor(p[(i/5)|0]/3**(i%5))%3}
+  else{const w=WIDTH[R];if((n*w)%8&&pl&&(p[pl-1]>>((n*w)%8)))return fail('nonzero padding bits');
+    for(let i=0;i<n;i++){const bit=i*w;let x=p[bit>>3]>>(bit&7);if((bit&7)+w>8)x|=p[(bit>>3)+1]<<(8-(bit&7));v[i]=x&(R-1)}}
+  return {R,balanced,n,pl,v,sha:hex(b.subarray(28,60))}}
+function srcFor(v,R,balanced,name){const t=balanced?'btrit':{2:'u1',3:'trit',4:'u2',8:'u8',16:'u4'}[R];
+  const xs=v.map(d=>balanced?d-1:d);let s=`// ${v.length} radix-${R} states (FXST21 payload layout)\nlet ${name}: [${t}; ${v.length}] = [`;
+  xs.forEach((x,i)=>{s+=(i?', ':'')+((i&&i%32===0)?'\n  ':'')+x});return s+'];\n'}
+function refreshBridge(){$('src').value=srcFor(vals,R,bal,'states')}
+$('exp').onclick=()=>{const b=makeFile(vals,R,bal),url=URL.createObjectURL(new Blob([b],{type:'application/octet-stream'}));
+  const a=document.createElement('a');a.href=url;a.download=`states-r${R}${bal?'-balanced':''}-${vals.length}.fxstates`;document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  $('inspect').innerHTML=`<span class="ok">exported</span> ${b.length} bytes · radix ${R}${bal?' balanced':''} · ${vals.length} states\nsha256 ${hex(b.subarray(28,60))}`};
+$('imp').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(f.size>80*2**20){$('inspect').innerHTML='<span class="err">file too large for the lab (80 MB)</span>';return}
+  const b=new Uint8Array(await f.arrayBuffer()),d=parseFile(b);
+  if(d.err){$('inspect').innerHTML=`<span class="err">refused:</span> ${d.err}`;return}
+  $('inspect').innerHTML=`<span class="ok">OK FXST21</span> ${f.name}\nelements ${d.n} · radix ${d.R}${d.balanced?' (balanced)':''} · payload ${d.pl} B · file ${b.length} B\nsha256 ${d.sha}`;
+  if(d.n<=4096&&[2,3,4,8,16].includes(d.R)){$('radix').value=d.R;R=d.R;$('notation').value=d.balanced?'balanced':'normal';bal=d.balanced;vals=d.v.slice();init=vals.slice();$('count').value=d.n;paint()}
+  else $('src').value=srcFor(d.v.slice(0,20000),d.R,d.balanced,'states')};
+$('copysrc').onclick=async()=>{try{await navigator.clipboard.writeText($('src').value);$('copied').textContent='copied'}catch(e){$('src').select();$('copied').textContent='selected: press Ctrl+C'}setTimeout(()=>$('copied').textContent='',1800)};
+// ---------- 05 threshold model (OpenAI 0.21's model)
+function noiseErrors(levels,sigma){let s=0x521f;const rr=()=>{s^=s<<13;s>>>=0;s^=s>>>17;s^=s<<5;s>>>=0;return s/4294967296};
+  const gauss=()=>Math.sqrt(-2*Math.log(Math.max(1e-12,rr())))*Math.cos(2*Math.PI*rr());let bad=0;
+  for(let i=0;i<10000;i++){const t=Math.floor(rr()*levels),v=t/(levels-1)+gauss()*sigma;bad+=Math.max(0,Math.min(levels-1,Math.round(v*(levels-1))))!==t}return bad}
+function noise(){const sg=+$('noise').value,L=+$('nrad').value;$('sig').textContent=sg.toFixed(3);
+  $('nerr').textContent=(noiseErrors(L,sg)/100).toFixed(2)+'%';$('nbin').textContent=(noiseErrors(2,sg)/100).toFixed(2)+'%';$('nsp').textContent=(1/(L-1)).toFixed(3);
+  const c=$('volts'),g=c.getContext('2d'),W=c.width,H=c.height;g.clearRect(0,0,W,H);const X=i=>24+i/(L-1)*(W-48),spread=Math.max(1,sg*(W-48));
+  for(let i=0;i<L;i++){const x=X(i);const gr=g.createRadialGradient(x,95,1,x,95,spread*2.2);gr.addColorStop(0,'rgba(159,240,200,.45)');gr.addColorStop(1,'rgba(159,240,200,0)');
+    g.fillStyle=gr;g.fillRect(x-spread*2.2,20,spread*4.4,150);g.strokeStyle='#4f7d74';g.setLineDash([3,5]);g.beginPath();g.moveTo(x,14);g.lineTo(x,H-36);g.stroke();g.setLineDash([]);
+    g.fillStyle=`hsl(${hue(i,L)} 75% 66%)`;g.beginPath();g.arc(x,95,6,0,7);g.fill();g.fillStyle='#cfeee2';g.font='11px ui-monospace,monospace';g.textAlign='center';g.fillText(i,x,H-16)}
+  g.fillStyle='#8ea9a8';g.textAlign='left';g.fillText('0 V',6,H-2);g.textAlign='right';g.fillText('VDD',W-6,H-2)}
+$('noise').oninput=noise;$('nrad').onchange=noise;
+// ---------- start
+fresh();drawEcon();atlas();ad=adSetup();adDraw();noise();
 </script></body></html>
